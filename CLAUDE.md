@@ -39,9 +39,10 @@
 ## 当前进度
 - 第一阶段（播放器）原型已完成：导入音频和歌词（LRC / 纯文本打轴 / LRCLIB 搜索）、逐字粤拼按声调上色、点字看词卡和听发音、改读音、单句循环、慢放、词汇包导入、备份恢复
 - 测试歌曲：陈奕迅《富士山下》
+- 已发布到 GitHub Pages：https://gordon328.github.io/singin-canto/ （仓库 github.com/gordon328/singin-canto，main 分支根目录），iPhone 上已确认能打开
 
 ## 下一步（按顺序）
-1. 初始化 git，推送到 GitHub，开启 GitHub Pages，让开发者在 iPhone 上用正式网址打开
+1. ~~初始化 git，推送到 GitHub，开启 GitHub Pages~~（已完成）
 2. 加 PWA 支持：`manifest.json`、图标、service worker（离线可用、添加到主屏幕）
 3. 在正式网址上测试 LRCLIB 在线搜索
 4. 根据开发者的试用反馈修改
