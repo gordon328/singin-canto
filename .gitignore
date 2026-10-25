@@ -1,0 +1,21 @@
+# 版权保护：歌词和音频绝不进仓库
+*.mp3
+*.m4a
+*.aac
+*.wav
+*.flac
+*.ogg
+*.lrc
+*.txt
+!samples/*.txt
+
+# 备份文件（可能含歌词和音频）
+*.json
+!manifest.json
+!samples/*.json
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+.claude/settings.local.json

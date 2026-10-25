@@ -1,0 +1,726 @@
+<title>唱学粤语</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="唱学粤语">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+HK:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-column phone app. Song list → full-screen lyric sheet with a fixed player bar at the bottom. */
+:root{
+  --bg:#f4f5f8; --surface:#ffffff; --ink:#191c23; --muted:#646b7a; --rule:#e2e5eb;
+  --accent:#b01f57; --accent-ink:#ffffff; --accent-soft:#fbe6ee; --active:#fdf0f4;
+  --t1:#cc2f2a; --t2:#cf6f00; --t3:#17803d; --t4:#1c62d6; --t5:#7a3ae6; --t6:#0b7489;
+  --shadow:0 8px 30px rgba(25,28,35,.12);
+  --f-hz:"Noto Serif HK","Songti TC","PMingLiU",serif;
+  --f-ui:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --f-jp:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131419; --surface:#1c1e25; --ink:#eceef3; --muted:#9aa1ae; --rule:#2b2e38;
+  --accent:#ff5b92; --accent-ink:#1a0a10; --accent-soft:#3a1a27; --active:#2a1820;
+  --t1:#ff6a61; --t2:#f5a524; --t3:#3ccb72; --t4:#62a0ff; --t5:#ad8bff; --t6:#2bc0d6;
+  --shadow:0 8px 30px rgba(0,0,0,.5); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#131419; --surface:#1c1e25; --ink:#eceef3; --muted:#9aa1ae; --rule:#2b2e38;
+  --accent:#ff5b92; --accent-ink:#1a0a10; --accent-soft:#3a1a27; --active:#2a1820;
+  --t1:#ff6a61; --t2:#f5a524; --t3:#3ccb72; --t4:#62a0ff; --t5:#ad8bff; --t6:#2bc0d6;
+  --shadow:0 8px 30px rgba(0,0,0,.5); color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.t1{color:var(--t1)}.t2{color:var(--t2)}.t3{color:var(--t3)}.t4{color:var(--t4)}.t5{color:var(--t5)}.t6{color:var(--t6)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--rule);font-weight:600;min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.small{padding:6px 12px;min-height:36px;font-size:14px;border-radius:10px}
+.btn:disabled{opacity:.45;cursor:default}
+.muted{color:var(--muted)}
+.label{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:600}
+input[type=text],textarea{width:100%;box-sizing:border-box;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:10px 12px}
+textarea{min-height:140px;resize:vertical;font-family:var(--f-jp);font-size:13px}
+svg{display:block}
+
+/* Home */
+.home-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-block:28px 12px}
+.brand{font-family:var(--f-hz);font-weight:700;font-size:30px;letter-spacing:.04em;margin:0;line-height:1.1}
+.brand small{display:block;font-family:var(--f-ui);font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0;margin-top:6px}
+.tones{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-block:12px 22px}
+.tone{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0 8px;border-radius:12px;background:var(--surface);border:1px solid var(--rule)}
+.tone .hz{font-family:var(--f-hz);font-size:24px;font-weight:700;line-height:1.1}
+.tone .jp{font-family:var(--f-jp);font-size:12px;font-weight:700}
+.tone .nm{font-size:11px;color:var(--muted)}
+.section-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.songs{display:flex;flex-direction:column;gap:10px;padding-bottom:40px}
+.song{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:var(--surface);border:1px solid var(--rule);text-align:left;width:100%}
+.song .disc{flex:none;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 50% 50%,var(--surface) 0 5px,var(--accent) 6px 9px,var(--ink) 10px);opacity:.9}
+.song .meta{flex:1;min-width:0}
+.song .ttl{font-family:var(--f-hz);font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song .sub{font-size:13px;color:var(--muted)}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-right:4px}
+.chip.plain{background:transparent;border:1px solid var(--rule);color:var(--muted)}
+.del{font-size:13px;color:var(--muted);padding:8px}
+.del.armed{color:var(--accent);font-weight:700}
+.empty{padding:22px;border-radius:16px;border:1px dashed var(--rule);background:var(--surface)}
+.empty ol{margin:10px 0 16px;padding-left:20px;display:grid;gap:6px}
+
+/* Top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+.bar .wrap{display:flex;align-items:center;gap:8px;min-height:52px}
+.bar .back{width:40px;height:40px;display:grid;place-items:center;margin-left:-8px;border-radius:10px}
+.bar .tt{flex:1;min-width:0}
+.bar .tt b{display:block;font-family:var(--f-hz);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .tt span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tog{font-size:13px;font-weight:700;padding:6px 10px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);min-height:34px}
+.tog[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tog.pack{border-color:var(--accent);color:var(--accent)}
+.tog.pack.done{border-color:var(--rule);color:var(--muted)}
+
+/* Lyrics */
+.banner{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--accent-soft);font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lyrics{padding-block:14px 230px}
+.line{display:grid;grid-template-columns:44px minmax(0,1fr);gap:6px;padding:10px 8px 10px 0;border-radius:14px;transition:background .2s}
+.line.cur{background:var(--active)}
+.line .ln{font-family:var(--f-jp);font-size:11px;color:var(--muted);align-self:start;padding-top:16px;text-align:center;border-radius:8px;min-height:36px}
+.line.cur .ln{color:var(--accent);font-weight:700}
+.line.loop .ln::after{content:"↻";display:block;font-size:14px;color:var(--accent)}
+.chars{display:flex;flex-wrap:wrap;row-gap:6px;align-items:flex-end}
+.c{display:inline-flex;flex-direction:column;align-items:center;padding:0 1px;border-radius:6px;min-width:1.15em}
+.c .jp{font-family:var(--f-jp);font-size:10px;font-weight:700;line-height:14px;height:14px;white-space:nowrap}
+.c .hz{font-family:var(--f-hz);font-size:23px;font-weight:500;line-height:1.25}
+.c.key .hz{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:5px}
+.c.ov .jp{text-decoration:underline dotted}
+.c.sel{background:var(--accent-soft)}
+.c.punct .hz{color:var(--muted)}
+.sp{width:.7em}
+.summary{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--rule);font-size:14px}
+.summary .label{display:block;margin-bottom:4px}
+.hide-jp .c .jp{display:none}
+.line:not(.cur) .chars{opacity:.92}
+
+/* Player */
+.player{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--rule);box-shadow:var(--shadow);padding-bottom:env(safe-area-inset-bottom,0px)}
+.player .wrap{display:flex;flex-direction:column;gap:6px;padding-block:8px 10px}
+.prog{display:flex;align-items:center;gap:10px;font-family:var(--f-jp);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.prog input{flex:1;accent-color:var(--accent);min-width:0}
+.ctrls{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.ib{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;color:var(--ink)}
+.ib.on{color:var(--accent);background:var(--accent-soft)}
+.play{width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--accent-ink)}
+.speeds{display:flex;border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+.speeds button{font-family:var(--f-jp);font-size:12px;font-weight:700;padding:0 8px;height:34px;color:var(--muted)}
+.speeds button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* Import + sync */
+.form{display:flex;flex-direction:column;gap:18px;padding-block:18px 60px}
+.field{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > *{min-width:0}
+.filebox{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;border:1px dashed var(--rule);background:var(--surface)}
+.filebox input{position:absolute;opacity:0;width:1px;height:1px}
+.note{font-size:13px;color:var(--muted)}
+.ok{color:var(--t3);font-weight:600}
+.err{color:var(--t1);font-weight:600}
+.results{display:flex;flex-direction:column;gap:6px}
+.res{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--rule);background:var(--surface);text-align:left;width:100%}
+.res b{font-weight:600}
+.sync-list{display:flex;flex-direction:column;gap:2px;padding-block:10px 260px}
+.sl{display:flex;gap:10px;padding:10px;border-radius:10px;font-family:var(--f-hz);font-size:18px}
+.sl .tm{font-family:var(--f-jp);font-size:11px;color:var(--muted);width:46px;flex:none;padding-top:5px}
+.sl.next{background:var(--active);outline:2px solid var(--accent)}
+.sl.done{opacity:.6}
+.tapbig{width:100%;min-height:64px;font-size:18px}
+
+/* Sheet */
+.backdrop{position:fixed;inset:0;z-index:40;background:rgba(10,10,14,.45)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);border-radius:20px 20px 0 0;max-height:86%;overflow:auto;box-shadow:var(--shadow);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet .wrap{padding-block:10px 22px;display:flex;flex-direction:column;gap:14px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--rule);margin:2px auto 0}
+.sheet h3{margin:0;font-size:17px}
+.word-big{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
+.word-big .c .hz{font-size:40px;font-weight:700}
+.word-big .c .jp{font-size:15px;height:20px;line-height:20px}
+.word-big .c{cursor:pointer;padding:2px 4px}
+.word-big .c.sel{background:var(--accent-soft)}
+.mean{font-size:17px}
+.tip{padding:10px 12px;border-radius:12px;background:var(--bg);font-size:14px}
+.warn{padding:10px 12px;border-radius:12px;background:var(--accent-soft);font-size:13px}
+.cands{display:flex;gap:6px;flex-wrap:wrap}
+.cand{font-family:var(--f-jp);font-weight:700;font-size:14px;padding:6px 10px;border-radius:10px;border:1px solid var(--rule)}
+.cand[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.steps{display:grid;gap:10px;counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px}
+.msgs{font-size:13px;display:grid;gap:4px;max-height:180px;overflow:auto}
+
+.toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;max-width:min(90vw,420px);text-align:center;box-shadow:var(--shadow)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<audio id="au" preload="auto" playsinline></audio>
+
+<!-- HOME -->
+<section id="home">
+  <div class="wrap">
+    <header class="home-head">
+      <h1 class="brand">唱学粤语<small>用你喜欢的粤语歌，一句一句学会唱</small></h1>
+      <button class="btn small" id="btnBackup" type="button">备份</button>
+    </header>
+    <div class="label">六个声调 · 点字听发音</div>
+    <div class="tones" id="tones"></div>
+    <div class="section-row">
+      <div class="label">我的歌</div>
+      <button class="btn small primary" id="btnAdd" type="button">＋ 导入新歌</button>
+    </div>
+    <div class="songs" id="songs"></div>
+  </div>
+</section>
+
+<!-- IMPORT -->
+<section id="importView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>导入新歌</b><span>音频 + 歌词</span></div>
+  </div></div>
+  <div class="wrap form">
+    <div class="field">
+      <div class="label">1 · 音频文件</div>
+      <label class="filebox" for="fAudio">
+        <input id="fAudio" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav">
+        <span class="btn small">选择音频</span>
+        <span id="audioInfo" class="note">mp3 或 m4a。音乐 App 下载的加密文件不能用。</span>
+      </label>
+    </div>
+    <div class="field">
+      <div class="label">2 · 歌名和歌手</div>
+      <input id="fTitle" type="text" placeholder="歌名，例如：富士山下" autocomplete="off">
+      <input id="fArtist" type="text" placeholder="歌手，例如：陳奕迅" autocomplete="off">
+    </div>
+    <div class="field">
+      <div class="label">3 · 歌词</div>
+      <div class="row">
+        <button class="btn small" id="btnSearch" type="button">在线搜索歌词</button>
+        <label class="btn small" for="fLrc">选择 .lrc 文件<input id="fLrc" type="file" accept=".lrc,.txt,text/plain" style="position:absolute;opacity:0;width:1px;height:1px"></label>
+      </div>
+      <div id="searchOut" class="results"></div>
+      <textarea id="fLyrics" placeholder="或者直接粘贴歌词。&#10;带时间轴的 LRC 格式，例如：[00:21.71] 第一句歌词&#10;没有时间轴的纯文本也可以，保存后边听边点来对齐。"></textarea>
+      <div id="lyricsInfo" class="note"></div>
+    </div>
+    <button class="btn primary" id="btnSave" type="button" disabled>保存</button>
+  </div>
+</section>
+
+<!-- TAP SYNC -->
+<section id="syncView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>打轴</b><span>每句歌词开始唱时，点一下大按钮</span></div>
+  </div></div>
+  <div class="wrap"><div class="sync-list" id="syncList"></div></div>
+  <div class="player"><div class="wrap">
+    <div class="prog"><span id="sCur">0:00</span><input id="sSeek" type="range" min="0" max="1" step="0.01" value="0" aria-label="播放进度"><span id="sDur">0:00</span></div>
+    <div class="row" style="flex-wrap:nowrap">
+      <button class="btn small" id="sPlay" type="button" style="flex:none">播放</button>
+      <button class="btn small" id="sUndo" type="button" style="flex:none">撤销</button>
+      <button class="btn primary tapbig" id="sTap" type="button">第 1 句开始</button>
+    </div>
+  </div></div>
+</section>
+
+<!-- PLAYER -->
+<section id="playerView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b id="pTitle"></b><span id="pArtist"></span></div>
+    <button class="tog" id="togJp" type="button" aria-pressed="true">粤拼</button>
+    <button class="tog pack" id="btnPack" type="button">词汇包</button>
+  </div></div>
+  <div class="wrap">
+    <div id="pBanner"></div>
+    <div id="pSummary"></div>
+    <div class="lyrics" id="lyrics"></div>
+  </div>
+  <div class="player"><div class="wrap">
+    <div class="prog"><span id="pCur">0:00</span><input id="pSeek" type="range" min="0" max="1" step="0.01" value="0" aria-label="播放进度"><span id="pDur">0:00</span></div>
+    <div class="ctrls">
+      <button class="ib" id="bLoop" type="button" aria-label="单句循环" title="单句循环"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg></button>
+      <button class="ib" id="bPrev" type="button" aria-label="上一句"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="ib play" id="bPlay" type="button" aria-label="播放"><svg id="icPlay" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><svg id="icPause" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+      <button class="ib" id="bNext" type="button" aria-label="下一句"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      <div class="speeds" role="group" aria-label="播放速度">
+        <button type="button" data-rate="0.6" aria-pressed="false">0.6</button>
+        <button type="button" data-rate="0.8" aria-pressed="false">0.8</button>
+        <button type="button" data-rate="1" aria-pressed="true">1×</button>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<div id="backdrop" class="backdrop" hidden></div>
+<div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/to-jyutping@3.1.1/dist/index.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const HAN=/\p{Script=Han}/u;
+const TJ=(()=>{const g=window.ToJyutping;if(!g)return null;if(typeof g.getJyutpingList==="function")return g;if(g.default&&typeof g.default.getJyutpingList==="function")return g.default;return null})();
+const au=$("#au");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=t=>{if(!isFinite(t)||t<0)t=0;const m=Math.floor(t/60),s=Math.floor(t%60);return m+":"+String(s).padStart(2,"0")};
+const toneOf=jp=>{const m=/([1-6])$/.exec(jp||"");return m?m[1]:""};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg,ms=2600){const el=$("#toast");el.textContent=msg;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,ms)}
+
+/* ---------- storage (IndexedDB, falls back to memory) ---------- */
+const DB={db:null,mem:new Map(),ok:false,
+  open(){return new Promise(res=>{try{const r=indexedDB.open("yuechang",1);r.onupgradeneeded=()=>r.result.createObjectStore("songs",{keyPath:"id"});r.onsuccess=()=>{this.db=r.result;this.ok=true;res()};r.onerror=()=>res();r.onblocked=()=>res()}catch(e){res()}})},
+  _st(m){return this.db.transaction("songs",m).objectStore("songs")},
+  all(){if(!this.ok)return Promise.resolve([...this.mem.values()]);return new Promise(res=>{try{const r=this._st("readonly").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([...this.mem.values()])}catch(e){res([...this.mem.values()])}})},
+  put(o){this.mem.set(o.id,o);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st("readwrite").put(o);r.onsuccess=()=>res();r.onerror=()=>{toast("保存失败：手机存储空间可能不够");res()}}catch(e){res()}})},
+  del(id){this.mem.delete(id);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st("readwrite").delete(id);r.onsuccess=()=>res();r.onerror=()=>res()}catch(e){res()}})}
+};
+
+let songs=[];
+let cur=null, view=[], curIdx=-1, loopIdx=null, raf=0, rate=1, objURL=null, userScrollAt=0;
+const prefs={jp:true,zh:true};
+try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(prefs,p)}catch(e){}
+function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
+
+/* ---------- views ---------- */
+const views=["home","importView","syncView","playerView"];
+function show(id){views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0)}
+document.querySelectorAll("[data-back]").forEach(b=>b.addEventListener("click",()=>{au.pause();loopIdx=null;show("home");renderHome()}));
+
+/* ---------- speech ---------- */
+let voices=[];
+function loadVoices(){try{voices=speechSynthesis.getVoices()||[]}catch(e){voices=[]}}
+if("speechSynthesis" in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+let warnedVoice=false;
+function speak(text,r=0.8){
+  if(!("speechSynthesis" in window)){toast("这个浏览器不支持朗读");return}
+  au.pause();
+  try{speechSynthesis.cancel()}catch(e){}
+  const u=new SpeechSynthesisUtterance(text);u.lang="zh-HK";u.rate=r;
+  const v=voices.find(v=>/zh[-_]HK|yue/i.test(v.lang))||voices.find(v=>/Sinji|Cantonese|粵|粤/i.test(v.name));
+  if(v)u.voice=v;else if(!warnedVoice&&voices.length){warnedVoice=true;toast("没找到粤语语音。iPhone：设置 › 辅助功能 › 朗读内容 › 声音 › 中文（香港），下载后再试",6000)}
+  speechSynthesis.speak(u);
+}
+
+/* ---------- home ---------- */
+const TONES=[["詩","si1","高平"],["史","si2","高升"],["試","si3","中平"],["時","si4","低降"],["市","si5","低升"],["事","si6","低平"]];
+$("#tones").innerHTML=TONES.map(([h,j,n])=>`<button class="tone" type="button" data-say="${h}"><span class="jp t${toneOf(j)}">${j}</span><span class="hz">${h}</span><span class="nm">${n}</span></button>`).join("");
+$("#tones").addEventListener("click",e=>{const b=e.target.closest("[data-say]");if(b)speak(b.dataset.say,0.7)});
+
+function renderHome(){
+  const box=$("#songs");
+  if(!songs.length){
+    box.innerHTML=`<div class="empty"><b>还没有歌</b><ol>
+      <li>点「导入新歌」，选一首你手机里的 mp3</li>
+      <li>粘贴带时间轴的歌词，或者边听边点来对齐</li>
+      <li>用「词汇包」让 Claude 帮你整理重点词、校对读音</li></ol>
+      <button class="btn primary" type="button" data-add>导入第一首歌</button>
+      ${DB.ok?"":'<p class="note" style="margin:12px 0 0">这个浏览器不允许保存数据，关掉页面后歌曲会消失。</p>'}</div>`;
+    return;
+  }
+  const list=[...songs].sort((a,b)=>(b.updated||0)-(a.updated||0));
+  box.innerHTML=list.map(s=>`<div class="song" data-id="${s.id}" role="button" tabindex="0">
+    <span class="disc" aria-hidden="true"></span>
+    <span class="meta"><div class="ttl">${esc(s.title||"未命名")}</div>
+      <div class="sub">${esc(s.artist||"")}${s.artist?" · ":""}${s.lines.length} 句</div>
+      <div>${s.pack?'<span class="chip">词汇包已导入</span>':'<span class="chip plain">未导入词汇包</span>'}${s.audio?"":'<span class="chip">缺少音频</span>'}</div></span>
+    <button class="del" type="button" data-del="${s.id}">删除</button></div>`).join("");
+}
+$("#songs").addEventListener("click",async e=>{
+  if(e.target.closest("[data-add]")){openImport();return}
+  const d=e.target.closest("[data-del]");
+  if(d){e.stopPropagation();
+    if(!d.classList.contains("armed")){d.classList.add("armed");d.textContent="确认删除";setTimeout(()=>{d.classList.remove("armed");d.textContent="删除"},3000);return}
+    await DB.del(d.dataset.del);songs=songs.filter(s=>s.id!==d.dataset.del);renderHome();toast("已删除");return}
+  const s=e.target.closest("[data-id]");if(s)openSong(s.dataset.id);
+});
+$("#songs").addEventListener("keydown",e=>{if(e.key==="Enter"){const s=e.target.closest("[data-id]");if(s)openSong(s.dataset.id)}});
+$("#btnAdd").addEventListener("click",openImport);
+
+/* ---------- LRC ---------- */
+function parseLRC(txt){
+  const raw=[];
+  for(const line of txt.split(/\r?\n/)){
+    const tags=[...line.matchAll(/\[(\d{1,3}):(\d{1,2}(?:[.:]\d{1,3})?)\]/g)];
+    if(!tags.length)continue;
+    const text=line.replace(/\[[^\]]*\]/g,"").trim();
+    for(const m of tags)raw.push({t:+m[1]*60+parseFloat(m[2].replace(":",".")),text});
+  }
+  raw.sort((a,b)=>a.t-b.t);
+  raw.forEach((l,i)=>l.end=i+1<raw.length?raw[i+1].t:null);
+  return raw.filter(l=>l.text);
+}
+function finishEnds(lines,dur){lines.forEach((l,i)=>{if(l.end==null||l.end<=l.t)l.end=i+1<lines.length?lines[i+1].t:(isFinite(dur)&&dur>l.t?dur:l.t+6)});return lines}
+
+/* ---------- import ---------- */
+const imp={blob:null,name:"",dur:NaN,url:null,parsed:[],plain:[]};
+function openImport(){
+  Object.assign(imp,{blob:null,name:"",dur:NaN,parsed:[],plain:[]});
+  $("#fAudio").value="";$("#fLrc").value="";$("#fTitle").value="";$("#fArtist").value="";$("#fLyrics").value="";
+  $("#audioInfo").textContent="mp3 或 m4a。音乐 App 下载的加密文件不能用。";$("#lyricsInfo").textContent="";$("#searchOut").innerHTML="";
+  updSave();show("importView");
+}
+$("#fAudio").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  imp.blob=f;imp.name=f.name;imp.dur=NaN;
+  const base=f.name.replace(/\.[^.]+$/,"").replace(/^\d+[\s._-]+/,"");
+  if(!$("#fTitle").value){const parts=base.split(/\s+-\s+/);if(parts.length===2){$("#fArtist").value=parts[0];$("#fTitle").value=parts[1]}else $("#fTitle").value=base}
+  const u=URL.createObjectURL(f);const a=new Audio();a.preload="metadata";
+  a.onloadedmetadata=()=>{imp.dur=a.duration;$("#audioInfo").innerHTML=`<span class="ok">✓ ${esc(f.name)}</span> · ${fmt(a.duration)}`;URL.revokeObjectURL(u);updSave()};
+  a.onerror=()=>{$("#audioInfo").innerHTML=`<span class="err">这个文件播放不了</span>，可能是加密格式。请换一个 mp3 或 m4a。`;imp.blob=null;URL.revokeObjectURL(u);updSave()};
+  a.src=u;
+  $("#audioInfo").textContent="读取中…";updSave();
+});
+$("#fLrc").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;$("#fLyrics").value=await f.text();onLyrics()});
+$("#fLyrics").addEventListener("input",onLyrics);
+function onLyrics(){
+  const txt=$("#fLyrics").value;
+  imp.parsed=parseLRC(txt);
+  imp.plain=imp.parsed.length?[]:txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const info=$("#lyricsInfo");
+  if(imp.parsed.length)info.innerHTML=`<span class="ok">✓ 识别到 ${imp.parsed.length} 句带时间轴的歌词</span>`;
+  else if(imp.plain.length)info.innerHTML=`没有时间轴，共 ${imp.plain.length} 句。保存后进入「打轴」：边听边点，把每句对齐。`;
+  else info.textContent="";
+  updSave();
+}
+function updSave(){$("#btnSave").disabled=!(imp.blob&&(imp.parsed.length||imp.plain.length)&&!isNaN(imp.dur))}
+
+$("#btnSearch").addEventListener("click",async()=>{
+  const t=$("#fTitle").value.trim(),a=$("#fArtist").value.trim(),out=$("#searchOut");
+  if(!t){toast("先填歌名");return}
+  out.innerHTML='<div class="note">搜索中…</div>';
+  const tries=[];
+  if(a)tries.push(`track_name=${encodeURIComponent(t)}&artist_name=${encodeURIComponent(a)}`);
+  tries.push(`q=${encodeURIComponent(t+(a?" "+a:""))}`,`q=${encodeURIComponent(t)}`);
+  let res=null,blocked=false;
+  for(const q of tries){
+    for(let k=0;k<2;k++){
+      try{const r=await fetch("https://lrclib.net/api/search?"+q);if(r.status===503){await new Promise(z=>setTimeout(z,1500));continue}
+        const d=await r.json();if(Array.isArray(d))res=d.filter(x=>x.syncedLyrics);break}catch(e){blocked=true;break}
+    }
+    if(blocked||(res&&res.length))break;
+  }
+  if(blocked){out.innerHTML=`<div class="warn">这个预览页面不允许联网搜索。发布到你自己的网址后就能直接搜。现在请先打开 <a href="https://lrclib.net" target="_blank" rel="noopener">lrclib.net</a> 搜歌名，复制带时间轴的歌词（Synced）粘贴到下面。</div>`;return}
+  if(!res||!res.length){out.innerHTML=`<div class="note">没找到带时间轴的歌词。试试换繁体或简体歌名，或者粘贴纯文本歌词后打轴。</div>`;return}
+  const d=imp.dur;
+  res.sort((x,y)=>Math.abs((x.duration||0)-(d||0))-Math.abs((y.duration||0)-(d||0)));
+  out.innerHTML=res.slice(0,6).map((r,i)=>{const diff=isFinite(d)?Math.round((r.duration||0)-d):null;
+    return `<button class="res" type="button" data-r="${i}"><span><b>${esc(r.trackName)}</b> · ${esc(r.artistName)}<br><span class="note">${esc(r.albumName||"")}</span></span><span class="note">${fmt(r.duration)}${diff==null?"":(Math.abs(diff)<=2?' <span class="ok">时长吻合</span>':` 差${Math.abs(diff)}秒`)}</span></button>`}).join("");
+  out.onclick=e=>{const b=e.target.closest("[data-r]");if(!b)return;$("#fLyrics").value=res[+b.dataset.r].syncedLyrics;onLyrics();out.innerHTML='<div class="note ok">已填入歌词</div>'};
+});
+
+$("#btnSave").addEventListener("click",async()=>{
+  const song={id:uid(),title:$("#fTitle").value.trim()||"未命名",artist:$("#fArtist").value.trim(),audio:imp.blob,audioName:imp.name,duration:imp.dur,lines:[],pack:null,overrides:{},created:Date.now(),updated:Date.now()};
+  if(imp.parsed.length){
+    song.lines=finishEnds(imp.parsed.map(l=>({t:l.t,end:l.end,text:l.text})),imp.dur);
+    await DB.put(song);songs.push(song);openSong(song.id);toast("已保存。点「词汇包」可以加重点词和释义");
+  }else startSync(song,imp.plain);
+});
+
+/* ---------- tap sync ---------- */
+let sync=null;
+function startSync(song,texts){
+  sync={song,texts,times:texts.map(()=>null),p:0};
+  setAudio(song.audio);
+  renderSync();show("syncView");
+}
+function renderSync(){
+  const {texts,times,p}=sync;
+  $("#syncList").innerHTML=texts.map((t,i)=>`<div class="sl ${i===p?"next":""} ${times[i]!=null?"done":""}" id="sl${i}"><span class="tm">${times[i]!=null?fmt(times[i]):"—"}</span><span>${esc(t)}</span></div>`).join("");
+  const b=$("#sTap");
+  if(p>=texts.length){b.textContent="完成并保存";b.dataset.done="1"}else{b.textContent=`第 ${p+1} 句开始`;delete b.dataset.done}
+  const el=$("#sl"+Math.min(p,texts.length-1));if(el)el.scrollIntoView({block:"center",behavior:"smooth"});
+}
+$("#sTap").addEventListener("click",async()=>{
+  if(!sync)return;
+  if($("#sTap").dataset.done){
+    const s=sync.song;s.lines=finishEnds(sync.texts.map((text,i)=>({t:sync.times[i],end:null,text})),s.duration);
+    await DB.put(s);songs.push(s);const id=s.id;sync=null;openSong(id);toast("打轴完成");return}
+  if(au.paused){au.play().catch(()=>{});}
+  const t=Math.max(0,au.currentTime-0.15);
+  if(sync.p>0&&t<=sync.times[sync.p-1]){toast("时间要比上一句晚");return}
+  sync.times[sync.p]=t;sync.p++;renderSync();
+});
+$("#sUndo").addEventListener("click",()=>{if(!sync||!sync.p)return;sync.p--;const t=sync.times[sync.p];sync.times[sync.p]=null;au.currentTime=Math.max(0,(t||0)-3);renderSync()});
+$("#sPlay").addEventListener("click",()=>{au.paused?au.play().catch(()=>{}):au.pause()});
+$("#sSeek").addEventListener("input",e=>{au.currentTime=+e.target.value});
+
+/* ---------- audio ---------- */
+function setAudio(blob){
+  if(objURL){URL.revokeObjectURL(objURL);objURL=null}
+  if(blob){objURL=URL.createObjectURL(blob);au.src=objURL}else au.removeAttribute("src");
+  au.load();applyRate();
+}
+function applyRate(){au.defaultPlaybackRate=rate;au.playbackRate=rate;au.preservesPitch=true;au.webkitPreservesPitch=true}
+au.addEventListener("loadedmetadata",()=>{applyRate();["#pSeek","#sSeek"].forEach(s=>$(s).max=au.duration||1);$("#pDur").textContent=$("#sDur").textContent=fmt(au.duration)});
+au.addEventListener("play",()=>{$("#icPlay").style.display="none";$("#icPause").style.display="";$("#sPlay").textContent="暂停";cancelAnimationFrame(raf);raf=requestAnimationFrame(tick)});
+au.addEventListener("pause",()=>{$("#icPlay").style.display="";$("#icPause").style.display="none";$("#sPlay").textContent="播放";tick()});
+au.addEventListener("seeked",()=>{if(au.paused)tick()});
+
+function tick(){
+  const t=au.currentTime;
+  if(cur&&!$("#playerView").hidden){
+    if(loopIdx!=null){const L=cur.lines[loopIdx];if(t>=L.end-0.06||t<L.t-0.6){au.currentTime=L.t}}
+    const i=lineAt(au.currentTime);if(i!==curIdx)setCurrent(i);
+    $("#pSeek").value=t;$("#pCur").textContent=fmt(t);
+  }
+  if(!$("#syncView").hidden){$("#sSeek").value=t;$("#sCur").textContent=fmt(t)}
+  if(!au.paused)raf=requestAnimationFrame(tick);
+}
+function lineAt(t){const L=cur.lines;let lo=0,hi=L.length-1,a=-1;while(lo<=hi){const m=(lo+hi)>>1;if(L[m].t<=t+0.05){a=m;lo=m+1}else hi=m-1}return a}
+function setCurrent(i){
+  const box=$("#lyrics");
+  box.querySelector(".line.cur")?.classList.remove("cur");
+  curIdx=i;if(i<0)return;
+  const el=box.children[i];if(!el)return;el.classList.add("cur");
+  if(Date.now()-userScrollAt>3500)el.scrollIntoView({block:"center",behavior:"smooth"});
+}
+["touchstart","wheel"].forEach(ev=>window.addEventListener(ev,e=>{if(e.target.closest&&e.target.closest("#lyrics"))userScrollAt=Date.now()},{passive:true}));
+
+/* ---------- lyric model ---------- */
+function autoJp(text){return TJ?TJ.getJyutpingList(text):[...text].map(c=>[c,null])}
+function fixText(text){let t=text;if(cur.pack)for(const f of cur.pack.fix||[])if(f.from)t=t.split(f.from).join(f.to);return t}
+function computeLine(li){
+  const text=fixText(cur.lines[li].text);
+  const chars=[...text];const auto=autoJp(text);const same=auto.length===chars.length;
+  const items=chars.map((c,i)=>{if(/\s/.test(c))return{space:true};const h=HAN.test(c);return{ch:c,han:h,word:-1,jp:h?(same?auto[i][1]:autoJp(c)[0][1]):null}});
+  const words=cur.pack?cur.pack.words:[];
+  if(words.length){
+    const order=words.map((_,i)=>i).sort((a,b)=>[...words[b].w].length-[...words[a].w].length);
+    for(const wi of order){
+      const w=words[wi],wc=[...w.w],syl=w.jp?w.jp.split(/\s+/):null;
+      for(let i=0;i+wc.length<=chars.length;i++){
+        if(wc.every((c,k)=>chars[i+k]===c&&!items[i+k].space&&items[i+k].word===-1)){
+          let si=0;wc.forEach((c,k)=>{const it=items[i+k];it.word=wi;if(syl&&it.han)it.jp=syl[si++]});
+          i+=wc.length-1;
+        }
+      }
+    }
+  }
+  items.forEach((it,ci)=>{const o=cur.overrides&&cur.overrides[li+":"+ci];if(o&&!it.space){it.jp=o;it.ov=true}});
+  return {text,items,words};
+}
+function charHTML(it,ci,words){
+  if(it.space)return `<span class="sp"></span>`;
+  const w=it.word>=0?words[it.word]:null;
+  const cls=["c"];if(!it.han)cls.push("punct");if(w&&w.key)cls.push("key");if(it.ov)cls.push("ov");
+  return `<span class="${cls.join(" ")}" data-ci="${ci}"><span class="jp t${toneOf(it.jp)}">${esc(it.jp||"")}</span><span class="hz">${esc(it.ch)}</span></span>`;
+}
+function lineHTML(li){
+  const v=view[li],L=cur.lines[li];
+  return `<div class="line${li===curIdx?" cur":""}${li===loopIdx?" loop":""}" data-li="${li}"><button class="ln" type="button" data-play="${li}" aria-label="从这句播放">${fmt(L.t)}</button><div class="chars">${v.items.map((it,ci)=>charHTML(it,ci,v.words)).join("")}</div></div>`;
+}
+function buildLyrics(){
+  view=cur.lines.map((_,li)=>computeLine(li));
+  $("#lyrics").innerHTML=view.map((_,li)=>lineHTML(li)).join("");
+  $("#pSummary").innerHTML=cur.pack&&cur.pack.summary?`<div class="summary"><span class="label">这首歌讲什么</span>${esc(cur.pack.summary)}<div class="note" style="margin-top:6px">有下划线的是重点词，点一下看意思。</div></div>`:"";
+}
+function rebuildLine(li){view[li]=computeLine(li);const old=$("#lyrics").children[li];const tmp=document.createElement("div");tmp.innerHTML=lineHTML(li);old.replaceWith(tmp.firstElementChild)}
+
+/* ---------- player ---------- */
+async function openSong(id){
+  cur=songs.find(s=>s.id===id);if(!cur)return;
+  cur.overrides=cur.overrides||{};if(cur.pack&&!Array.isArray(cur.pack.words))cur.pack=null;
+  curIdx=-1;loopIdx=null;$("#bLoop").classList.remove("on");
+  $("#pTitle").textContent=cur.title;$("#pArtist").textContent=cur.artist||"";
+  setAudio(cur.audio);
+  buildLyrics();applyToggles();updPackBtn();
+  $("#pBanner").innerHTML=(cur.audio?"":`<div class="banner">这首歌没有音频（从备份恢复的）。<label class="btn small" for="reAudio">选择音频<input id="reAudio" type="file" accept="audio/*,.mp3,.m4a" style="position:absolute;opacity:0;width:1px;height:1px"></label></div>`)+(TJ?"":`<div class="banner">粤拼工具没有加载成功，请检查网络后刷新页面。</div>`);
+  const re=$("#reAudio");if(re)re.addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;cur.audio=f;cur.audioName=f.name;cur.updated=Date.now();await DB.put(cur);setAudio(f);$("#pBanner").innerHTML="";toast("音频已加上")});
+  $("#pSeek").value=0;$("#pCur").textContent="0:00";
+  show("playerView");
+}
+function applyToggles(){
+  $("#lyrics").classList.toggle("hide-jp",!prefs.jp);
+  $("#togJp").setAttribute("aria-pressed",prefs.jp);
+}
+$("#togJp").addEventListener("click",()=>{prefs.jp=!prefs.jp;savePrefs();applyToggles()});
+function updPackBtn(){const b=$("#btnPack");b.classList.toggle("done",!!cur.pack);b.textContent=cur.pack?"词汇包 ✓":"词汇包"}
+
+function playLine(li){
+  if(!cur.audio){toast("先加上音频");return}
+  li=Math.max(0,Math.min(cur.lines.length-1,li));
+  try{speechSynthesis.cancel()}catch(e){}
+  if(loopIdx!=null)setLoop(li);
+  au.currentTime=cur.lines[li].t;setCurrent(li);userScrollAt=0;
+  au.play().catch(()=>{});
+}
+function setLoop(li){
+  const box=$("#lyrics");box.querySelector(".line.loop")?.classList.remove("loop");
+  loopIdx=li;$("#bLoop").classList.toggle("on",li!=null);
+  if(li!=null)box.children[li]?.classList.add("loop");
+}
+$("#lyrics").addEventListener("click",e=>{
+  const p=e.target.closest("[data-play]");if(p){playLine(+p.dataset.play);return}
+  const c=e.target.closest(".c");if(c){const li=+c.closest(".line").dataset.li;openWord(li,+c.dataset.ci)}
+});
+$("#bPlay").addEventListener("click",()=>{if(!cur.audio){toast("先加上音频");return}au.paused?au.play().catch(()=>{}):au.pause()});
+$("#bPrev").addEventListener("click",()=>playLine((curIdx<0?0:curIdx)-1));
+$("#bNext").addEventListener("click",()=>playLine(curIdx+1));
+$("#bLoop").addEventListener("click",()=>{if(loopIdx!=null){setLoop(null);toast("已取消单句循环")}else{const li=curIdx<0?0:curIdx;setLoop(li);toast(`循环第 ${li+1} 句，再点一次取消`);if(au.paused)playLine(li)}});
+$("#pSeek").addEventListener("input",e=>{au.currentTime=+e.target.value;userScrollAt=0;if(loopIdx!=null)setLoop(null)});
+document.querySelectorAll(".speeds button").forEach(b=>b.addEventListener("click",()=>{rate=+b.dataset.rate;applyRate();document.querySelectorAll(".speeds button").forEach(x=>x.setAttribute("aria-pressed",x===b))}));
+
+/* ---------- sheet ---------- */
+function openSheet(html){$("#sheetBody").innerHTML=`<div class="grab"></div>`+html;$("#sheet").hidden=false;$("#backdrop").hidden=false;$("#sheet").scrollTop=0}
+function closeSheet(){$("#sheet").hidden=true;$("#backdrop").hidden=true;document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"))}
+$("#backdrop").addEventListener("click",closeSheet);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
+
+/* ---------- word card ---------- */
+function openWord(li,ci){
+  const v=view[li],it=v.items[ci];if(!it||it.space)return;
+  const w=it.word>=0?v.words[it.word]:null;
+  const idxs=w?v.items.map((x,i)=>x.word===it.word?i:-1).filter(i=>i>=0):[ci];
+  document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
+  const lineEl=$("#lyrics").children[li];idxs.forEach(i=>lineEl.querySelector(`[data-ci="${i}"]`)?.classList.add("sel"));
+  const wordText=idxs.map(i=>v.items[i].ch).join("");
+  const shown=idxs.map(i=>v.items[i].jp).filter(Boolean).join(" ");
+  let ttsNote="";
+  if(TJ&&shown){const guess=TJ.getJyutpingText(wordText);if(guess&&guess.replace(/\s+/g," ").trim()!==shown)ttsNote=`<div class="warn">系统朗读可能读成 <b>${esc(guess)}</b>。以上面的粤拼为准。</div>`}
+  const cands=it.han&&TJ?(TJ.getJyutpingCandidates(it.ch)[0]||[null,[]])[1].slice(0,8):[];
+  if(it.han&&it.jp&&!cands.includes(it.jp))cands.unshift(it.jp);
+  const orig=computeLineNoOverride(li).items[ci];
+  openSheet(`
+    <div class="word-big">${idxs.map(i=>{const x=v.items[i];return `<span class="c${i===ci?" sel":""}" data-say="${esc(x.ch)}"><span class="jp t${toneOf(x.jp)}">${esc(x.jp||"")}</span><span class="hz">${esc(x.ch)}</span></span>`}).join("")}</div>
+    <div class="row"><button class="btn small primary" type="button" data-say="${esc(wordText)}">听标准发音</button>${idxs.length>1?'<span class="note">点单个字可以听单字</span>':""}<button class="btn small" type="button" data-orig="${li}">播放这句原唱</button></div>
+    ${ttsNote}
+    ${w&&w.zh?`<div class="mean">${esc(w.zh)}</div>`:""}
+    ${w&&w.oral?'<div><span class="chip">粤语口语字</span></div>':""}
+    ${w&&w.tip?`<div class="tip">${esc(w.tip)}</div>`:""}
+    ${!cur.pack?'<div class="note">导入词汇包后，重点词会显示普通话意思和记忆提示。</div>':(!w?'<div class="note">这个字不在词汇包的重点词里，读音是自动生成的。</div>':"")}
+    ${it.han&&cands.length?`<div class="field"><div class="label">「${esc(it.ch)}」读错了？选正确读音</div><div class="cands">${cands.map(c=>`<button class="cand" type="button" data-set="${esc(c)}" aria-pressed="${c===it.jp}"><span class="t${toneOf(c)}">${esc(c)}</span></button>`).join("")}${it.ov?`<button class="cand" type="button" data-reset="1">恢复为 ${esc(orig&&orig.jp||"")}</button>`:""}</div></div>`:""}
+  `);
+  $("#sheetBody").onclick=async e=>{
+    const s=e.target.closest("[data-say]");if(s){speak(s.dataset.say,s.dataset.say.length>1?0.75:0.7);return}
+    const o=e.target.closest("[data-orig]");if(o){closeSheet();playLine(li);return}
+    const set=e.target.closest("[data-set]"),rs=e.target.closest("[data-reset]");
+    if(set||rs){
+      const key=li+":"+ci;
+      if(rs||(orig&&set.dataset.set===orig.jp))delete cur.overrides[key];else cur.overrides[key]=set.dataset.set;
+      cur.updated=Date.now();await DB.put(cur);rebuildLine(li);if(loopIdx===li)$("#lyrics").children[li].classList.add("loop");openWord(li,ci);toast("读音已修改");
+    }
+  };
+}
+function computeLineNoOverride(li){const sv=cur.overrides;cur.overrides={};const r=computeLine(li);cur.overrides=sv;return r}
+
+/* ---------- word pack ---------- */
+function buildPrompt(s){
+  const lyr=s.lines.map(l=>l.text).join("\n");
+  return `你是粤语老师。下面是一首粤语歌的歌词，只供你参考，不要在回复里重复歌词。请为普通话母语、粤语零基础的学习者整理这首歌的"词汇包"。只输出一个 JSON 代码块，不要写其他文字。
+
+歌曲：${s.title}${s.artist?" - "+s.artist:""}
+
+要求：
+1. 不要输出完整歌词，也不要逐句翻译，只整理词汇。
+2. words：挑出 30 到 50 个值得学的词，包括粤语口语字、和普通话读音差别大的字、多音字、常用词。每个词写：
+   - w：词，写法和歌词里完全一致（繁体）
+   - jp：粤拼（Jyutping），每个汉字一个音节，用空格分开，带声调数字 1-6，按歌里实际唱的读音
+   - zh：普通话意思
+   - tip：一句帮助记忆的提示，比如普粤读音的对应规律或用法
+   - oral：粤语口语字设为 true，其他可以省略
+3. fix：歌词里明显的错别字，写成 {"from": "错的写法", "to": "正确写法"}，每处不超过 4 个字。没有就写空列表。
+4. summary：用你自己的话，两三句概括这首歌讲什么。
+
+格式示例（示例内容和这首歌无关）：
+{"summary":"…","words":[{"w":"今日","jp":"gam1 jat6","zh":"今天","tip":"粤语说今日，不说今天"},{"w":"佢","jp":"keoi5","zh":"他/她","tip":"最常用的粤语口语字之一","oral":true}],"fix":[]}
+
+歌词：
+${lyr}`;
+}
+function importPack(raw,s){
+  const errs=[],warns=[];
+  const txt=raw.trim();const a=txt.indexOf("{"),b=txt.lastIndexOf("}");
+  if(a<0||b<a)return{errs:["没找到 JSON 内容。请复制 Claude 回复里从 { 开始到 } 结束的整段。"],warns};
+  let obj;try{obj=JSON.parse(txt.slice(a,b+1))}catch(e){return{errs:["JSON 格式有误（"+e.message+"）。通常是没复制完整。请确认复制了整段，或者让 Claude 重新输出。"],warns}}
+  if(!obj||!Array.isArray(obj.words))return{errs:["内容里缺少 words 列表。"],warns};
+  const fix=(Array.isArray(obj.fix)?obj.fix:[]).filter(f=>f&&typeof f.from==="string"&&typeof f.to==="string"&&f.from&&f.from!==f.to&&[...f.from].length<=8).map(f=>({from:f.from,to:f.to}));
+  const all=s.lines.map(l=>{let t=l.text;fix.forEach(f=>t=t.split(f.from).join(f.to));return t}).join("\n");
+  const seen=new Set(),words=[];let missing=0;
+  obj.words.forEach(w=>{
+    if(!w||typeof w.w!=="string"||!w.w.trim())return;
+    const ww=w.w.trim();if(seen.has(ww))return;seen.add(ww);
+    let jp=String(w.jp||"").trim().toLowerCase().replace(/\s+/g," ");
+    const han=[...ww].filter(c=>HAN.test(c)).length,syl=jp?jp.split(" "):[];
+    if(syl.length!==han||syl.some(x=>!/^[a-z]+[1-6]$/.test(x))){warns.push(`「${ww}」的粤拼「${jp}」不对，改用自动粤拼`);jp=""}
+    if(!all.includes(ww))missing++;
+    words.push({w:ww,jp,key:true,oral:!!w.oral,zh:typeof w.zh==="string"?w.zh:"",tip:typeof w.tip==="string"?w.tip:""});
+  });
+  if(!words.length)errs.push("词汇列表是空的。");
+  if(missing)warns.push(`有 ${missing} 个词在歌词里没找到（可能写法不同），它们不会显示下划线`);
+  return{errs,warns,pack:errs.length?null:{v:2,summary:typeof obj.summary==="string"?obj.summary:"",words,fix,imported:Date.now()}};
+}
+$("#btnPack").addEventListener("click",()=>{
+  const prompt=buildPrompt(cur);
+  openSheet(`
+    <h3>词汇包${cur.pack?' <span class="chip">已导入</span>':""}</h3>
+    <p class="note" style="margin:0">词汇包让 Claude 帮你挑出这首歌的重点词，写好正确读音、普通话意思和记忆提示，再加上整首歌的大意。</p>
+    <ol class="steps">
+      <li><div><button class="btn small primary" type="button" id="cpPrompt">复制提示词</button><div class="note" style="margin-top:6px">提示词里已经放好了这首歌的歌词。</div></div></li>
+      <li><div>在 Claude 里新开一个对话，粘贴发送。等它回复完。</div></li>
+      <li><div>复制它回复的整段 JSON，粘贴到下面：</div></li>
+    </ol>
+    <textarea id="promptBox" readonly hidden>${esc(prompt)}</textarea>
+    <textarea id="packIn" placeholder='{"summary": …, "words": [ … ]}'></textarea>
+    <div id="packMsg" class="msgs"></div>
+    <div class="row"><button class="btn primary" type="button" id="doImport">导入词汇包</button>${cur.pack?'<button class="btn" type="button" id="rmPack">删除词汇包</button>':""}</div>
+  `);
+  $("#sheetBody").onclick=null;
+  $("#cpPrompt").addEventListener("click",()=>{
+    const box=$("#promptBox");
+    const fallback=()=>{box.hidden=false;box.focus();box.select();toast("自动复制不可用：已选中提示词，请手动复制")};
+    try{navigator.clipboard.writeText(prompt).then(()=>toast("已复制提示词"),fallback)}catch(e){fallback()}
+  });
+  $("#doImport").addEventListener("click",async()=>{
+    const raw=$("#packIn").value;if(!raw.trim()){toast("先粘贴 Claude 的回复");return}
+    const r=importPack(raw,cur);const msg=$("#packMsg");
+    if(r.errs.length){msg.innerHTML=r.errs.slice(0,10).map(x=>`<div class="err">✗ ${esc(x)}</div>`).join("")+(r.errs.length>10?`<div class="err">……还有 ${r.errs.length-10} 个问题</div>`:"")+'<div class="note">可以把这些问题发给 Claude，请它修正后重新输出。</div>';return}
+    cur.pack=r.pack;cur.overrides={};cur.updated=Date.now();await DB.put(cur);
+    buildLyrics();applyToggles();updPackBtn();if(loopIdx!=null)setLoop(loopIdx);if(curIdx>=0)$("#lyrics").children[curIdx]?.classList.add("cur");
+    if(r.warns.length){msg.innerHTML=`<div class="ok">✓ 已导入，有 ${r.warns.length} 处小问题已自动处理：</div>`+r.warns.slice(0,8).map(x=>`<div class="note">· ${esc(x)}</div>`).join("");}
+    else{closeSheet();toast("词汇包已导入")}
+  });
+  const rm=$("#rmPack");if(rm)rm.addEventListener("click",async()=>{if(!rm.dataset.armed){rm.dataset.armed="1";rm.textContent="确认删除";return}cur.pack=null;cur.updated=Date.now();await DB.put(cur);buildLyrics();applyToggles();updPackBtn();closeSheet();toast("词汇包已删除")});
+});
+
+/* ---------- backup ---------- */
+$("#btnBackup").addEventListener("click",()=>{
+  const data=JSON.stringify({app:"yuechang",v:1,exported:new Date().toISOString(),songs:songs.map(s=>{const o={...s};delete o.audio;return o})});
+  openSheet(`
+    <h3>备份与恢复</h3>
+    <p class="note" style="margin:0">备份包含歌词、时间轴、词汇包和你改过的读音，不含音频。把备份文本存到备忘录里就行。</p>
+    <div class="row"><button class="btn small primary" type="button" id="cpBk">复制备份文本</button><span class="note">${songs.length} 首歌 · ${Math.round(data.length/1024)} KB</span></div>
+    <textarea id="bkOut" readonly hidden>${esc(data)}</textarea>
+    <div class="label">恢复</div>
+    <textarea id="bkIn" placeholder="粘贴之前复制的备份文本"></textarea>
+    <div class="row"><button class="btn" type="button" id="doRestore">恢复</button><span id="bkMsg" class="note"></span></div>
+  `);
+  $("#sheetBody").onclick=null;
+  $("#cpBk").addEventListener("click",()=>{const box=$("#bkOut");const fb=()=>{box.hidden=false;box.focus();box.select();toast("已选中备份文本，请手动复制")};try{navigator.clipboard.writeText(data).then(()=>toast("已复制备份"),fb)}catch(e){fb()}});
+  $("#doRestore").addEventListener("click",async()=>{
+    let obj;try{obj=JSON.parse($("#bkIn").value)}catch(e){$("#bkMsg").innerHTML='<span class="err">备份文本不完整或格式不对</span>';return}
+    if(!obj||obj.app!=="yuechang"||!Array.isArray(obj.songs)){$("#bkMsg").innerHTML='<span class="err">这不是唱学粤语的备份</span>';return}
+    let n=0;
+    for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
+    renderHome();$("#bkMsg").innerHTML=`<span class="ok">已恢复 ${n} 首歌</span>`;
+  });
+});
+
+/* ---------- boot ---------- */
+(async()=>{await DB.open();songs=await DB.all();renderHome()})();
+})();
+</script>
