@@ -14,9 +14,9 @@
 ## 技术约定
 - **`index.html` + 少量普通 .js 文件**（`<script src>` 引入），原生 HTML/CSS/JavaScript，不用框架，不用构建工具（没有 npm build）。保持简单，开发者能直接打开
   - `srs.js`：间隔复习算法和卡片纯函数（全局 `SRS`：`newSrs`、`review`、`newCard`、`dueLabel`、`mergeCards`）。"今天"按本地凌晨 4 点换日
-  - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`swipeBackDecision`、`dragDismissDecision`、`EDGE`）
+  - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
   - 测试：`node --test`（纯函数）；`node tests/browser/run.js [过滤]`（页面测试，用本机 Chrome 无界面跑 `tests/browser/*.scenario.js`，截图在 `tests/browser/out/` 不进仓库）。开发者不用跑
-  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，只有两层（首页 ↔ 其他页）；主屏幕模式自己实现左边缘右滑返回。但如果系统自己也有右滑返回（App 手势进行中收到 popstate），App 立刻收手并在 localStorage `yc-sysback` 记住，以后只用系统的（开发者的 iPhone 主屏幕模式下系统有右滑返回）
+  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，只有两层（首页 ↔ 其他页）。右滑返回 **Safari 和主屏幕模式都只用 iOS 系统自带的**，App 不自己实现（2026-10-27 开发者 iPhone 实测：主屏幕模式下系统也有右滑返回，App 再做一套会出现两个首页）。系统手势触发的 popstate 不播 App 的返回动画
   - 歌词换行：`wrapGroups()` 把标点和前一个字、同一个词的字、最后两个字绑成不能拆开的组
   - 新增要离线可用的文件时，加进 `sw.js` 的 `SHELL` 并把 `VERSION` 加一
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`

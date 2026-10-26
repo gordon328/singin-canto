@@ -41,16 +41,11 @@ module.exports = { name: "nav", async run(b) {
   await b.send("Page.reload"); await b.sleep(2500);
   b.check("reload-starts-home", await b.ev(visible("home")) && !(await b.ev(visible("playerView"))));
 
-  await b.media("display-mode", "standalone");
-  // 这个 Chrome 模拟不了 display-mode 时，用 iOS 主屏幕模式的另一个标志 navigator.standalone
-  if (!(await b.ev(`matchMedia("(display-mode: standalone)").matches`))) await b.ev(`Object.defineProperty(navigator, "standalone", { value: true, configurable: true })`);
-  {
-    await F.openSong(b, "t1");
-    await swipe(b, 100, 360);
-    b.check("edge-only", await b.ev(visible("playerView")));
-    await swipe(b, 5, 260);
-    b.check("standalone-swipe", await b.ev(visible("home")) && !(await b.ev(visible("playerView"))));
-  }
+  // 主屏幕模式：也只用系统右滑，App 从边缘拖时不接管
+  await b.ev(`Object.defineProperty(navigator, "standalone", { value: true, configurable: true })`);
+  await F.openSong(b, "t1");
+  await swipe(b, 5, 260);
+  b.check("standalone-no-app-swipe", await b.ev(visible("playerView")) && !(await b.ev(`!!document.querySelector(".nav-layer, .swipe-shade")`)));
   await b.media("display-mode", null);
   b.check("nav: 页面没有报错", b.errors.length === 0);
 } };

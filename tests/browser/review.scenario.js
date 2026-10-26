@@ -24,13 +24,6 @@ module.exports = { name: "review", async run(b) {
   await F.closeSheet(b);
   await b.viewport(430, 932);
 
-  // 主屏幕右滑到一半被打断 → 页面恢复，不留遮罩
-  await b.ev(`Object.defineProperty(navigator, "standalone", { value: true, configurable: true })`);
-  await b.touch("touchStart", 5, 400);
-  for (let i = 1; i <= 4; i++) { await b.touch("touchMove", 5 + i * 30, 401); await b.sleep(16); }
-  await b.touch("touchCancel"); await b.sleep(500);
-  b.check("swipe-touchcancel", await b.ev(`!document.querySelector(".swipe-shade") && !document.querySelector(".nav-layer") && ${visible("playerView")} && document.querySelector("#playerView").style.transform === ""`));
-  await b.ev(`Object.defineProperty(navigator, "standalone", { value: undefined, configurable: true })`);
 
   // 删除词汇包后弹层关掉（放在长词检查之后，因为会删掉测试歌的词汇包）
   await b.ev(`document.querySelector("#btnMenu").click()`); await b.sleep(500);

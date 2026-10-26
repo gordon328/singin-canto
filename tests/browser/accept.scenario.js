@@ -39,54 +39,23 @@ module.exports = { name: "accept", async run(b) {
   b.check("word-card-still-opens", (await b.ev(F.sheetText)).includes("风衣"));
   await F.closeSheet(b);
 
-  // 2a. Safari（非主屏幕）：从左边缘拖，App 不接管
-  await b.ev(`document.querySelector("#playerView [data-back]").click()`); await b.sleep(600);
-  await F.openSong(b, "t1");
-  await b.touch("touchStart", 5, 400); await b.touch("touchMove", 60, 401); await b.touch("touchMove", 120, 402);
-  const safariLayer = await b.ev(`!!document.querySelector(".nav-layer, .swipe-shade")`);
-  await b.touch("touchEnd"); await b.sleep(400);
-  b.check("safari-no-app-swipe", !safariLayer && await b.ev(visible("playerView")));
-
-  // 2b. 主屏幕：App 右滑进行中，系统先完成了返回（popstate）→ App 立刻收手，不再多返回一次，并记住以后不用自己的手势
-  await b.ev(`Object.defineProperty(navigator, "standalone", { value: true, configurable: true })`);
-  await b.ev(`(() => { const ob = history.back.bind(history); window.__backs = 0; history.back = () => { window.__backs++; ob(); }; })()`);
-  await b.touch("touchStart", 5, 400);
-  for (let i = 1; i <= 4; i++) { await b.touch("touchMove", 5 + i * 40, 401); await b.sleep(16); }
-  const appLayer = await b.ev(`!!document.querySelector(".swipe-shade")`);
-  await b.send("Runtime.evaluate", { expression: "History.prototype.back.call(history)" }); await b.sleep(400);   // 模拟系统手势完成返回
-  const midClean = await b.ev(`!document.querySelector(".swipe-shade") && !document.querySelector(".nav-layer")`);
-  for (let i = 5; i <= 6; i++) { await b.touch("touchMove", 5 + i * 40, 401); await b.sleep(16); }
-  await b.touch("touchEnd"); await b.sleep(600);
-  b.check(`system-swipe-wins (appLayer=${appLayer} midClean=${midClean} backs=${await b.ev("window.__backs")})`,
-    midClean && (await b.ev("window.__backs")) === 0 && await b.ev(visible("home")) && await b.ev(`!document.querySelector(".swipe-shade") && !document.querySelector(".nav-layer")`));
-  // 记住了：下次从边缘拖，App 不再接管
-  await F.openSong(b, "t1");
-  await b.touch("touchStart", 5, 400); await b.touch("touchMove", 60, 401); await b.touch("touchMove", 120, 402);
-  const again = await b.ev(`!!document.querySelector(".nav-layer, .swipe-shade")`);
-  await b.touch("touchEnd"); await b.sleep(400);
-  b.check("remembers-system-swipe", !again && await b.ev(visible("playerView")));
-  // 连续 20 次：Safari 模式（系统返回）和主屏幕模式（App 右滑），每次都要干净地回到首页，只有一个首页
+  // 2. 右滑：Safari 和主屏幕都只用系统自带的右滑返回，App 自己一次都不接管（包括第一次）
   const clean = `${visible("home")} && document.querySelector("#playerView").hidden && !document.querySelector(".nav-layer, .swipe-shade") && history.state && history.state.view === "home"`;
-  await b.ev(`Object.defineProperty(navigator, "standalone", { value: false, configurable: true })`);
-  let okSafari = 0;
-  for (let i = 0; i < 20; i++) {
-    await F.openSong(b, "t1");
-    await b.touch("touchStart", 5, 400); await b.touch("touchMove", 80, 401);
-    await b.send("Runtime.evaluate", { expression: "History.prototype.back.call(history)" });
-    await b.touch("touchMove", 200, 402); await b.touch("touchEnd"); await b.sleep(500);
-    if (await b.ev(clean)) okSafari++;
+  for (const [mode, standalone] of [["safari", false], ["standalone", true]]) {
+    await b.ev(`Object.defineProperty(navigator, "standalone", { value: ${standalone}, configurable: true })`);
+    await b.ev(`(() => { const ob = history.back.bind(history); window.__backs = 0; history.back = () => { window.__backs++; ob(); }; })()`);
+    let ok = 0, took = 0;
+    for (let i = 0; i < 20; i++) {
+      if (await b.ev(visible("home"))) await F.openSong(b, "t1");
+      await b.touch("touchStart", 5, 400);
+      for (let k = 1; k <= 4; k++) { await b.touch("touchMove", 5 + k * 45, 401); await b.sleep(16); }
+      if (await b.ev(`!!document.querySelector(".nav-layer, .swipe-shade")`)) took++;
+      await b.touch("touchEnd");
+      await b.send("Runtime.evaluate", { expression: "History.prototype.back.call(history)" });   // 系统在松手后完成返回
+      await b.sleep(500);
+      if (await b.ev(clean)) ok++;
+    }
+    b.check(`${mode}-20-swipes ok=${ok}/20 app接管=${took} App自己返回=${await b.ev("window.__backs")}`, ok === 20 && took === 0 && (await b.ev("window.__backs")) === 0);
   }
-  b.check(`safari-20-swipes ${okSafari}/20`, okSafari === 20);
-  await b.ev(`(() => { localStorage.removeItem("yc-sysback"); location.reload(); })()`); await b.sleep(2500);
-  await b.ev(`Object.defineProperty(navigator, "standalone", { value: true, configurable: true })`);
-  let okHome = 0;
-  for (let i = 0; i < 20; i++) {
-    await F.openSong(b, "t1");
-    await b.touch("touchStart", 5, 400);
-    for (let k = 1; k <= 6; k++) { await b.touch("touchMove", 5 + k * 45, 401); await b.sleep(16); }
-    await b.touch("touchEnd"); await b.sleep(600);
-    if (await b.ev(clean)) okHome++;
-  }
-  b.check(`standalone-20-swipes ${okHome}/20`, okHome === 20);
   b.check("accept: 页面没有报错", b.errors.length === 0);
 } };

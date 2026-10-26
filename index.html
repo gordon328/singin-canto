@@ -130,7 +130,6 @@ svg{display:block}
 body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity:0;transition:none}
 .player{transition:opacity var(--dur) var(--ease)}
 .fab,.bottom-bar{transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease),opacity var(--dur) var(--ease)}
-.swipe-shade{position:fixed;inset:0;z-index:2;background:var(--scrim);pointer-events:none}
 
 /* Top bar：不透明，避免 iOS 顶部模糊 */
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg)}
@@ -393,6 +392,7 @@ function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}
 
 /* ---------- views ---------- */
 const views=["home","importView","syncView","playerView"];
+// 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面只有两层：首页 ↔ 其他页。从首页进去用 pushState，其他页之间跳转用 replaceState，所以返回总是回首页
 let curView="home",navAnim=false,navTimer=0;
 const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -415,8 +415,6 @@ function go(view,data={}){
 function goBack(){if(navAnim||curView==="home")return;navAnim=true;history.back();setTimeout(()=>{navAnim=false},1000)}
 window.addEventListener("popstate",e=>{
   const st=e.state||{view:"home"},anim=navAnim?"back":null;navAnim=false;
-  // App 的右滑还没松手，返回就发生了：说明是系统的右滑返回。以后只用系统的
-  if(sw){abortSwipe();sysBack=true;try{localStorage.setItem("yc-sysback","1")}catch(err){}}
   closeSheet();
   if(st.view==="playerView"&&songs.some(s=>s.id===st.songId)){openSong(st.songId,{restore:true});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
@@ -425,51 +423,6 @@ window.addEventListener("popstate",e=>{
 });
 document.querySelectorAll("[data-back]").forEach(b=>b.addEventListener("click",goBack));
 
-// 添加到主屏幕后，iPhone 没有系统右滑返回，自己做：只从左边缘 24px 内开始
-const isStandalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
-let sw=null;
-let sysBack=false;try{sysBack=localStorage.getItem("yc-sysback")==="1"}catch(e){}
-function abortSwipe(){
-  const s=sw;sw=null;if(!s||!s.on)return;
-  s.shade.remove();s.home.style.cssText="";s.page.classList.remove("nav-layer");s.page.style.cssText="";document.body.classList.remove("navigating");
-}
-document.addEventListener("touchstart",e=>{
-  if(!isStandalone()||sysBack||curView==="home"||!$("#sheet").hidden||e.touches.length>1)return;
-  const p=e.touches[0];if(p.clientX>GESTURE.EDGE)return;
-  sw={x0:p.clientX,y0:p.clientY,x:p.clientX,t:e.timeStamp,vx:0,on:false};
-},{passive:true});
-document.addEventListener("touchmove",e=>{
-  if(!sw)return;const p=e.touches[0],dx=p.clientX-sw.x0,dy=p.clientY-sw.y0;
-  if(!sw.on){
-    if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
-    if(Math.abs(dy)>Math.abs(dx)||dx<0){sw=null;return}
-    // 开始拖：当前页固定在原位跟着手指走，首页在下面露出来
-    sw.on=true;sw.y=scrollY;clearTimeout(navTimer);document.body.classList.add("navigating");sw.page=$("#"+curView);sw.home=$("#home");renderHome();
-    sw.page.classList.add("nav-layer");sw.page.style.top=-sw.y+"px";sw.page.style.zIndex=3;sw.page.style.boxShadow="var(--shadow-3)";
-    sw.home.hidden=false;window.scrollTo(0,0);
-    sw.shade=document.createElement("div");sw.shade.className="swipe-shade";document.body.appendChild(sw.shade);
-  }
-  e.preventDefault();
-  const dt=e.timeStamp-sw.t;if(dt>0)sw.vx=(p.clientX-sw.x)/dt;sw.x=p.clientX;sw.t=e.timeStamp;
-  const d=Math.max(0,dx),k=Math.min(1,d/innerWidth);
-  sw.page.style.transform=`translateX(${d}px)`;sw.shade.style.opacity=String(1-k);
-  sw.home.style.transform=`translateX(${-8*(1-k)}%)`;
-},{passive:false});
-function endSwipe(cancel){
-  if(!sw)return;const s=sw;sw=null;if(!s.on)return;
-  const d=Math.max(0,s.x-s.x0),done=!cancel&&GESTURE.swipeBackDecision(d,innerWidth,s.vx),ms=reduceMotion()?0:200;
-  [s.page,s.home,s.shade].forEach(el=>el.style.transition=`transform ${ms}ms var(--ease),opacity ${ms}ms var(--ease)`);
-  if(done){s.page.style.transform="translateX(100%)";s.shade.style.opacity="0";s.home.style.transform="none"}
-  else{s.page.style.transform="none";s.shade.style.opacity="1";s.home.style.transform="translateX(-8%)"}
-  setTimeout(()=>{
-    s.shade.remove();s.home.style.cssText="";
-    if(done){s.page.hidden=true;s.page.classList.remove("nav-layer");s.page.style.cssText="";history.back()}
-    else{s.page.classList.remove("nav-layer");s.page.style.cssText="";s.home.hidden=true;window.scrollTo(0,s.y)}
-    document.body.classList.remove("navigating");
-  },ms+20);
-}
-document.addEventListener("touchend",()=>endSwipe(false));
-document.addEventListener("touchcancel",()=>endSwipe(true));
 
 /* ---------- speech ---------- */
 let voices=[];
