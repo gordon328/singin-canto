@@ -8,6 +8,7 @@
 *.lrc
 *.txt
 !samples/*.txt
+!fonts/OFL.txt
 
 # 备份文件（可能含歌词和音频）
 *.json
@@ -22,3 +23,6 @@ desktop.ini
 
 # superpowers 执行记录（本地）
 .superpowers/
+
+# 页面测试截图（本地）
+tests/browser/out/

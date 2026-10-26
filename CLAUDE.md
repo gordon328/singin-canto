@@ -14,9 +14,11 @@
 ## 技术约定
 - **`index.html` + 少量普通 .js 文件**（`<script src>` 引入），原生 HTML/CSS/JavaScript，不用框架，不用构建工具（没有 npm build）。保持简单，开发者能直接打开
   - `srs.js`：间隔复习算法和卡片纯函数（全局 `SRS`：`newSrs`、`review`、`newCard`、`dueLabel`、`mergeCards`）。"今天"按本地凌晨 4 点换日
-  - 测试：`node --test`（只测纯函数，开发者不用跑）
+  - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`swipeBackDecision`、`dragDismissDecision`、`EDGE`）
+  - 测试：`node --test`（纯函数）；`node tests/browser/run.js [过滤]`（页面测试，用本机 Chrome 无界面跑 `tests/browser/*.scenario.js`，截图在 `tests/browser/out/` 不进仓库）。开发者不用跑
+  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，只有两层（首页 ↔ 其他页）；主屏幕模式自己实现左边缘右滑返回
   - 新增要离线可用的文件时，加进 `sw.js` 的 `SHELL` 并把 `VERSION` 加一
-- 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），从 jsDelivr 加载 UMD 版本，全局变量 `ToJyutping`
+- 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
   - `getJyutpingList(text)` 返回 `[字, 粤拼|null][]`
   - `getJyutpingText(text)` 返回空格分隔的粤拼
   - `getJyutpingCandidates(text)` 返回多音字候选
@@ -26,6 +28,7 @@
 - 歌词来源：LRCLIB 公开接口 `https://lrclib.net/api/search`（免费、无需 key，连续请求要间隔几百毫秒，偶尔返回 503 需要重试）
 - 主要目标设备：**iPhone Safari**。所有功能都要在 iPhone 上能用，按钮至少 44px 高，注意安全区（刘海、底部横条）
 - 支持浅色和深色模式（CSS 变量 + `prefers-color-scheme`）
+- 界面按 `docs/设计规范.md`（「丁香」风格），组件里只用 CSS 变量，不写颜色值。中文用系统苹方；粤拼、数字用 Outfit（自带在 `fonts/`，OFL）。不从任何外部网站加载字体或脚本
 
 ## 版权规则（必须遵守）
 - **不要把任何歌词或音频提交到 git 仓库**。仓库会公开发布到 GitHub Pages
@@ -43,15 +46,16 @@
 - 第一阶段（播放器）原型已完成：导入音频和歌词（LRC / 纯文本打轴 / LRCLIB 搜索）、逐字粤拼按声调上色、点字看词卡和听发音、改读音、单句循环、慢放、词汇包导入、备份恢复
 - 测试歌曲：陈奕迅《富士山下》
 - 已发布到 GitHub Pages：https://gordon328.github.io/singin-canto/ （仓库 github.com/gordon328/singin-canto，main 分支根目录），iPhone 上已确认能打开
-- PWA 已完成并在 iPhone 上测试通过：`manifest.json`、`icons/`、`sw.js`（自己的文件联网优先、CDN 缓存优先；改缓存列表时把 `VERSION` 加一）。添加到主屏幕、飞行模式离线打开都正常
+- PWA 已完成并在 iPhone 上测试通过：`manifest.json`、`icons/`、`sw.js`（自己的文件联网优先，没网用缓存；改缓存列表时把 `VERSION` 加一）。添加到主屏幕、飞行模式离线打开都正常
 - 注意：iPhone 上主屏幕 App 和 Safari 的存储是分开的，开发者现在只用主屏幕 App
 - 第二、三阶段按 `docs/第二三阶段开发规格.md`（v2）和 `docs/设计规范.md` 做，分 M1–M7 七个里程碑
 - **M1 完成**：数据库 v2、`srs.js`、备份 v2（含生词卡片，兼容 v1）、自由听词卡「＋ 加入生词」。2026-10-27 iPhone 验收通过
+- **M2 完成**：丁香界面改版、iPhone 适配（不透明顶栏、输入框 16px、安全区）、Safari 和主屏幕右滑返回、字体和粤拼库自带。M2 里定的：「今天的学习」卡片留到 M4；声调键帽固定 si 组（轮换在 M3）；词汇包和删除歌曲在播放页「⋯」菜单；备份是首页右上角图标
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）
 1. ~~初始化 git，推送到 GitHub，开启 GitHub Pages~~（已完成）
 2. ~~加 PWA 支持~~（已完成）
 3. ~~在正式网址上测试 LRCLIB 在线搜索~~（已完成：海外网络下《葡萄成熟时》搜到、时间轴准确；大陆网络仍未测）
-4. M2：界面改版 + iPhone 适配 + 右滑返回（规格 v2 第 9 节）。对照 `docs/design/` 的截图
-5. 之后按规格依次做 M3–M7
+4. M3：校对歌词 + 声调字轮换（规格 v2 7.1、7.2）
+5. 之后按规格依次做 M4–M7

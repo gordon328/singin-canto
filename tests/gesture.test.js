@@ -1,0 +1,12 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const G = require("../gesture.js");
+test("右滑超过 35% 宽度 → 返回", () => { assert.equal(G.swipeBackDecision(160, 430, 0), true); });
+test("右滑不到 35% 且慢 → 弹回", () => { assert.equal(G.swipeBackDecision(140, 430, 0.1), false); });
+test("右滑快速甩 → 返回", () => { assert.equal(G.swipeBackDecision(60, 430, 0.8), true); });
+test("几乎没动但速度快 → 不算", () => { assert.equal(G.swipeBackDecision(10, 430, 2), false); });
+test("下拉超过阈值 → 关闭弹层", () => { assert.equal(G.dragDismissDecision(150, 600, 0), true); });
+test("矮弹层按 30% 高度算", () => { assert.equal(G.dragDismissDecision(100, 300, 0), true); });
+test("下拉不够且慢 → 弹回", () => { assert.equal(G.dragDismissDecision(60, 600, 0.2), false); });
+test("下拉快速甩 → 关闭", () => { assert.equal(G.dragDismissDecision(40, 600, 0.9), true); });
+test("边缘宽度 24", () => { assert.equal(G.EDGE, 24); });

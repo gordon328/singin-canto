@@ -1,0 +1,40 @@
+// 导入、打轴、词汇包、备份统一样式；全页面按钮 ≥ 44px
+const F = require("./fixtures.js");
+const { SMALL_BTNS } = require("./base.scenario.js");
+const OLD_ACCENT = `[...document.querySelectorAll("#sheet *")].some(e => { const s = getComputedStyle(e); return s.color === "rgb(176, 31, 87)" || s.backgroundColor === "rgb(176, 31, 87)"; })`;
+module.exports = { name: "forms", async run(b) {
+  await F.seed(b);
+  const small = [];
+  const collect = async where => { for (const x of await b.ev(SMALL_BTNS)) small.push(where + ":" + x); };
+  await collect("home");
+  await b.ev(`document.querySelector("#btnAdd").click()`); await b.sleep(500);
+  b.check("import-inputs-16px", await b.ev(`[...document.querySelectorAll("#importView input[type=text], #importView textarea")].every(e => parseFloat(getComputedStyle(e).fontSize) >= 16)`));
+  const cards = await b.ev(`[...document.querySelectorAll("#importView .card")].map(c => { const r = c.getBoundingClientRect(); return [Math.round(r.left), Math.round(innerWidth - r.right)]; })`);
+  b.check("import-cards " + JSON.stringify(cards), cards.length === 3 && cards.every(([l, r]) => l === 16 && r === 16));
+  const save = await b.ev(`(() => { const e = document.querySelector("#btnSave"); return [getComputedStyle(e).position, Math.round(e.getBoundingClientRect().height)]; })()`);
+  b.check("save-bottom " + JSON.stringify(save), save[0] === "fixed" && save[1] === 56);
+  await collect("import");
+  await b.shot("import-light"); await b.dark(true); await b.sleep(300); await b.shot("import-dark"); await b.dark(false);
+  // 进打轴：选音频 + 纯文本歌词 → 保存
+  await b.ev(`(() => { const dt = new DataTransfer(); dt.items.add(${F.silentWav(5, "測試 - 打軸.wav")}); const i = document.querySelector("#fAudio"); i.files = dt.files; i.dispatchEvent(new Event("change")); })()`);
+  await b.ev(`(() => { const t = document.querySelector("#fLyrics"); t.value = "第一句測試\\n第二句測試\\n第三句測試"; t.dispatchEvent(new Event("input")); })()`);
+  await b.sleep(800);
+  await b.ev(`document.querySelector("#btnSave").click()`); await b.sleep(800);
+  b.check("sync-view-open", await b.ev(`!document.querySelector("#syncView").hidden`));
+  await collect("sync");
+  await b.shot("sync-light");
+  await b.nav("/"); await F.openSong(b, "t1");
+  await collect("player");
+  await b.ev(`document.querySelector("#btnMenu").click()`); await b.sleep(500);
+  await collect("menu");
+  await b.ev(`document.querySelector('[data-menu="pack"]').click()`); await b.sleep(500);
+  b.check("pack-sheet", await b.ev(`[...document.querySelectorAll("#sheet textarea")].every(e => parseFloat(getComputedStyle(e).fontSize) >= 16)`) && !(await b.ev(OLD_ACCENT)));
+  await collect("pack");
+  await b.shot("pack-light");
+  await F.closeSheet(b); await b.nav("/");
+  await b.ev(`document.querySelector("#btnBackup").click()`); await b.sleep(500);
+  b.check("backup-sheet", await b.ev(`document.querySelector("#cpBk").classList.contains("primary") && parseFloat(getComputedStyle(document.querySelector("#bkIn")).fontSize) >= 16`) && !(await b.ev(OLD_ACCENT)));
+  await collect("backup");
+  b.check("buttons-44px (全页面) " + small.join(" "), small.length === 0);
+  b.check("forms: 页面没有报错", b.errors.length === 0);
+} };
