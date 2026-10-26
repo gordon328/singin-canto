@@ -3,9 +3,9 @@
    - 粤拼库、字体：第一次下载后存起来，以后直接用缓存
    - 歌词搜索（lrclib）等其他请求：不缓存，照常联网
    每次改了要缓存的文件列表，把 VERSION 加一。 */
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = "yuechang-" + VERSION;
-const SHELL = ["./", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
+const SHELL = ["./", "./srs.js", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const JYUTPING = "https://cdn.jsdelivr.net/npm/to-jyutping@3.1.1/dist/index.js";
 const CDN_HOSTS = ["cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
 

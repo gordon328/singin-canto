@@ -277,6 +277,7 @@ svg{display:block}
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/to-jyutping@3.1.1/dist/index.js"></script>
+<script src="srs.js"></script>
 <script>
 (function(){
 "use strict";
@@ -294,15 +295,21 @@ let toastT;
 function toast(msg,ms=2600){const el=$("#toast");el.textContent=msg;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,ms)}
 
 /* ---------- storage (IndexedDB, falls back to memory) ---------- */
-const DB={db:null,mem:new Map(),ok:false,
-  open(){return new Promise(res=>{try{const r=indexedDB.open("yuechang",1);r.onupgradeneeded=()=>r.result.createObjectStore("songs",{keyPath:"id"});r.onsuccess=()=>{this.db=r.result;this.ok=true;res()};r.onerror=()=>res();r.onblocked=()=>res()}catch(e){res()}})},
-  _st(m){return this.db.transaction("songs",m).objectStore("songs")},
-  all(){if(!this.ok)return Promise.resolve([...this.mem.values()]);return new Promise(res=>{try{const r=this._st("readonly").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([...this.mem.values()])}catch(e){res([...this.mem.values()])}})},
-  put(o){this.mem.set(o.id,o);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st("readwrite").put(o);r.onsuccess=()=>res();r.onerror=()=>{toast("保存失败：手机存储空间可能不够");res()}}catch(e){res()}})},
-  del(id){this.mem.delete(id);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st("readwrite").delete(id);r.onsuccess=()=>res();r.onerror=()=>res()}catch(e){res()}})}
+// v2: songs + cards（记忆卡片）+ meta（杂项）。升级只加表，绝不动 songs
+const STORES={songs:"id",cards:"w",meta:"key"};
+const DB={db:null,mem:{songs:new Map(),cards:new Map(),meta:new Map()},ok:false,
+  open(){return new Promise(res=>{try{const r=indexedDB.open("yuechang",2);
+    r.onupgradeneeded=()=>{const db=r.result;for(const [name,keyPath] of Object.entries(STORES))if(!db.objectStoreNames.contains(name))db.createObjectStore(name,{keyPath})};
+    r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>this.db.close();this.ok=true;res()};r.onerror=()=>res();
+    r.onblocked=()=>toast("请先关闭其他打开着的唱学粤语页面",6000)}catch(e){res()}})},
+  _st(store,m){return this.db.transaction(store,m).objectStore(store)},
+  all(store="songs"){const mem=this.mem[store];if(!this.ok)return Promise.resolve([...mem.values()]);return new Promise(res=>{try{const r=this._st(store,"readonly").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([...mem.values()])}catch(e){res([...mem.values()])}})},
+  put(o,store="songs"){this.mem[store].set(o[STORES[store]],o);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st(store,"readwrite").put(o);r.onsuccess=()=>res();r.onerror=()=>{toast("保存失败：手机存储空间可能不够");res()}}catch(e){res()}})},
+  del(key,store="songs"){this.mem[store].delete(key);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st(store,"readwrite").delete(key);r.onsuccess=()=>res();r.onerror=()=>res()}catch(e){res()}})}
 };
 
 let songs=[];
+let cards=new Map(), metaRecs=new Map();
 let cur=null, view=[], curIdx=-1, loopIdx=null, raf=0, rate=1, objURL=null, userScrollAt=0;
 const prefs={jp:true,zh:true};
 try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(prefs,p)}catch(e){}
@@ -597,7 +604,9 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden
 function openWord(li,ci){
   const v=view[li],it=v.items[ci];if(!it||it.space)return;
   const w=it.word>=0?v.words[it.word]:null;
-  const idxs=w?v.items.map((x,i)=>x.word===it.word?i:-1).filter(i=>i>=0):[ci];
+  // 只取点到的那一处：同一句里同一个词出现两次时，不把两处拼在一起
+  let a=ci,z=ci;if(w){while(a>0&&v.items[a-1].word===it.word)a--;while(z<v.items.length-1&&v.items[z+1].word===it.word)z++}
+  const idxs=Array.from({length:z-a+1},(_,k)=>a+k);
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   const lineEl=$("#lyrics").children[li];idxs.forEach(i=>lineEl.querySelector(`[data-ci="${i}"]`)?.classList.add("sel"));
   const wordText=idxs.map(i=>v.items[i].ch).join("");
@@ -607,9 +616,15 @@ function openWord(li,ci){
   const cands=it.han&&TJ?(TJ.getJyutpingCandidates(it.ch)[0]||[null,[]])[1].slice(0,8):[];
   if(it.han&&it.jp&&!cands.includes(it.jp))cands.unshift(it.jp);
   const orig=computeLineNoOverride(li).items[ci];
+  const card=cards.get(wordText);
+  const allRead=idxs.every(i=>!v.items[i].han||v.items[i].jp); // 每个字都有读音才能建卡
+  const cardRow=!(it.han&&shown&&allRead)?"":card
+    ?`<div class="row"><span class="note">已在生词本 · ${card.known?"已认识":esc(SRS.dueLabel(card.srs.due,Date.now()))+"复习"}</span></div>`
+    :`<div class="row"><button class="btn" type="button" data-addcard="1">＋ 加入生词</button></div>`;
   openSheet(`
     <div class="word-big">${idxs.map(i=>{const x=v.items[i];return `<span class="c${i===ci?" sel":""}" data-say="${esc(x.ch)}"><span class="jp t${toneOf(x.jp)}">${esc(x.jp||"")}</span><span class="hz">${esc(x.ch)}</span></span>`}).join("")}</div>
     <div class="row"><button class="btn small primary" type="button" data-say="${esc(wordText)}">听标准发音</button>${idxs.length>1?'<span class="note">点单个字可以听单字</span>':""}<button class="btn small" type="button" data-orig="${li}">播放这句原唱</button></div>
+    ${cardRow}
     ${ttsNote}
     ${w&&w.zh?`<div class="mean">${esc(w.zh)}</div>`:""}
     ${w&&w.oral?'<div><span class="chip">粤语口语字</span></div>':""}
@@ -620,6 +635,13 @@ function openWord(li,ci){
   $("#sheetBody").onclick=async e=>{
     const s=e.target.closest("[data-say]");if(s){speak(s.dataset.say,s.dataset.say.length>1?0.75:0.7);return}
     const o=e.target.closest("[data-orig]");if(o){closeSheet();playLine(li);return}
+    if(e.target.closest("[data-addcard]")){
+      if(!cards.has(wordText)){
+        const c=SRS.newCard({w:wordText,jp:shown,zh:w?.zh,tip:w?.tip,oral:w?.oral},{songId:cur.id,li},Date.now());
+        await DB.put(c,"cards");cards.set(c.w,c);toast("已加入生词本");
+      }
+      openWord(li,ci);return;
+    }
     const set=e.target.closest("[data-set]"),rs=e.target.closest("[data-reset]");
     if(set||rs){
       const key=li+":"+ci;
@@ -711,11 +733,11 @@ $("#btnPack").addEventListener("click",()=>{
 
 /* ---------- backup ---------- */
 $("#btnBackup").addEventListener("click",()=>{
-  const data=JSON.stringify({app:"yuechang",v:1,exported:new Date().toISOString(),songs:songs.map(s=>{const o={...s};delete o.audio;return o})});
+  const data=JSON.stringify({app:"yuechang",v:2,exported:new Date().toISOString(),songs:songs.map(s=>{const o={...s};delete o.audio;return o}),cards:[...cards.values()],meta:[...metaRecs.values()]});
   openSheet(`
     <h3>备份与恢复</h3>
-    <p class="note" style="margin:0">备份包含歌词、时间轴、词汇包和你改过的读音，不含音频。把备份文本存到备忘录里就行。</p>
-    <div class="row"><button class="btn small primary" type="button" id="cpBk">复制备份文本</button><span class="note">${songs.length} 首歌 · ${Math.round(data.length/1024)} KB</span></div>
+    <p class="note" style="margin:0">备份包含歌词、时间轴、词汇包、改过的读音和生词卡片，不含音频。把备份文本存到备忘录里就行。</p>
+    <div class="row"><button class="btn small primary" type="button" id="cpBk">复制备份文本</button><span class="note">${songs.length} 首歌 · ${cards.size} 个生词 · ${Math.round(data.length/1024)} KB</span></div>
     <textarea id="bkOut" readonly hidden>${esc(data)}</textarea>
     <div class="label">恢复</div>
     <textarea id="bkIn" placeholder="粘贴之前复制的备份文本"></textarea>
@@ -728,12 +750,22 @@ $("#btnBackup").addEventListener("click",()=>{
     if(!obj||obj.app!=="yuechang"||!Array.isArray(obj.songs)){$("#bkMsg").innerHTML='<span class="err">这不是唱学粤语的备份</span>';return}
     let n=0;
     for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
-    renderHome();$("#bkMsg").innerHTML=`<span class="ok">已恢复 ${n} 首歌</span>`;
+    const merged=SRS.mergeCards([...cards.values()],obj.cards,Date.now());
+    for(const c of merged)await DB.put(c,"cards");
+    cards=new Map(merged.map(c=>[c.w,c]));
+    // meta：只恢复本机还没有的记录（以后用到 meta 时再定合并规则）
+    if(Array.isArray(obj.meta))for(const m of obj.meta)if(m&&typeof m.key==="string"&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}
+    renderHome();$("#bkMsg").innerHTML=`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`;
   });
 });
 
 /* ---------- boot ---------- */
-(async()=>{await DB.open();songs=await DB.all();renderHome()})();
+(async()=>{
+  await DB.open();songs=await DB.all();
+  cards=new Map((await DB.all("cards")).map(c=>[c.w,c]));
+  metaRecs=new Map((await DB.all("meta")).map(m=>[m.key,m]));
+  renderHome();
+})();
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
 </script>
