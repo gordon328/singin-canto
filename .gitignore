@@ -19,3 +19,6 @@
 Thumbs.db
 desktop.ini
 .claude/settings.local.json
+
+# superpowers 执行记录（本地）
+.superpowers/
