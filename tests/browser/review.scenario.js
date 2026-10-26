@@ -28,8 +28,9 @@ module.exports = { name: "review", async run(b) {
   // 删除词汇包后弹层关掉（放在长词检查之后，因为会删掉测试歌的词汇包）
   await b.ev(`document.querySelector("#btnMenu").click()`); await b.sleep(500);
   await b.ev(`document.querySelector('[data-menu="pack"]').click()`); await b.sleep(500);
-  await b.ev(`document.querySelector("#rmPack").click()`); await b.sleep(100);
-  await b.ev(`document.querySelector("#rmPack").click()`); await b.sleep(700);
+  await b.ev(`document.querySelector("#rmPack").click()`); await b.sleep(300);
+  b.check("pack-delete-asks", (await b.ev(F.sheetText)).includes("删除词汇包？") && !!(await b.ev(F.idbGet("songs", "t1"))).pack);
+  await b.ev(`document.querySelector('[data-confirm="ok"]').click()`); await b.sleep(700);
   b.check("pack-delete-closes-sheet", await b.ev(`document.querySelector("#sheet").hidden`) && (await b.ev(F.idbGet("songs", "t1"))).pack === null && b.errors.length === 0);
 
   // 连点两下返回 → 回到首页，不离开 App

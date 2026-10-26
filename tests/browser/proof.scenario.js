@@ -14,7 +14,7 @@ module.exports = { name: "proof", async run(b) {
   await F.seed(b);
   await F.openSong(b, "t1");
   await b.ev(click("#btnMenu")); await b.sleep(500);
-  b.check("menu-entry-label", (await b.ev(F.sheetText)).includes("校对歌词"));
+  b.check("menu-entry-label", (await b.ev(F.sheetText)).includes("编辑歌曲"));
   await b.ev(click('[data-menu="proof"]')); await b.sleep(800);
   b.check("menu-entry", await b.ev(visible("proofView")) && (await b.ev("history.state && history.state.view")) === "proofView");
   b.check("list", (await b.ev(`document.querySelectorAll("#proofView .pl").length`)) === 16 && (await b.ev(time(0))) === "0:01.0"
@@ -68,7 +68,7 @@ module.exports = { name: "proof", async run(b) {
   await openLine(b, 2);
   await b.ev(`(() => { const i = document.querySelector('#proofView .pl[data-i="2"] .pl-text'); i.value = "  "; i.dispatchEvent(new Event("input", { bubbles: true })); })()`);
   await b.ev(click("#proofSave")); await b.sleep(300);
-  b.check("empty-text-blocked", (await b.ev(toast)).includes("歌词不能为空") && await b.ev(visible("proofView")));
+  b.check("empty-text-blocked", (await b.ev(toast)) === "第 3 句是空的" && await b.ev(visible("proofView")));
   await b.ev(click("#proofView [data-back]")); await b.sleep(500);
   await b.ev(click('[data-dirty="discard"]')); await b.sleep(900);
   // 词汇包的错别字更正（巴士→巴仕，故意是错的）：校对页显示的要和播放页一样；改回来保存后播放页显示改后的字

@@ -24,12 +24,18 @@ module.exports = { name: "player", async run(b) {
   await b.ev(`document.querySelector("#btnMenu").click()`); await b.sleep(500);
   const menu = await b.ev(F.sheetText);
   b.check("menu-items", menu.includes("词汇包") && menu.includes("删除这首歌"));
-  await b.ev(`document.querySelector('[data-menu="del"]').click()`); await b.sleep(200);
-  const armed = await b.ev(F.sheetText);
-  const stillThere = !!(await b.ev(F.idbGet("songs", "t1")));
-  await b.ev(`document.querySelector('[data-menu="del"]').click()`); await b.sleep(900);
-  b.check("menu-delete-confirm", armed.includes("再点一次确认删除") && stillThere && await b.ev(`!document.querySelector("#home").hidden && !document.querySelector('.song[data-id="t1"]')`)
-    && !(await b.ev(F.idbGet("songs", "t1"))));
+  const danger = await b.ev(`(() => { const d = document.createElement("div"); d.style.color = "var(--danger)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`);
+  b.check("menu-delete-red", (await b.ev(`getComputedStyle(document.querySelector('[data-menu="del"]')).color`)) === danger);
+  await b.ev(`document.querySelector('[data-menu="del"]').click()`); await b.sleep(300);
+  const ask = await b.ev(F.sheetText);
+  const okBg = await b.ev(`getComputedStyle(document.querySelector('[data-confirm="ok"]')).backgroundColor`);
+  b.check("menu-delete-asks " + JSON.stringify(ask), ask.includes("删除这首歌？") && ask.includes("学过的词会保留在复习里") && ask.includes("删除") && ask.includes("取消") && okBg === danger);
+  await b.ev(`document.querySelector('[data-confirm="cancel"]').click()`); await b.sleep(500);
+  b.check("menu-delete-cancel", await b.ev(`document.querySelector("#sheet").hidden && !document.querySelector("#playerView").hidden`) && !!(await b.ev(F.idbGet("songs", "t1"))));
+  await b.ev(`document.querySelector("#btnMenu").click()`); await b.sleep(500);
+  await b.ev(`document.querySelector('[data-menu="del"]').click()`); await b.sleep(300);
+  await b.ev(`document.querySelector('[data-confirm="ok"]').click()`); await b.sleep(900);
+  b.check("menu-delete-confirm", await b.ev(`!document.querySelector("#home").hidden && !document.querySelector('.song[data-id="t1"]')`));
   await F.openSong(b, "t2");
   b.check("no-horizontal-overflow (40 字歌名)", await b.ev(`document.scrollingElement.scrollWidth <= innerWidth`));
   b.check("player: 页面没有报错", b.errors.length === 0);
