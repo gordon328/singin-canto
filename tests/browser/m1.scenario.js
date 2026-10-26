@@ -6,7 +6,7 @@ module.exports = { name: "m1", async run(b) {
   const db = await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const d = r.result; res({ v: d.version, s: [...d.objectStoreNames] }); d.close(); }; })`);
   b.check("upgrade: 数据库版本 2，三张表", db.v === 2 && ["cards", "meta", "songs"].every(s => db.s.includes(s)));
   const song = await b.ev(F.idbGet("songs", "t1") + `.then(s => ({ size: s.audio && s.audio.size, ov: s.overrides["1:0"] }))`);
-  b.check("upgrade: 音频和改过的读音还在", song.size === 1000 && song.ov === "dai2");
+  b.check("upgrade: 音频和改过的读音还在", song.size > 1000 && song.ov === "dai2");
 
   await F.openSong(b, "t1");
   await b.ev(F.tapChar(0, 2)); await b.sleep(400);

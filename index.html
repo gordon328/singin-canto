@@ -102,6 +102,8 @@ svg{display:block}
 .keycap:active{transform:translateY(3px);background:var(--surface-press);box-shadow:inset 0 -1px 0 var(--tc),inset 0 2px 4px rgba(34,31,51,.12)}
 .keycap .hz{font-size:22px;font-weight:600;line-height:1.1}
 .keycap .jp{font-size:12px;font-weight:600;color:var(--tc)}
+.keycap .hz,.keycap .jp{transition:opacity var(--dur) var(--ease)}
+.keycap.fade .hz,.keycap.fade .jp{opacity:0}
 .songs{display:flex;flex-direction:column;gap:10px;padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .song{display:flex;align-items:center;gap:14px;padding:14px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
@@ -212,6 +214,29 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .sl.done{opacity:.6}
 .tapbig{flex:1;min-height:56px;font-size:17px;border-radius:18px}
 
+/* 校对歌词 */
+.proof{display:flex;flex-direction:column;gap:10px;padding-block:6px calc(200px + env(safe-area-inset-bottom,0px))}
+.shift-card{display:flex;align-items:center;gap:12px}
+.sc-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sc-txt b{font-size:15px;font-weight:700}
+.sc-ctl{display:flex;align-items:center;gap:8px}
+.sc-ctl .btn{font-size:22px;font-weight:600}
+#shiftVal{min-width:56px;text-align:center;font-weight:600}
+.pl-list{display:flex;flex-direction:column;gap:10px}
+.pl{background:var(--surface);border-radius:22px;box-shadow:var(--shadow-1);transition:box-shadow var(--dur) var(--ease)}
+.pl.open{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
+.pl-head{display:flex;gap:14px;align-items:baseline;width:100%;min-height:56px;padding:16px;text-align:left}
+.pl-time{flex:none;min-width:48px;font-family:var(--font-latin);font-size:13px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.pl.open .pl-time{color:var(--accent);font-weight:600}
+.pl-txt{font-size:17px;min-width:0}
+.pl-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.pl-nudge{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pl-nudge .btn{padding:8px 0;font-family:var(--font-latin);font-weight:600}
+.pl-act{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ctrls.solo{justify-content:center}
+#prPlay .i-pause,#prPlay.playing .i-play{display:none}
+#prPlay.playing .i-pause{display:block}
+
 /* Sheet：从下面滑上来，可以往下拖关闭 */
 .backdrop{position:fixed;inset:0;z-index:40;background:var(--scrim);opacity:0;transition:opacity var(--dur-slow) var(--ease)}
 .backdrop.open{opacity:1}
@@ -262,7 +287,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
       <h1 class="brand">唱学粤语</h1>
       <button class="btn soft icon" id="btnBackup" type="button" aria-label="备份"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button>
     </header>
-    <div class="sec-title"><span>六个声调 · <span class="jp" id="toneSyl">si</span></span></div>
+    <div class="sec-title"><span>六个声调 · <span class="jp" id="toneSyl">si</span></span><button class="btn soft small" id="btnToneNext" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>换一组</button></div>
     <div class="tones" id="tones"></div>
     <div class="sec-title">我的歌</div>
     <div class="songs" id="songs"></div>
@@ -346,12 +371,34 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
   </div>
 </section>
 
+<!-- PROOF -->
+<section id="proofView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>校对歌词</b><span id="prSong"></span></div>
+    <button class="btn primary small" id="proofSave" type="button">保存</button>
+  </div></div>
+  <div class="wrap proof">
+    <div class="card shift-card">
+      <div class="sc-txt"><b>整首歌一起挪</b><span class="note">歌词整体比歌声早或晚时用</span></div>
+      <div class="sc-ctl"><button class="btn soft icon" id="shiftMinus" type="button" aria-label="整首往前 0.2 秒">−</button><span id="shiftVal" class="num">0.0s</span><button class="btn soft icon" id="shiftPlus" type="button" aria-label="整首往后 0.2 秒">+</button></div>
+    </div>
+    <div class="pl-list" id="proofList"></div>
+  </div>
+  <div class="player">
+    <div class="prog"><span id="prCur">0:00</span><input id="prSeek" type="range" min="0" max="1" step="0.01" value="0" aria-label="播放进度"><span id="prDur">0:00</span></div>
+    <div class="ctrls solo"><button class="ib play" id="prPlay" type="button" aria-label="播放/暂停"><svg class="i-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><svg class="i-pause" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button></div>
+  </div>
+</section>
+
 <div id="backdrop" class="backdrop" hidden></div>
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
 
 <script src="vendor/to-jyutping.js"></script>
 <script src="srs.js"></script>
+<script src="lessons.js"></script>
+<script src="proof.js"></script>
 <script src="gesture.js"></script>
 <script>
 (function(){
@@ -391,9 +438,10 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView"];
+const views=["home","importView","syncView","playerView","proofView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,proofView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
-// 页面只有两层：首页 ↔ 其他页。从首页进去用 pushState，其他页之间跳转用 replaceState，所以返回总是回首页
+// 页面按层级：首页(0) → 导入/打轴/播放(1) → 校对歌词(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0;
 const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 function show(id,dir){
@@ -409,14 +457,17 @@ function show(id,dir){
 }
 function go(view,data={}){
   const st={view,...data};
-  if(curView==="home")history.pushState(st,"");else history.replaceState(st,"");
+  if(DEPTH[view]>DEPTH[curView])history.pushState(st,"");else history.replaceState(st,"");
   show(view,"fwd");
 }
-function goBack(){if(navAnim||curView==="home")return;navAnim=true;history.back();setTimeout(()=>{navAnim=false},1000)}
+function goBack(){if(navAnim||curView==="home")return;if(curView==="proofView"&&proof&&proof.dirty){dirtyPrompt();return}navAnim=true;history.back();setTimeout(()=>{navAnim=false},1000)}
 window.addEventListener("popstate",e=>{
   const st=e.state||{view:"home"},anim=navAnim?"back":null;navAnim=false;
+  // 校对页有改动没保存，却被系统右滑返回了：回到校对页，弹出保存提示
+  if(curView==="proofView"&&proof&&proof.dirty&&st.view!=="proofView"){history.pushState({view:"proofView",songId:proof.song.id},"");dirtyPrompt();return}
   closeSheet();
-  if(st.view==="playerView"&&songs.some(s=>s.id===st.songId)){openSong(st.songId,{restore:true});return}
+  if(curView==="proofView"){au.pause();if(proof)proof.stopAt=null}
+  if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
   if(curView!=="home"){au.pause();loopIdx=null}
   show("home",anim);renderHome();
@@ -440,11 +491,32 @@ function speak(text,r=0.8){
 }
 
 /* ---------- home ---------- */
-const TONES=[["詩","si1","高平"],["史","si2","高升"],["試","si3","中平"],["時","si4","低降"],["市","si5","低升"],["事","si6","低平"]];
-$("#tones").innerHTML=TONES.map(([h,j,n])=>`<button class="keycap" type="button" data-say="${h}" style="--tc:var(--t${toneOf(j)})" aria-label="${h} ${j} ${n}"><span class="hz">${h}</span><span class="jp">${j}</span></button>`).join("");
+const TONE_NAMES=["","高平","高升","中平","低降","低升","低平"];
+// 首页声调字：每天换一组（凌晨 4 点换日），也能手动换；记录在 meta "tones"
+function saveTones(rec){metaRecs.set("tones",rec);DB.put(rec,"meta")}
+function renderTones(animate){
+  const set=LESSONS.TONE_SETS[metaRecs.get("tones").setIndex];
+  $("#toneSyl").textContent=set.syl;
+  const html=set.chars.map((h,k)=>{const j=set.syl+(k+1);return `<button class="keycap" type="button" data-say="${h}" style="--tc:var(--t${k+1})" aria-label="${h} ${j} ${TONE_NAMES[k+1]}"><span class="hz">${h}</span><span class="jp">${j}</span></button>`}).join("");
+  const box=$("#tones");
+  if(!animate||reduceMotion()||box.children.length!==6){box.innerHTML=html;return}
+  // 六个键帽依次淡出，换字，再依次淡入（每个延迟 30ms）
+  const tmp=document.createElement("div");tmp.innerHTML=html;
+  [...box.children].forEach((cap,k)=>{
+    setTimeout(()=>{cap.classList.add("fade");
+      setTimeout(()=>{const n=tmp.children[k];cap.dataset.say=n.dataset.say;cap.setAttribute("aria-label",n.getAttribute("aria-label"));cap.innerHTML=n.innerHTML;cap.classList.add("fade");void cap.offsetWidth;cap.classList.remove("fade")},220);
+    },k*30);
+  });
+}
+$("#btnToneNext").addEventListener("click",()=>{
+  const r=metaRecs.get("tones");saveTones({key:"tones",setIndex:(r.setIndex+1)%LESSONS.TONE_SETS.length,date:SRS.today(Date.now())});renderTones(true);
+});
 $("#tones").addEventListener("click",e=>{const b=e.target.closest("[data-say]");if(b)speak(b.dataset.say,0.7)});
 
 function renderHome(){
+  const tr=LESSONS.toneSetFor(metaRecs.get("tones"),SRS.today(Date.now())),old=metaRecs.get("tones");
+  if(!old||old.setIndex!==tr.setIndex||old.date!==tr.date)saveTones(tr);
+  renderTones(false);
   const box=$("#songs");
   if(!songs.length){
     box.innerHTML=`<div class="empty"><b>还没有歌</b><ol>
@@ -585,9 +657,9 @@ function setAudio(blob){
   au.load();applyRate();
 }
 function applyRate(){au.defaultPlaybackRate=rate;au.playbackRate=rate;au.preservesPitch=true;au.webkitPreservesPitch=true}
-au.addEventListener("loadedmetadata",()=>{applyRate();["#pSeek","#sSeek"].forEach(s=>$(s).max=au.duration||1);$("#pDur").textContent=$("#sDur").textContent=fmt(au.duration)});
-au.addEventListener("play",()=>{$("#icPlay").style.display="none";$("#icPause").style.display="";$("#sPlay").textContent="暂停";cancelAnimationFrame(raf);raf=requestAnimationFrame(tick)});
-au.addEventListener("pause",()=>{$("#icPlay").style.display="";$("#icPause").style.display="none";$("#sPlay").textContent="播放";tick()});
+au.addEventListener("loadedmetadata",()=>{applyRate();["#pSeek","#sSeek","#prSeek"].forEach(s=>$(s).max=au.duration||1);$("#pDur").textContent=$("#sDur").textContent=$("#prDur").textContent=fmt(au.duration)});
+au.addEventListener("play",()=>{$("#icPlay").style.display="none";$("#icPause").style.display="";$("#sPlay").textContent="暂停";$("#prPlay").classList.add("playing");cancelAnimationFrame(raf);raf=requestAnimationFrame(tick)});
+au.addEventListener("pause",()=>{$("#icPlay").style.display="";$("#icPause").style.display="none";$("#sPlay").textContent="播放";$("#prPlay").classList.remove("playing");tick()});
 au.addEventListener("seeked",()=>{if(au.paused)tick()});
 
 function tick(){
@@ -598,6 +670,10 @@ function tick(){
     setProg(t);$("#pCur").textContent=fmt(t);
   }
   if(!$("#syncView").hidden){$("#sSeek").value=t;$("#sCur").textContent=fmt(t)}
+  if(proof&&!$("#proofView").hidden){
+    if(proof.stopAt!=null&&t>=proof.stopAt){proof.stopAt=null;au.pause()}
+    const s=$("#prSeek");s.value=t;s.style.setProperty("--p",(au.duration?Math.min(100,t/au.duration*100):0)+"%");$("#prCur").textContent=fmt(t);
+  }
   if(!au.paused)raf=requestAnimationFrame(tick);
 }
 function lineAt(t){const L=cur.lines;let lo=0,hi=L.length-1,a=-1;while(lo<=hi){const m=(lo+hi)>>1;if(L[m].t<=t+0.05){a=m;lo=m+1}else hi=m-1}return a}
@@ -678,7 +754,7 @@ async function openSong(id,opts={}){
   $("#pBanner").innerHTML=(cur.audio?"":`<div class="banner">这首歌没有音频（从备份恢复的）。<label class="btn soft small" for="reAudio">选择音频<input id="reAudio" type="file" accept="audio/*,.mp3,.m4a" style="position:absolute;opacity:0;width:1px;height:1px"></label></div>`)+(TJ?"":`<div class="banner">粤拼工具没有加载成功，请检查网络后刷新页面。</div>`);
   const re=$("#reAudio");if(re)re.addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;cur.audio=f;cur.audioName=f.name;cur.updated=Date.now();await DB.put(cur);setAudio(f);$("#pBanner").innerHTML="";toast("音频已加上")});
   setProg(0);$("#pCur").textContent="0:00";
-  if(opts.restore)show("playerView");else go("playerView",{songId:id});
+  if(opts.restore)show("playerView",opts.anim);else go("playerView",{songId:id});
 }
 function applyToggles(){
   $("#lyrics").classList.toggle("hide-jp",!prefs.jp);
@@ -712,12 +788,88 @@ const RATES=[1,0.8,0.6];
 $("#bRate").addEventListener("click",()=>{rate=RATES[(RATES.indexOf(rate)+1)%RATES.length];applyRate();$("#bRate").textContent=rate+"×"});
 function setProg(t){$("#pSeek").value=t;$("#pSeek").style.setProperty("--p",(au.duration?Math.min(100,t/au.duration*100):0)+"%")}
 
+/* ---------- proof（校对歌词） ---------- */
+let proof=null;
+function openProof(){
+  closeSheet();au.pause();
+  // 显示和播放页一样的文字：已经套用了词汇包的错别字更正（fix）
+  const shown=cur.lines.map(l=>fixText(l.text));
+  proof={song:cur,lines:cur.lines.map((l,i)=>({t:l.t,end:l.end,text:shown[i]})),orig:shown,offset:0,open:-1,dirty:false,stopAt:null};
+  $("#prSong").textContent=cur.title;renderProof();go("proofView",{songId:cur.id});
+}
+function renderProof(){
+  $("#shiftVal").textContent=PROOF.fmtOffset(proof.offset);
+  $("#proofList").innerHTML=proof.lines.map((l,i)=>`<div class="pl${i===proof.open?" open":""}" data-i="${i}">
+    <button class="pl-head" type="button"><span class="pl-time">${PROOF.fmtT(l.t)}</span><span class="pl-txt">${esc(l.text)}</span></button>${i!==proof.open?"":`
+    <div class="pl-body">
+      <div class="label">歌词文字（点一下就能改错字）</div>
+      <input class="pl-text" type="text" value="${esc(l.text)}" autocomplete="off">
+      <div class="pl-nudge">${["-0.5","-0.1","0.1","0.5"].map(d=>`<button class="btn soft small" type="button" data-nudge="${d}">${d[0]==="-"?"−"+d.slice(1):"+"+d}</button>`).join("")}</div>
+      <div class="pl-act"><button class="btn soft" type="button" data-audition>▶ 试听这句</button><button class="btn primary" type="button" data-mark>对准现在的歌声</button></div>
+    </div>`}</div>`).join("");
+}
+function shiftProof(d){
+  const n=PROOF.shiftAll(proof.lines,d);if(!n){toast("已经到最前面了");return}
+  proof.lines=n;proof.offset=Math.round((proof.offset+d)*10)/10;proof.dirty=true;renderProof();
+}
+$("#shiftMinus").addEventListener("click",()=>shiftProof(-0.2));
+$("#shiftPlus").addEventListener("click",()=>shiftProof(0.2));
+$("#proofList").addEventListener("click",e=>{
+  const card=e.target.closest(".pl");if(!card)return;const i=+card.dataset.i;
+  if(e.target.closest(".pl-head")){proof.open=proof.open===i?-1:i;renderProof();return}
+  const nd=e.target.closest("[data-nudge]");
+  if(nd){proof.lines=PROOF.setStart(proof.lines,i,proof.lines[i].t+parseFloat(nd.dataset.nudge));proof.dirty=true;renderProof();return}
+  if(e.target.closest("[data-audition]")){
+    if(!proof.song.audio){toast("先加上音频");return}
+    // 从这句开始播，播到下一句开始时停
+    const L=proof.lines;au.currentTime=L[i].t;proof.stopAt=i<L.length-1?L[i+1].t:L[i].end;au.play().catch(()=>{});return;
+  }
+  if(e.target.closest("[data-mark]")){
+    if(!proof.song.audio){toast("先加上音频");return}
+    // 边听边按：减去 0.15 秒反应时间
+    proof.lines=PROOF.setStart(proof.lines,i,au.currentTime-0.15);proof.dirty=true;renderProof();
+    toast("已对准："+PROOF.fmtT(proof.lines[i].t));
+  }
+});
+$("#prPlay").addEventListener("click",()=>{
+  if(!proof||!proof.song.audio){toast("先加上音频");return}
+  proof.stopAt=null;au.paused?au.play().catch(()=>{}):au.pause();
+});
+$("#prSeek").addEventListener("input",e=>{au.currentTime=+e.target.value;if(proof)proof.stopAt=null});
+$("#proofList").addEventListener("input",e=>{
+  const inp=e.target.closest(".pl-text");if(!inp)return;const card=inp.closest(".pl"),i=+card.dataset.i;
+  proof.lines[i].text=inp.value;proof.dirty=true;card.querySelector(".pl-txt").textContent=inp.value;
+});
+async function saveProof(){
+  const texts=proof.lines.map(l=>l.text.trim());
+  if(texts.some(x=>!x)){toast("歌词不能为空");return false}
+  const s=proof.song;let ov=s.overrides||{};
+  // 改了文字的句子：字的位置可能变了，清掉这句的手动读音
+  texts.forEach((x,i)=>{if(x!==proof.orig[i])ov=PROOF.clearLineOverrides(ov,i)});
+  s.lines=proof.lines.map((l,i)=>({t:l.t,end:l.end,text:texts[i]}));s.overrides=ov;s.updated=Date.now();
+  // 错别字更正已经写进歌词里了，清空它，免得又把你改回来的字改掉
+  if(s.pack&&Array.isArray(s.pack.fix)&&s.pack.fix.length)s.pack={...s.pack,fix:[]};
+  await DB.put(s);proof.dirty=false;toast("已保存");return true;
+}
+$("#proofSave").addEventListener("click",async()=>{if(await saveProof())goBack()});
+function dirtyPrompt(){
+  openSheet(`<h3>有改动还没保存</h3>
+    <button class="btn primary block" type="button" data-dirty="save">保存</button>
+    <button class="btn block" type="button" data-dirty="discard">不保存</button>`);
+  $("#sheetBody").onclick=async e=>{
+    if(e.target.closest('[data-dirty="save"]')){closeSheet();if(await saveProof())goBack();return}
+    if(e.target.closest('[data-dirty="discard"]')){proof.dirty=false;closeSheet();goBack()}
+  };
+}
+
 /* ---------- more menu ---------- */
 $("#btnMenu").addEventListener("click",()=>{
   openSheet(`<h3>${esc(cur.title)}</h3>
+    <button class="btn block" type="button" data-menu="proof">校对歌词</button>
     <button class="btn block" type="button" data-menu="pack">${cur.pack?"词汇包 ✓":"词汇包"}</button>
     <button class="btn block text" type="button" data-menu="del">删除这首歌</button>`);
   $("#sheetBody").onclick=async e=>{
+    if(e.target.closest('[data-menu="proof"]')){openProof();return}
     if(e.target.closest('[data-menu="pack"]')){openPack();return}
     const d=e.target.closest('[data-menu="del"]');if(!d)return;
     if(!d.dataset.armed){d.dataset.armed="1";d.textContent="再点一次确认删除";setTimeout(()=>{if(d.isConnected){delete d.dataset.armed;d.textContent="删除这首歌"}},3000);return}
@@ -763,7 +915,6 @@ $("#backdrop").addEventListener("click",closeSheet);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
 
 /* ---------- word card ---------- */
-const TONE_NAMES=["","高平","高升","中平","低降","低升","低平"];
 function openWord(li,ci){
   const v=view[li],it=v.items[ci];if(!it||it.space)return;
   const w=it.word>=0?v.words[it.word]:null;

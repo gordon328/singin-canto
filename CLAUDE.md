@@ -13,10 +13,12 @@
 
 ## 技术约定
 - **`index.html` + 少量普通 .js 文件**（`<script src>` 引入），原生 HTML/CSS/JavaScript，不用框架，不用构建工具（没有 npm build）。保持简单，开发者能直接打开
-  - `srs.js`：间隔复习算法和卡片纯函数（全局 `SRS`：`newSrs`、`review`、`newCard`、`dueLabel`、`mergeCards`）。"今天"按本地凌晨 4 点换日
+  - `srs.js`：间隔复习算法和卡片纯函数（全局 `SRS`：`newSrs`、`review`、`newCard`、`dueLabel`、`mergeCards`、`today`）。"今天"按本地凌晨 4 点换日
+  - `lessons.js`：课程内容（全局 `LESSONS`：`TONE_SETS` 8 组声调字、`toneSetFor(rec, today)` 首页今天用哪组；M6 的入门课也放这里）
+  - `proof.js`：校对歌词的时间计算（全局 `PROOF`：`shiftAll`、`setStart`、`clearLineOverrides`、`fmtT`、`fmtOffset`）
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
   - 测试：`node --test`（纯函数）；`node tests/browser/run.js [过滤]`（页面测试，用本机 Chrome 无界面跑 `tests/browser/*.scenario.js`，截图在 `tests/browser/out/` 不进仓库）。开发者不用跑
-  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，只有两层（首页 ↔ 其他页）。右滑返回 **Safari 和主屏幕模式都只用 iOS 系统自带的**，App 不自己实现（2026-10-27 开发者 iPhone 实测：主屏幕模式下系统也有右滑返回，App 再做一套会出现两个首页）。系统手势触发的 popstate 不播 App 的返回动画
+  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，按层级 `DEPTH`：首页(0) → 导入/打轴/播放(1) → 校对歌词(2)，往深一层 push、同层 replace。右滑返回 **Safari 和主屏幕模式都只用 iOS 系统自带的**，App 不自己实现（2026-10-27 开发者 iPhone 实测：主屏幕模式下系统也有右滑返回，App 再做一套会出现两个首页）。系统手势触发的 popstate 不播 App 的返回动画；校对页有未保存改动时 popstate 会推回校对页并弹出保存提示
   - 歌词换行：`wrapGroups()` 把标点和前一个字、同一个词的字、最后两个字绑成不能拆开的组
   - 新增要离线可用的文件时，加进 `sw.js` 的 `SHELL` 并把 `VERSION` 加一
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
@@ -52,11 +54,12 @@
 - 第二、三阶段按 `docs/第二三阶段开发规格.md`（v2）和 `docs/设计规范.md` 做，分 M1–M7 七个里程碑
 - **M1 完成**：数据库 v2、`srs.js`、备份 v2（含生词卡片，兼容 v1）、自由听词卡「＋ 加入生词」。2026-10-27 iPhone 验收通过
 - **M2 完成**：丁香界面改版、iPhone 适配（不透明顶栏、输入框 16px、安全区）、Safari 和主屏幕右滑返回、字体和粤拼库自带。M2 里定的：「今天的学习」卡片留到 M4；声调键帽固定 si 组（轮换在 M3）；词汇包和删除歌曲在播放页「⋯」菜单；备份是首页右上角图标 2026-10-27 iPhone 验收通过（含验收反馈修复：歌词输入框、标点和词换行、只用系统右滑）
+- **M3 完成**：校对歌词（播放页「⋯」→ 校对歌词：整首挪、单句微调、改错字、试听、对准现在的歌声、未保存提示）、首页声调字每天换一组 + 「换一组」（meta `tones`）
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）
 1. ~~初始化 git，推送到 GitHub，开启 GitHub Pages~~（已完成）
 2. ~~加 PWA 支持~~（已完成）
 3. ~~在正式网址上测试 LRCLIB 在线搜索~~（已完成：海外网络下《葡萄成熟时》搜到、时间轴准确；大陆网络仍未测）
-4. M3：校对歌词 + 声调字轮换（规格 v2 7.1、7.2）
-5. 之后按规格依次做 M4–M7
+4. M4：词汇包 v3 + 每日学习流程（规格 v2 第 4 节、5.1–5.7）
+5. 之后按规格依次做 M5–M7

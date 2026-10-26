@@ -36,6 +36,8 @@
 
   // "今天"凌晨 4 点才换日：把时间往前挪 4 小时再取日期
   function dayKey(t) { const d = new Date(t - 4 * HOUR); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  // 今天的日期字符串 "YYYY-MM-DD"（凌晨 4 点换日）
+  function today(now) { const d = new Date(now - 4 * HOUR); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function dueLabel(due, now) {
     const n = Math.round((dayKey(due) - dayKey(now)) / DAY);
     return n <= 0 ? "今天" : n === 1 ? "明天" : n + " 天后";
@@ -63,7 +65,7 @@
     return [...byW.values()];
   }
 
-  const SRS = { newSrs, review, newCard, dueLabel, mergeCards };
+  const SRS = { newSrs, review, newCard, dueLabel, mergeCards, today };
   root.SRS = SRS;
   if (typeof module !== "undefined" && module.exports) module.exports = SRS;
 })(typeof self !== "undefined" ? self : globalThis);

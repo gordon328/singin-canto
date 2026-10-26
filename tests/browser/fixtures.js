@@ -7,13 +7,13 @@ const LINES_T1 = ["我穿風褸出去", "第二句測試", "今日天氣好好",
 const T1 = {
   id: "t1", title: "測試歌", artist: "測試", audioName: "t.mp3", duration: 45,
   lines: LINES_T1.map((text, i) => ({ t: i * 3 + 1, end: i * 3 + 4, text })),
-  pack: { v: 2, summary: "测试用的大意。", imported: 1, fix: [], words: [
+  pack: { v: 2, summary: "测试用的大意。", imported: 1, fix: [{ from: "巴士", to: "巴仕" }], words: [
     { w: "風褸", jp: "", key: true, oral: false, zh: "风衣", tip: "提示" },
     { w: "你", jp: "", key: true, oral: false, zh: "你", tip: "" },
     { w: "風\u{2A6A5}", jp: "", key: true, oral: false, zh: "测试", tip: "" },
     { w: "今日天氣好好", jp: "", key: true, oral: false, zh: "今天天气很好（测试用的长词）", tip: "" },
     { w: "結疤", jp: "", key: true, oral: false, zh: "结疤", tip: "" }] },
-  overrides: { "1:0": "dai2" }, created: 1, updated: 2,
+  overrides: { "1:0": "dai2", "3:0": "ngo4" }, created: 1, updated: 2,
 };
 const T2 = {
   id: "t2", title: "長".repeat(40), artist: "", audio: null, audioName: "", duration: 0,
@@ -21,10 +21,18 @@ const T2 = {
   pack: null, overrides: {}, created: 1, updated: 1,
 };
 
+// 页面表达式：生成 secs 秒的静音 wav（File 对象），能真正播放
+const silentWav = (secs = 5, name = "silence.wav") => `(() => { const rate = 8000, n = rate * ${secs}, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  return new File([buf], ${JSON.stringify(name)}, { type: "audio/wav" }); })()`;
+
 const SEED_V1 = `new Promise((res, rej) => { const r = indexedDB.open("yuechang", 1);
   r.onupgradeneeded = () => r.result.createObjectStore("songs", { keyPath: "id" });
   r.onsuccess = () => { const db = r.result; const tx = db.transaction("songs", "readwrite"); const st = tx.objectStore("songs");
-    st.put(Object.assign(${JSON.stringify(T1)}, { audio: new Blob([new Uint8Array(1000)], { type: "audio/mpeg" }) }));
+    st.put(Object.assign(${JSON.stringify(T1)}, { audio: ${silentWav(50, "t.wav")} }));
     st.put(${JSON.stringify(T2)});
     tx.oncomplete = () => { db.close(); res(); }; tx.onerror = rej; }; r.onerror = rej; })`;
 
@@ -44,13 +52,5 @@ const tapChar = (li, ci) => `document.querySelector('#lyrics .line[data-li="${li
 const sheetText = `document.querySelector("#sheetBody").innerText`;
 // 关掉弹层并等它真正消失
 async function closeSheet(b) { await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(500); }
-
-// 页面表达式：生成 secs 秒的静音 wav（File 对象），能真正播放
-const silentWav = (secs = 5, name = "silence.wav") => `(() => { const rate = 8000, n = rate * ${secs}, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
-  const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
-  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, "data"); v.setUint32(40, n, true);
-  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
-  return new File([buf], ${JSON.stringify(name)}, { type: "audio/wav" }); })()`;
 
 module.exports = { silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, closeSheet };
