@@ -1,7 +1,8 @@
 // 测试数据：句子都是编的，不是真实歌词（仓库是公开的）。
 // SEED_V1 在当前网址建一个 v1 结构的数据库（和 M1 之前的代码一样），写入两首测试歌。
 const LINES_T1 = ["我穿風褸出去", "第二句測試", "今日天氣好好", "我哋去飲茶", "街市好多人", "佢買咗啲生果", "阿媽煮飯",
-  "細佬睇電視", "落雨要帶遮", "巴士嚟喇", "夜晚好凍", "聽日再見", "你好嗎你", "風\u{2A6A5}吹"];
+  "細佬睇電視", "落雨要帶遮", "巴士嚟喇", "夜晚好凍", "聽日再見", "你好嗎你", "風\u{2A6A5}吹",
+  "我哋今晚一齊去街市買餸煮飯食好唔好？", "手指受傷之後慢慢結疤"];
 
 const T1 = {
   id: "t1", title: "測試歌", artist: "測試", audioName: "t.mp3", duration: 45,
@@ -10,7 +11,8 @@ const T1 = {
     { w: "風褸", jp: "", key: true, oral: false, zh: "风衣", tip: "提示" },
     { w: "你", jp: "", key: true, oral: false, zh: "你", tip: "" },
     { w: "風\u{2A6A5}", jp: "", key: true, oral: false, zh: "测试", tip: "" },
-    { w: "今日天氣好好", jp: "", key: true, oral: false, zh: "今天天气很好（测试用的长词）", tip: "" }] },
+    { w: "今日天氣好好", jp: "", key: true, oral: false, zh: "今天天气很好（测试用的长词）", tip: "" },
+    { w: "結疤", jp: "", key: true, oral: false, zh: "结疤", tip: "" }] },
   overrides: { "1:0": "dai2" }, created: 1, updated: 2,
 };
 const T2 = {

@@ -16,7 +16,8 @@
   - `srs.js`：间隔复习算法和卡片纯函数（全局 `SRS`：`newSrs`、`review`、`newCard`、`dueLabel`、`mergeCards`）。"今天"按本地凌晨 4 点换日
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`swipeBackDecision`、`dragDismissDecision`、`EDGE`）
   - 测试：`node --test`（纯函数）；`node tests/browser/run.js [过滤]`（页面测试，用本机 Chrome 无界面跑 `tests/browser/*.scenario.js`，截图在 `tests/browser/out/` 不进仓库）。开发者不用跑
-  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，只有两层（首页 ↔ 其他页）；主屏幕模式自己实现左边缘右滑返回
+  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，只有两层（首页 ↔ 其他页）；主屏幕模式自己实现左边缘右滑返回。但如果系统自己也有右滑返回（App 手势进行中收到 popstate），App 立刻收手并在 localStorage `yc-sysback` 记住，以后只用系统的（开发者的 iPhone 主屏幕模式下系统有右滑返回）
+  - 歌词换行：`wrapGroups()` 把标点和前一个字、同一个词的字、最后两个字绑成不能拆开的组
   - 新增要离线可用的文件时，加进 `sw.js` 的 `SHELL` 并把 `VERSION` 加一
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
   - `getJyutpingList(text)` 返回 `[字, 粤拼|null][]`

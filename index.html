@@ -82,7 +82,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 input[type=text],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:0;border-radius:14px;
   padding:12px 14px;box-shadow:var(--shadow-1),inset 0 0 0 1px var(--rule)}
 input[type=text]:focus,textarea:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
-textarea{min-height:140px;resize:vertical;line-height:1.6}
+textarea{min-height:200px;padding:14px 16px;resize:vertical;line-height:1.6}
 svg{display:block}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition-property:opacity!important;animation:none!important;scroll-behavior:auto!important}
@@ -150,6 +150,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .line.cur .ln{color:var(--accent);font-weight:600}
 .line.loop .ln::after{content:" ↻";white-space:pre;color:var(--accent)}
 .chars{position:relative;z-index:1;display:flex;flex-wrap:wrap;row-gap:6px;align-items:flex-end}
+.grp{display:inline-flex;flex-wrap:nowrap;align-items:flex-end}
 .c{display:inline-flex;flex-direction:column;align-items:center;padding:0 1px;border-radius:8px;min-width:1.15em}
 .c .jp{font-size:12px;font-weight:600;line-height:16px;height:16px;white-space:nowrap}
 .c .hz{font-size:22px;font-weight:500;line-height:1.3;transition:font-size var(--dur) var(--ease)}
@@ -189,6 +190,8 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .form{display:flex;flex-direction:column;gap:12px;padding-block:6px calc(110px + env(safe-area-inset-bottom,0px))}
 .card{background:var(--surface);border-radius:22px;box-shadow:var(--shadow-1);padding:16px}
 .field{display:flex;flex-direction:column;gap:10px}
+.field > textarea + .note{margin-top:4px}
+.field > .note:empty{display:none}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row > *{min-width:0}
 .filebox{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;border:2px dashed var(--rule);cursor:pointer}
@@ -412,6 +415,8 @@ function go(view,data={}){
 function goBack(){if(navAnim||curView==="home")return;navAnim=true;history.back();setTimeout(()=>{navAnim=false},1000)}
 window.addEventListener("popstate",e=>{
   const st=e.state||{view:"home"},anim=navAnim?"back":null;navAnim=false;
+  // App 的右滑还没松手，返回就发生了：说明是系统的右滑返回。以后只用系统的
+  if(sw){abortSwipe();sysBack=true;try{localStorage.setItem("yc-sysback","1")}catch(err){}}
   closeSheet();
   if(st.view==="playerView"&&songs.some(s=>s.id===st.songId)){openSong(st.songId,{restore:true});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
@@ -423,8 +428,13 @@ document.querySelectorAll("[data-back]").forEach(b=>b.addEventListener("click",g
 // 添加到主屏幕后，iPhone 没有系统右滑返回，自己做：只从左边缘 24px 内开始
 const isStandalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
 let sw=null;
+let sysBack=false;try{sysBack=localStorage.getItem("yc-sysback")==="1"}catch(e){}
+function abortSwipe(){
+  const s=sw;sw=null;if(!s||!s.on)return;
+  s.shade.remove();s.home.style.cssText="";s.page.classList.remove("nav-layer");s.page.style.cssText="";document.body.classList.remove("navigating");
+}
 document.addEventListener("touchstart",e=>{
-  if(!isStandalone()||curView==="home"||!$("#sheet").hidden||e.touches.length>1)return;
+  if(!isStandalone()||sysBack||curView==="home"||!$("#sheet").hidden||e.touches.length>1)return;
   const p=e.touches[0];if(p.clientX>GESTURE.EDGE)return;
   sw={x0:p.clientX,y0:p.clientY,x:p.clientX,t:e.timeStamp,vx:0,on:false};
 },{passive:true});
@@ -674,11 +684,28 @@ function charHTML(it,ci,words){
   if(it.space)return `<span class="sp"></span>`;
   const w=it.word>=0?words[it.word]:null;
   const cls=["c"];if(!it.han)cls.push("punct");if(w&&w.key)cls.push("key");if(it.ov)cls.push("ov");
-  return `<span class="${cls.join(" ")}" data-ci="${ci}"><span class="jp t${toneOf(it.jp)}">${esc(it.jp||"")}</span><span class="hz">${esc(it.ch)}</span></span>`;
+  return `<span class="${cls.join(" ")}" data-ci="${ci}"${it.word>=0?` data-w="${it.word}"`:""}><span class="jp t${toneOf(it.jp)}">${esc(it.jp||"")}</span><span class="hz">${esc(it.ch)}</span></span>`;
+}
+// 把一句拆成不能再拆开的小组：标点跟前一个字（开引号跟后一个字），同一个词的字在一组，最后两组合并（避免最后一行只剩一个字）
+const OPEN_PUNCT=/[「『（(《〈“‘【\[]/;
+function wrapGroups(items){
+  const g=[];let open=null;
+  items.forEach((it,ci)=>{
+    if(it.space){g.push({sp:true,cis:[ci]});return}
+    const last=g[g.length-1];
+    if(!it.han&&OPEN_PUNCT.test(it.ch)){open=open||[];open.push(ci);return}
+    if(open){g.push({cis:[...open,ci],word:it.word});open=null;return}
+    if(last&&!last.sp&&(!it.han||(it.word>=0&&last.word===it.word)))last.cis.push(ci);
+    else g.push({cis:[ci],word:it.word});
+  });
+  if(open)g.push({cis:open});
+  const words=g.map((x,i)=>x.sp?-1:i).filter(i=>i>=0);
+  if(words.length>=2){const a=words[words.length-2],z=words[words.length-1];g.splice(a,z-a+1,{cis:g.slice(a,z+1).flatMap(x=>x.cis)})}
+  return g.map(x=>x.cis);
 }
 function lineHTML(li){
   const v=view[li],L=cur.lines[li];
-  return `<div class="line${li===curIdx?" cur":""}${li===loopIdx?" loop":""}" data-li="${li}"><button class="ln" type="button" data-play="${li}" aria-label="从这句播放">${fmt(L.t)}</button><div class="chars">${v.items.map((it,ci)=>charHTML(it,ci,v.words)).join("")}</div></div>`;
+  return `<div class="line${li===curIdx?" cur":""}${li===loopIdx?" loop":""}" data-li="${li}"><button class="ln" type="button" data-play="${li}" aria-label="从这句播放">${fmt(L.t)}</button><div class="chars">${wrapGroups(v.items).map(cis=>`<span class="grp">${cis.map(ci=>charHTML(v.items[ci],ci,v.words)).join("")}</span>`).join("")}</div></div>`;
 }
 function buildLyrics(){
   view=cur.lines.map((_,li)=>computeLine(li));
