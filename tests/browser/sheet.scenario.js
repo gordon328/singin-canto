@@ -7,7 +7,11 @@ module.exports = { name: "sheet", async run(b) {
   const st = await b.ev(`(() => { const s = getComputedStyle(document.querySelector("#sheet")); const g = document.querySelector("#sheet .grab").getBoundingClientRect();
     const scrim = getComputedStyle(document.documentElement).getPropertyValue("--scrim").trim().replace(/\\s/g, "");
     return { r: s.borderTopLeftRadius, g: [Math.round(g.width), Math.round(g.height)], bd: getComputedStyle(document.querySelector("#backdrop")).backgroundColor.replace(/\\s/g, ""), scrim }; })()`);
-  b.check("sheet-style " + JSON.stringify(st), st.r === "34px" && st.g[0] === 40 && st.g[1] === 5 && st.bd === st.scrim.replace("rgba(34,31,51,.30)", "rgba(34,31,51,0.3)"));
+  b.check("sheet-style " + JSON.stringify(st), st.r === "34px" && st.g[0] === 40 && st.g[1] === 5 && st.bd === "rgba(0,0,0,0)");
+  // 状态栏方案 c：遮罩透明（不变暗、不模糊），弹层靠自己的阴影/描边和页面分开（深色模式也要有）
+  const sep = `(() => { const s = getComputedStyle(document.querySelector("#sheet")); return [s.boxShadow, getComputedStyle(document.querySelector("#backdrop")).backdropFilter]; })()`;
+  const lightSep = await b.ev(sep); await b.dark(true); await b.sleep(200); const darkSep = await b.ev(sep); await b.dark(false); await b.sleep(200);
+  b.check("sheet-separated " + JSON.stringify([lightSep, darkSep]), lightSep[0] !== "none" && darkSep[0] !== "none" && lightSep[1] === "none");
   b.check("sheet-open-anim", await b.ev(`document.querySelector("#sheet").classList.contains("open") && getComputedStyle(document.querySelector("#sheet")).transitionProperty.includes("transform")`));
   const sq = await b.ev(`(() => { const q = document.querySelector(".wc-square"); return q ? { t: q.innerText.replace(/\\s+/g, ""), bg: getComputedStyle(q).backgroundColor,
     soft: getComputedStyle(document.documentElement).getPropertyValue("--accent-soft").trim() } : null; })()`);
