@@ -17,6 +17,8 @@
   - `lessons.js`：课程内容（全局 `LESSONS`：`TONE_SETS` 8 组声调字、`toneSetFor(rec, today)` 首页今天用哪组；M6 的入门课也放这里）
   - `proof.js`：编辑歌曲（原「校对歌词」）的时间计算和行操作（全局 `PROOF`：`shiftAll`、`setStart`、`fmtT`、`fmtOffset`；行操作 `toEdit`、`insertAfter`、`split`、`mergeUp`、`remove`、`toSong`，保存时 `toSong` 返回新的 lines/overrides/learned 和原行号→新行号的 map，用来更新卡片出处）
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
+  - `pack.js`：词汇包纯函数（全局 `PACK`：`buildPrompt`、`parsePack(raw, lines)`、`computeLineFor(song, li, autoJp)`、`fixText`、`HAN`）。词汇包 v3（`v:3`）覆盖整首歌的词，只有 `key:true` 的显示下划线；导入时整包里有一个词带 `key` 字段就按 v3 处理，整包都没有 `key` 是旧格式、全部当重点词。页面里 `computeLineFor(song, li)` / `computeLine(li)` 是它的包装
+  - `study.js`：每日学习规则（全局 `STUDY`：`progressOf`、`withLearned`、`mergeProgress`、`currentSong`、`setCurrent`、`goalOf`、`dailyFor`，`GOALS` 2/4/6、`GOAL_MIN` 1、`GOAL_MAX` 20）。页面里 `getDaily()` / `saveDaily(rec)` 读写 meta `daily`。M4b 的学习流程也写在这里
   - 测试：`node --test`（纯函数）；`node tests/browser/run.js [过滤]`（页面测试，用本机 Chrome 无界面跑 `tests/browser/*.scenario.js`，截图在 `tests/browser/out/` 不进仓库）。开发者不用跑
   - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，按层级 `DEPTH`：首页(0) → 导入/打轴/播放/设置(1) → 编辑歌曲(2)，往深一层 push、同层 replace。右滑返回 **Safari 和主屏幕模式都只用 iOS 系统自带的**，App 不自己实现（2026-10-27 开发者 iPhone 实测：主屏幕模式下系统也有右滑返回，App 再做一套会出现两个首页）。系统手势触发的 popstate 不播 App 的返回动画；编辑歌曲页有未保存改动时 popstate 会推回编辑页并弹出保存提示
   - 歌词换行：`wrapGroups()` 把标点和前一个字、同一个词的字、最后两个字绑成不能拆开的组
@@ -26,7 +28,7 @@
   - 浮动播放条 `.player`：`show()` 在切页动画结束后加 `bar-in`；返回时没有消失动画（M3.12 去掉了 `bar-out`），切页时 `body.navigating` 直接把它隐藏
   - 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以**顶部附近不能有带颜色的 fixed 元素**（`#topTint` 已去掉）。**弹出层不使用暗幕**（M3.12，设计规范 5.6）：底部弹窗 `openSheet(html, {modal})` 只靠 `--shadow-sheet` 阴影；点外面关闭（document 上的 pointerdown/pointerup 判断，移动超过 10px 算滚动，紧跟的 click 吞掉）；`modal: true` 的确认类弹窗（`confirmSheet`、未保存提示）没有拖动条，点外面、往下拖都不关
   - 歌曲页「⋯」是下拉小菜单 `#songMenu`（设计规范 5.9）：放在吸顶顶栏 `.bar .wrap` 里，absolute，`openMenu()`/`closeMenu(now)`，切页时 `show()` 直接收起
-  - 设置页 `settingsView`：首页右上角齿轮进入；「每天新学几句」2/4/6（存 `prefs.goal`，默认 4，M4 接上功能）+ 备份与恢复（`renderSettings()`）
+  - 设置页 `settingsView`：首页右上角齿轮进入；「每天新学几句」2/4/6/自定义（自定义展开「− 数字 +」，1–20；存 meta `daily.goal`，默认 4；旧的 `prefs.goal` 启动时搬过去）+ 备份与恢复（`renderSettings()`）
   - 声调键帽（设计规范 5.2）：`.tones .key` 里两层 `.key-base`（声调色，不动）和 `.key-face`（按下时只有它下移 4px）
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
   - `getJyutpingList(text)` 返回 `[字, 粤拼|null][]`
@@ -74,6 +76,7 @@
 - **M3.10**：开发者决定回到方案 c（完全不闪，也不变暗），代码恢复成 M3.4 的样子。真机：从主屏幕图标打开会闪
 - **M3.11**：状态栏换思路，不再调遮罩：备份改成整页「设置」（首页齿轮，从右边滑入，含「每天新学几句」2/4/6 先只显示）；去掉 `#topTint`；弹窗暗色层放进当前页面（absolute，跟着页面）；声调键帽按新规范 5.2 改成底座 + 键面两层；按下 class 改名 `.is-pressed`。真机：不闪，但状态栏不变暗，和变暗的页面不协调
 - **M3.12**：整个 App 不再使用暗幕：「⋯」改成下拉小菜单（编辑歌曲 / 词汇包 / 删除）；底部弹窗去掉暗色层、只用阴影，点外面关闭（确认类弹窗必须点按钮，未保存提示加了「继续编辑」）；设计规范 5.6 改写、新增 5.9 下拉菜单。2026-10-28 iPhone 验收通过。之后去掉了播放条返回时的消失动画
+- **M4a 完成（待 iPhone 验收）**：词汇包 v3（新提示词覆盖所有词、只有重点词有下划线、兼容旧包）；「每天新学几句」存到 meta `daily`，加了「自定义」1–20；`progress` 规则（恢复备份时已学句子取并集）
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）

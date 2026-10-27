@@ -228,6 +228,9 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .field{display:flex;flex-direction:column;gap:10px}
 .seg{display:flex;gap:8px}
 .seg .btn{flex:1}
+.stepper{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:4px}
+.stepper .btn{font-size:22px;font-weight:600}
+#goalNum{min-width:48px;text-align:center;font-size:28px;font-weight:700}
 .field > textarea + .note{margin-top:4px}
 .field > .note:empty{display:none}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -465,7 +468,8 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
     <div class="card field">
       <div class="label">每天新学几句</div>
       <div class="seg" id="goalSeg"></div>
-      <div class="note">每天的学习功能做好后，按这里的数量安排新句子。</div>
+      <div class="stepper" id="goalStep" hidden><button class="btn soft icon" id="goalMinus" type="button" aria-label="少一句">−</button><span id="goalNum" class="num"></span><span class="note">句</span><button class="btn soft icon" id="goalPlus" type="button" aria-label="多一句">+</button></div>
+      <div class="note">每天按歌词顺序新学几句，复习的词不算在里面。</div>
     </div>
     <div class="card field" id="backupCard"></div>
   </div>
@@ -477,6 +481,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 <script src="vendor/to-jyutping.js"></script>
 <script src="pack.js"></script>
 <script src="srs.js"></script>
+<script src="study.js"></script>
 <script src="lessons.js"></script>
 <script src="proof.js"></script>
 <script src="gesture.js"></script>
@@ -609,6 +614,9 @@ function speak(text,r=0.8){
 const TONE_NAMES=["","高平","高升","中平","低降","低升","低平"];
 // 首页声调字：每天换一组（凌晨 4 点换日），也能手动换；记录在 meta "tones"
 function saveTones(rec){metaRecs.set("tones",rec);DB.put(rec,"meta")}
+// 今天的学习计数和每天新学几句（meta daily，凌晨 4 点换日）
+function getDaily(){return STUDY.dailyFor(metaRecs.get("daily"),SRS.today(Date.now()))}
+function saveDaily(rec){metaRecs.set("daily",rec);return DB.put(rec,"meta")}
 function renderTones(animate){
   const set=LESSONS.TONE_SETS[metaRecs.get("tones").setIndex];
   $("#toneSyl").textContent=set.syl;
@@ -1057,7 +1065,7 @@ async function saveProof(){
   // 按时间排好；改了文字的句子清掉手动读音；学会记录和卡片出处的行号跟着插入/拆开/合并/删除更新
   const r=PROOF.toSong(proof.lines);
   s.lines=r.lines;s.overrides=r.overrides;
-  if(s.progress)s.progress={...s.progress,learned:r.learned};
+  s.progress={...STUDY.progressOf(s),learned:r.learned};
   s.title=$("#prTitle").value.trim()||"未命名";s.artist=$("#prArtist").value.trim();
   if(proof.newAudio){s.audio=proof.newAudio.blob;s.audioName=proof.newAudio.name;s.duration=proof.newAudio.dur}
   s.updated=Date.now();
@@ -1273,13 +1281,22 @@ function openPack(){
 
 /* ---------- settings：每天新学几句（M4 接上功能）+ 备份与恢复 ---------- */
 $("#btnSettings").addEventListener("click",()=>{renderSettings();go("settingsView")});
-$("#goalSeg").addEventListener("click",e=>{const b=e.target.closest("[data-goal]");if(!b)return;prefs.goal=+b.dataset.goal;savePrefs();renderGoal()});
+// 2 / 4 / 6 / 自定义（1–20）；goalCustom 只在这次打开设置页时有效
+let goalCustom=false;
+function setGoal(g){saveDaily({...getDaily(),goal:Math.min(STUDY.GOAL_MAX,Math.max(STUDY.GOAL_MIN,g))});renderGoal()}
+$("#goalSeg").addEventListener("click",e=>{const b=e.target.closest("[data-goal]");if(!b)return;
+  if(b.dataset.goal==="custom"){goalCustom=true;renderGoal()}else{goalCustom=false;setGoal(+b.dataset.goal)}});
+$("#goalMinus").addEventListener("click",()=>setGoal(STUDY.goalOf(getDaily())-1));
+$("#goalPlus").addEventListener("click",()=>setGoal(STUDY.goalOf(getDaily())+1));
 function renderGoal(){
-  const g=[2,4,6].includes(prefs.goal)?prefs.goal:4;
-  $("#goalSeg").innerHTML=[2,4,6].map(n=>`<button class="btn small ${n===g?"primary":"soft"}" type="button" data-goal="${n}" aria-pressed="${n===g}">${n}</button>`).join("");
+  const g=STUDY.goalOf(getDaily());
+  const opts=[...STUDY.GOALS.map(n=>({v:String(n),on:!goalCustom&&n===g})),{v:"custom",label:"自定义",on:goalCustom}];
+  $("#goalSeg").innerHTML=opts.map(o=>`<button class="btn small ${o.on?"primary":"soft"}" type="button" data-goal="${o.v}" aria-pressed="${o.on}">${o.label||o.v}</button>`).join("");
+  $("#goalStep").hidden=!goalCustom;$("#goalNum").textContent=g;
+  $("#goalMinus").disabled=g<=STUDY.GOAL_MIN;$("#goalPlus").disabled=g>=STUDY.GOAL_MAX;
 }
 function renderSettings(){
-  renderGoal();
+  goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
   const data=JSON.stringify({app:"yuechang",v:2,exported:new Date().toISOString(),songs:songs.map(s=>{const o={...s};delete o.audio;return o}),cards:[...cards.values()],meta:[...metaRecs.values()]});
   $("#backupCard").innerHTML=`
     <div class="label">备份与恢复</div>
@@ -1296,7 +1313,7 @@ function renderSettings(){
     let obj;try{obj=JSON.parse($("#bkIn").value)}catch(e){$("#bkMsg").innerHTML='<span class="err">备份文本不完整或格式不对</span>';return}
     if(!obj||obj.app!=="yuechang"||!Array.isArray(obj.songs)){$("#bkMsg").innerHTML='<span class="err">这不是唱学粤语的备份</span>';return}
     let n=0;
-    for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
+    for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};if(ex)merged.progress=STUDY.mergeProgress(ex.progress,s.progress,merged.lines.length);await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
     const merged=SRS.mergeCards([...cards.values()],obj.cards,Date.now());
     for(const c of merged)await DB.put(c,"cards");
     cards=new Map(merged.map(c=>[c.w,c]));
@@ -1312,6 +1329,9 @@ history.replaceState({view:"home"},"");
   await DB.open();songs=await DB.all();
   cards=new Map((await DB.all("cards")).map(c=>[c.w,c]));
   metaRecs=new Map((await DB.all("meta")).map(m=>[m.key,m]));
+  // 「每天新学几句」以前存在 prefs.goal，搬到 meta daily
+  if(!metaRecs.has("daily"))await saveDaily({...getDaily(),goal:STUDY.goalOf({goal:prefs.goal})});
+  if("goal" in prefs){delete prefs.goal;savePrefs()}
   renderHome();
 })();
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
