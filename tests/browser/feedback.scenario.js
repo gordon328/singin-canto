@@ -26,32 +26,22 @@ module.exports = { name: "feedback", async run(b) {
   b.check("tone-spin-reduced-motion", (await b.ev(spinName)) === "");
   await b.reducedMotion(false); await b.sleep(400);
 
-  // 状态栏方案 a：一条永久的 fixed 顶部色带（页面底色），层级高于遮罩
-  const tint = await b.ev(`(() => { const e = document.querySelector("#topTint"); if (!e) return null; const s = getComputedStyle(e);
-    return { pos: s.position, top: s.top, z: +s.zIndex, bg: s.backgroundColor, body: getComputedStyle(document.body).backgroundColor, h: e.getBoundingClientRect().height,
-      bz: +getComputedStyle(document.querySelector("#backdrop")).zIndex, rule: [...document.styleSheets[0].cssRules].filter(r => r.selectorText === "#topTint").map(r => r.style.height).join() }; })()`);
-  b.check("top-tint " + JSON.stringify(tint), !!tint && tint.pos === "fixed" && tint.top === "0px" && tint.z > tint.bz && tint.bg === tint.body && tint.h >= 2 && /safe-area-inset-top/.test(tint.rule));
-
-  // 状态栏方案 b：弹层打开时，靠近屏幕顶部、有颜色的 fixed 元素只能是顶部色带（遮罩不用 fixed）
-  const topFixed = `[...document.querySelectorAll("body *")].filter(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect();
-    return s.position === "fixed" && r.height > 0 && r.top <= 60 && r.bottom > 0 && s.visibility !== "hidden" && !/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor); }).map(e => e.id || e.className)`;
-  const covers = `(() => { const r = document.querySelector("#backdrop").getBoundingClientRect(); return r.top <= 0 && r.bottom >= innerHeight && getComputedStyle(document.querySelector("#backdrop")).position; })()`;
+  // 状态栏方案 d：整屏变暗（含状态栏），遮罩一直不透明，变的是它自己的颜色（Safari 取到的永远是遮罩当时的颜色）；
+  // 顶部色带在遮罩下面，跟着一起变暗
+  const bd = `(() => { const e = document.querySelector("#backdrop"), s = getComputedStyle(e), r = e.getBoundingClientRect();
+    return { pos: s.position, top: r.top, covers: r.bottom >= innerHeight, op: +s.opacity, bg: s.backgroundColor, tr: s.transitionProperty,
+      tintZ: +getComputedStyle(document.querySelector("#topTint")).zIndex, z: +s.zIndex, hidden: e.hidden }; })()`;
+  const scrim = await b.ev(`(() => { const d = document.createElement("div"); d.style.background = "var(--scrim)"; document.body.append(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
+  b.check("tint-exists", await b.ev(`getComputedStyle(document.querySelector("#topTint")).position === "fixed"`));
   await b.ev(click("#btnBackup")); await b.sleep(500);
-  b.check("sheet-top-fixed-only-tint " + JSON.stringify(await b.ev(topFixed)), JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
-  b.check("backdrop-covers-home " + (await b.ev(covers)), (await b.ev(covers)) === "absolute");
-  // 下半屏渐变变暗：从弹层上沿往上渐渐变透明，屏幕上 1/4 完全不碰
-  const shade = `(() => { const e = document.querySelector("#sheetShade"); if (!e) return null; const s = getComputedStyle(e), r = e.getBoundingClientRect(), sh = document.querySelector("#sheet").getBoundingClientRect();
-    return { pos: s.position, op: +s.opacity, img: s.backgroundImage.slice(0, 15), top: Math.round(r.top), bottom: Math.round(r.bottom), sheetTop: Math.round(sh.top), h: innerHeight, pe: s.pointerEvents }; })()`;
-  const sd = await b.ev(shade);
-  b.check("shade " + JSON.stringify(sd), !!sd && sd.pos === "fixed" && sd.op === 1 && sd.img.startsWith("linear-gradient") && sd.top >= sd.h * 0.25 && sd.top < sd.sheetTop && sd.bottom === sd.h && sd.pe === "none");
-  await F.closeSheet(b);
-  b.check("shade-hidden-after-close", await b.ev(`!document.querySelector("#sheetShade") || document.querySelector("#sheetShade").hidden`));
-  await F.openSong(b, "t1");
-  await b.ev("window.scrollTo(0, document.scrollingElement.scrollHeight)"); await b.sleep(300);
-  await b.ev(click("#btnMenu")); await b.sleep(500);
-  b.check("backdrop-covers-scrolled " + (await b.ev(covers)), (await b.ev(covers)) === "absolute" && JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
-  await F.closeSheet(b);
-  await b.ev(click("#playerView [data-back]")); await b.sleep(900);
+  const o = await b.ev(bd);
+  b.check("backdrop-full-dim " + JSON.stringify(o), o.pos === "fixed" && o.top === 0 && o.covers && o.op === 1 && o.bg === scrim && /background-color/.test(o.tr) && !/opacity/.test(o.tr) && o.tintZ < o.z);
+  b.check("no-shade", await b.ev(`!document.querySelector("#sheetShade")`));
+  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(60);
+  const closing = await b.ev(bd);
+  b.check("closing-fades-color " + JSON.stringify(closing), closing.op === 1 && closing.bg !== scrim && !closing.hidden);
+  await b.sleep(500);
+  b.check("closed-hidden", (await b.ev(bd)).hidden);
 
   // bug 5：歌词输入框固定高度，文字不溢出
   await b.ev(click("#btnAdd")); await b.sleep(700);

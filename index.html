@@ -53,9 +53,9 @@
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font-cjk);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
-/* 状态栏方案 a：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色给状态栏上色（不再读 theme-color）。
-   放一条永久的页面底色色带，层级高于弹层遮罩，让 Safari 始终取到 --bg。至少 2px，Safari 模式下顶部安全区可能是 0 */
-#topTint{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),2px);z-index:45;background:var(--bg);pointer-events:none}
+/* 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色给状态栏上色（不再读 theme-color）。
+   放一条永久的页面底色色带，平时 Safari 取到 --bg；它在弹层遮罩下面（39 < 40），打开弹层时跟着一起变暗。至少 2px，Safari 模式下顶部安全区可能是 0 */
+#topTint{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),2px);z-index:39;background:var(--bg);pointer-events:none}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button,a,label,input,textarea,select,[role=button]{touch-action:manipulation}
@@ -277,15 +277,10 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 #prPlay.playing .i-pause{display:block}
 
 /* Sheet：从下面滑上来，可以往下拖关闭 */
-/* 状态栏方案 c：遮罩完全透明（只用来接住"点外面关闭"），不变暗也不模糊。
-   变暗的遮罩会让 iOS 26 Safari 的状态栏闪暗（fixed 时）或显得闪白（absolute 时，页面变暗而状态栏不变）。
-   仍然用 absolute 铺满整页（方案 b），弹层靠 --shadow-sheet 和页面分开 */
-.backdrop{position:absolute;left:0;right:0;top:0;z-index:40;background:transparent;opacity:0;transition:opacity var(--dur-slow) var(--ease)}
-.backdrop.open{opacity:1}
-/* 下半屏渐变变暗（2026-10-27 开发者选的）：fixed 贴在屏幕底部，上沿完全透明且离顶部至少 1/4 屏，不影响状态栏颜色 */
-.shade{position:fixed;left:0;right:0;bottom:0;z-index:40;pointer-events:none;background:linear-gradient(to top,var(--scrim) var(--solid,0px),transparent);
-  opacity:0;transition:opacity var(--dur-slow) var(--ease)}
-.shade.open{opacity:1}
+/* 状态栏方案 d：整屏变暗（连状态栏一起）。iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，而且不看 opacity，
+   所以遮罩的 opacity 一直是 1，变化的是它自己的背景色（透明 → --scrim），Safari 每次取到的都是遮罩当时真实的颜色 */
+.backdrop{position:fixed;inset:0;z-index:40;background:transparent;transition:background-color var(--dur-slow) var(--ease)}
+.backdrop.open{background:var(--scrim)}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:720px;margin:0 auto;background:var(--surface);border-radius:34px 34px 0 0;
   max-height:88dvh;overflow:auto;overscroll-behavior-y:contain;box-shadow:var(--shadow-sheet);padding-bottom:env(safe-area-inset-bottom,0px);
   transform:translateY(100%);opacity:0;transition:transform var(--dur-slow) var(--ease),opacity var(--dur-slow) var(--ease)}
@@ -450,7 +445,6 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 </section>
 
 <div id="backdrop" class="backdrop" hidden></div>
-<div id="sheetShade" class="shade" hidden></div>
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -1119,21 +1113,17 @@ $("#btnMenu").addEventListener("click",()=>{
 /* ---------- sheet ---------- */
 let sheetTimer=0;
 function openSheet(html){
-  const sh=$("#sheet"),bd=$("#backdrop"),sd=$("#sheetShade");clearTimeout(sheetTimer);
+  const sh=$("#sheet"),bd=$("#backdrop");clearTimeout(sheetTimer);
   $("#sheetBody").innerHTML=`<div class="grab"></div>`+html;
-  const opening=sh.hidden||!sh.classList.contains("open");
-  if(opening){bd.style.height=Math.max(document.documentElement.scrollHeight,innerHeight)+"px";sh.hidden=false;bd.hidden=false;sd.hidden=false;sh.scrollTop=0;sh.style.transform=""}
-  // 渐变变暗：弹层后面是实色，从弹层上沿往上 30% 屏高渐渐变透明，最多到屏幕上 1/4 处（状态栏附近完全不碰）
-  const h=sh.offsetHeight;sd.style.height=Math.min(h+innerHeight*.3,innerHeight*.75)+"px";sd.style.setProperty("--solid",h+"px");
-  if(opening){void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open");sd.classList.add("open")}
+  if(sh.hidden||!sh.classList.contains("open")){sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
 }
 function closeSheet(){
   if(confirmDone)confirmDone(false);
   const sh=$("#sheet"),bd=$("#backdrop");
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   if(sh.hidden)return;
-  sh.classList.remove("open","dragging");bd.classList.remove("open");$("#sheetShade").classList.remove("open");sh.style.transform="";
-  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true;bd.hidden=true;$("#sheetShade").hidden=true},320);
+  sh.classList.remove("open","dragging");bd.classList.remove("open");sh.style.transform="";
+  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true;bd.hidden=true},320);
 }
 // 往下拖关闭：只从拖动条和弹层顶部 48px 开始
 let drag=null;
