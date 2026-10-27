@@ -2,9 +2,9 @@
    - 自己的文件（index.html、粤拼库、字体等）：先联网拿最新版，没网时用缓存
    - 歌词搜索（lrclib）等其他网站的请求：不缓存，照常联网
    每次改了要缓存的文件列表，把 VERSION 加一。 */
-const VERSION = "v15";
+const VERSION = "v16";
 const CACHE = "yuechang-" + VERSION;
-const SHELL = ["./", "./pack.js", "./srs.js", "./lessons.js", "./proof.js", "./gesture.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
+const SHELL = ["./", "./pack.js", "./srs.js", "./study.js", "./lessons.js", "./proof.js", "./gesture.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil((async () => {
