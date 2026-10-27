@@ -26,25 +26,26 @@ module.exports = { name: "feedback", async run(b) {
   b.check("tone-spin-reduced-motion", (await b.ev(spinName)) === "");
   await b.reducedMotion(false); await b.sleep(400);
 
-  // 状态栏方案 d：整屏变暗（含状态栏），遮罩一直不透明，变的是它自己的颜色（Safari 取到的永远是遮罩当时的颜色）；
-  // 顶部色带在遮罩下面，跟着一起变暗
-  const bd = `(() => { const e = document.querySelector("#backdrop"), s = getComputedStyle(e), r = e.getBoundingClientRect();
-    return { pos: s.position, top: r.top, covers: r.bottom >= innerHeight, op: +s.opacity, bg: s.backgroundColor, tr: s.transitionProperty,
-      tintZ: +getComputedStyle(document.querySelector("#topTint")).zIndex, z: +s.zIndex, hidden: e.hidden }; })()`;
-  const scrim = await b.ev(`(() => { const d = document.createElement("div"); d.style.background = "var(--scrim)"; document.body.append(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
-  b.check("tint-exists", await b.ev(`getComputedStyle(document.querySelector("#topTint")).position === "fixed"`));
+  // 状态栏方案 a：一条永久的 fixed 顶部色带（页面底色），层级高于遮罩
+  const tint = await b.ev(`(() => { const e = document.querySelector("#topTint"); if (!e) return null; const s = getComputedStyle(e);
+    return { pos: s.position, top: s.top, z: +s.zIndex, bg: s.backgroundColor, body: getComputedStyle(document.body).backgroundColor, h: e.getBoundingClientRect().height,
+      bz: +getComputedStyle(document.querySelector("#backdrop")).zIndex, rule: [...document.styleSheets[0].cssRules].filter(r => r.selectorText === "#topTint").map(r => r.style.height).join() }; })()`);
+  b.check("top-tint " + JSON.stringify(tint), !!tint && tint.pos === "fixed" && tint.top === "0px" && tint.z > tint.bz && tint.bg === tint.body && tint.h >= 2 && /safe-area-inset-top/.test(tint.rule));
+
+  // 状态栏方案 b：弹层打开时，靠近屏幕顶部、有颜色的 fixed 元素只能是顶部色带（遮罩不用 fixed）
+  const topFixed = `[...document.querySelectorAll("body *")].filter(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect();
+    return s.position === "fixed" && r.height > 0 && r.top <= 60 && r.bottom > 0 && s.visibility !== "hidden" && !/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor); }).map(e => e.id || e.className)`;
+  const covers = `(() => { const r = document.querySelector("#backdrop").getBoundingClientRect(); return r.top <= 0 && r.bottom >= innerHeight && getComputedStyle(document.querySelector("#backdrop")).position; })()`;
   await b.ev(click("#btnBackup")); await b.sleep(500);
-  const o = await b.ev(bd);
-  b.check("backdrop-full-dim " + JSON.stringify(o), o.pos === "fixed" && o.top === 0 && o.covers && o.op === 1 && o.bg === scrim && o.tintZ < o.z);
-  b.check("no-shade", await b.ev(`!document.querySelector("#sheetShade")`));
-  // M3.7：Safari 给状态栏取色不跟过渡走（v10 打开闪白、关闭闪暗），改成一下子变暗、一下子恢复
-  b.check("backdrop-no-transition " + o.tr, o.tr === "all" ? (await b.ev(`getComputedStyle(document.querySelector("#backdrop")).transitionDuration`)) === "0s" : !/background|opacity/.test(o.tr));
-  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(20);
-  b.check("close-undims-at-once", (await b.ev(bd)).hidden);
-  await b.sleep(500);
-  await b.ev(click("#btnBackup")); await b.sleep(20);
-  b.check("open-dims-at-once", (await b.ev(bd)).bg === scrim);
-  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(500);
+  b.check("sheet-top-fixed-only-tint " + JSON.stringify(await b.ev(topFixed)), JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
+  b.check("backdrop-covers-home " + (await b.ev(covers)), (await b.ev(covers)) === "absolute");
+  await F.closeSheet(b);
+  await F.openSong(b, "t1");
+  await b.ev("window.scrollTo(0, document.scrollingElement.scrollHeight)"); await b.sleep(300);
+  await b.ev(click("#btnMenu")); await b.sleep(500);
+  b.check("backdrop-covers-scrolled " + (await b.ev(covers)), (await b.ev(covers)) === "absolute" && JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
+  await F.closeSheet(b);
+  await b.ev(click("#playerView [data-back]")); await b.sleep(900);
 
   // bug 5：歌词输入框固定高度，文字不溢出
   await b.ev(click("#btnAdd")); await b.sleep(700);
@@ -98,17 +99,6 @@ module.exports = { name: "feedback", async run(b) {
   const before = await b.ev(F.idbCount("songs"));
   await b.ev(`(() => { const s = document.querySelector("#btnSave"); s.click(); s.click(); })()`); await b.sleep(1200);
   b.check("save-once " + before + "→" + (await b.ev(F.idbCount("songs"))), (await b.ev(F.idbCount("songs"))) === before + 1 && await b.ev(`!document.querySelector("#playerView").hidden`));
-
-  // M3.9：歌曲页有吸顶的顶栏（sticky），Safari 会拿它的背景色染状态栏，盖在上面的遮罩不起作用。
-  // 弹层打开时顶栏的背景色变透明（底色改用背景图画，看起来不变），让 Safari 跳过它
-  const barBg = `(() => { const s = getComputedStyle(document.querySelector("#playerView .bar")); return { c: s.backgroundColor, img: s.backgroundImage }; })()`;
-  b.check("bar-normal " + JSON.stringify(await b.ev(barBg)), (await b.ev(barBg)).c !== "rgba(0, 0, 0, 0)" && (await b.ev(barBg)).img === "none");
-  await b.ev(click("#btnMenu")); await b.sleep(20);
-  const ob = await b.ev(barBg);
-  b.check("bar-skipped-while-sheet " + JSON.stringify(ob), ob.c === "rgba(0, 0, 0, 0)" && /gradient/.test(ob.img));
-  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(20);
-  b.check("bar-back-after-close " + JSON.stringify(await b.ev(barBg)), (await b.ev(barBg)).c !== "rgba(0, 0, 0, 0)" && (await b.ev(barBg)).img === "none");
-  await b.sleep(400);
 
   b.check("feedback: 页面没有报错", b.errors.length === 0);
 } };

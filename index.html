@@ -53,9 +53,9 @@
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font-cjk);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
-/* 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色给状态栏上色（不再读 theme-color）。
-   放一条永久的页面底色色带，平时 Safari 取到 --bg；它在弹层遮罩下面（39 < 40），打开弹层时跟着一起变暗。至少 2px，Safari 模式下顶部安全区可能是 0 */
-#topTint{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),2px);z-index:39;background:var(--bg);pointer-events:none}
+/* 状态栏方案 a：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色给状态栏上色（不再读 theme-color）。
+   放一条永久的页面底色色带，层级高于弹层遮罩，让 Safari 始终取到 --bg。至少 2px，Safari 模式下顶部安全区可能是 0 */
+#topTint{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),2px);z-index:45;background:var(--bg);pointer-events:none}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button,a,label,input,textarea,select,[role=button]{touch-action:manipulation}
@@ -277,12 +277,11 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 #prPlay.playing .i-pause{display:block}
 
 /* Sheet：从下面滑上来，可以往下拖关闭 */
-/* 状态栏方案 e：整屏变暗（连状态栏一起）。iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，不跟过渡动画走，
-   所以遮罩没有过渡：打开一下子变暗，关闭立刻隐藏 */
-.backdrop{position:fixed;inset:0;z-index:40;background:transparent}
-.backdrop.open{background:var(--scrim)}
-/* 吸顶顶栏也会被 Safari 拿来染状态栏（遮罩盖在上面也没用）。弹层打开时它的背景色变透明、底色改用背景图画，看起来不变，Safari 就跳过它 */
-body:has(#backdrop:not([hidden])) .bar{background-color:transparent;background-image:linear-gradient(var(--bg),var(--bg))}
+/* 状态栏方案 c：遮罩完全透明（只用来接住"点外面关闭"），不变暗也不模糊。
+   变暗的遮罩会让 iOS 26 Safari 的状态栏闪暗（fixed 时）或显得闪白（absolute 时，页面变暗而状态栏不变）。
+   仍然用 absolute 铺满整页（方案 b），弹层靠 --shadow-sheet 和页面分开 */
+.backdrop{position:absolute;left:0;right:0;top:0;z-index:40;background:transparent;opacity:0;transition:opacity var(--dur-slow) var(--ease)}
+.backdrop.open{opacity:1}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:720px;margin:0 auto;background:var(--surface);border-radius:34px 34px 0 0;
   max-height:88dvh;overflow:auto;overscroll-behavior-y:contain;box-shadow:var(--shadow-sheet);padding-bottom:env(safe-area-inset-bottom,0px);
   transform:translateY(100%);opacity:0;transition:transform var(--dur-slow) var(--ease),opacity var(--dur-slow) var(--ease)}
@@ -1117,16 +1116,15 @@ let sheetTimer=0;
 function openSheet(html){
   const sh=$("#sheet"),bd=$("#backdrop");clearTimeout(sheetTimer);
   $("#sheetBody").innerHTML=`<div class="grab"></div>`+html;
-  if(sh.hidden||!sh.classList.contains("open")){sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
+  if(sh.hidden||!sh.classList.contains("open")){bd.style.height=Math.max(document.documentElement.scrollHeight,innerHeight)+"px";sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
 }
 function closeSheet(){
   if(confirmDone)confirmDone(false);
   const sh=$("#sheet"),bd=$("#backdrop");
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   if(sh.hidden)return;
-  // 遮罩立刻撤掉：Safari 给状态栏取色不跟过渡，一下子恢复才能和页面同步
-  sh.classList.remove("open","dragging");bd.classList.remove("open");bd.hidden=true;sh.style.transform="";
-  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true},320);
+  sh.classList.remove("open","dragging");bd.classList.remove("open");sh.style.transform="";
+  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true;bd.hidden=true},320);
 }
 // 往下拖关闭：只从拖动条和弹层顶部 48px 开始
 let drag=null;
