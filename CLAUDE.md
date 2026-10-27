@@ -18,13 +18,15 @@
   - `proof.js`：编辑歌曲（原「校对歌词」）的时间计算和行操作（全局 `PROOF`：`shiftAll`、`setStart`、`fmtT`、`fmtOffset`；行操作 `toEdit`、`insertAfter`、`split`、`mergeUp`、`remove`、`toSong`，保存时 `toSong` 返回新的 lines/overrides/learned 和原行号→新行号的 map，用来更新卡片出处）
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
   - 测试：`node --test`（纯函数）；`node tests/browser/run.js [过滤]`（页面测试，用本机 Chrome 无界面跑 `tests/browser/*.scenario.js`，截图在 `tests/browser/out/` 不进仓库）。开发者不用跑
-  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，按层级 `DEPTH`：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)，往深一层 push、同层 replace。右滑返回 **Safari 和主屏幕模式都只用 iOS 系统自带的**，App 不自己实现（2026-10-27 开发者 iPhone 实测：主屏幕模式下系统也有右滑返回，App 再做一套会出现两个首页）。系统手势触发的 popstate 不播 App 的返回动画；编辑歌曲页有未保存改动时 popstate 会推回编辑页并弹出保存提示
+  - 页面切换：`go(view)` / `goBack()` + `history.pushState/replaceState`，按层级 `DEPTH`：首页(0) → 导入/打轴/播放/设置(1) → 编辑歌曲(2)，往深一层 push、同层 replace。右滑返回 **Safari 和主屏幕模式都只用 iOS 系统自带的**，App 不自己实现（2026-10-27 开发者 iPhone 实测：主屏幕模式下系统也有右滑返回，App 再做一套会出现两个首页）。系统手势触发的 popstate 不播 App 的返回动画；编辑歌曲页有未保存改动时 popstate 会推回编辑页并弹出保存提示
   - 歌词换行：`wrapGroups()` 把标点和前一个字、同一个词的字、最后两个字绑成不能拆开的组
   - 新增要离线可用的文件时，加进 `sw.js` 的 `SHELL` 并把 `VERSION` 加一
   - 删除类操作都用 `confirmSheet({title, body})`（返回 Promise<boolean>）先确认；删除歌曲走 `deleteSongs(ids)`：先从列表拿掉，5 秒内可撤销，`commitDelete()` 才真正删数据库（5 秒后、离开首页、切后台），卡片保留只去掉出处
-  - 按下效果：**不用 CSS `:active`**，JS 在 pointerdown 时给 `.btn,.keycap,.song,.ib,.res` 加 `.pressed`，抬起/取消/移出/滚动时去掉；`go()`/`goBack()` 先 `clearPressed()` 再等一帧才切页；popstate、pageshow 也清掉。`:hover` 只能写在 `@media (hover: hover)` 里
+  - 按下效果：**不用 CSS `:active`**，JS 在 pointerdown 时给 `.btn,.tones .key,.song,.ib,.res` 加 `.is-pressed`，抬起/取消/移出/滚动时去掉；`go()`/`goBack()` 先 `clearPressed()` 再等一帧才切页；popstate、pageshow 也清掉。`:hover` 只能写在 `@media (hover: hover)` 里
   - 浮动播放条 `.player`：`show()` 在切页动画结束后加 `bar-in`；`goBack()` 先加 `bar-out` 等 200ms 再 `history.back()`
-  - 状态栏：iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，页面最上面放了永久色带 `#topTint`，遮罩 `#backdrop` 完全透明（absolute 铺满整页，只接住"点外面关闭"），弹层后面不变暗，弹层用 `--shadow-sheet` 阴影 + 描边（方案 c，开发者最终选定；试过的变暗方案都会闪，见设计规范 7.4 的试验记录）
+  - 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以**顶部附近不能有带颜色的 fixed 元素**（`#topTint` 已去掉）。弹窗的暗色层 `#backdrop` 在 `openSheet` 时被放进当前页面的 `<section>` 里，absolute 铺满整页、跟着页面走，和弹窗一起淡入淡出（`--scrim`）；弹窗本身仍然 fixed 在底部（M3.11，见设计规范 7.4 的试验记录）。如果真机还闪，下一步改成不加暗色层、只用更明显的阴影（参考 `--shadow-3` 加强）
+  - 设置页 `settingsView`：首页右上角齿轮进入；「每天新学几句」2/4/6（存 `prefs.goal`，默认 4，M4 接上功能）+ 备份与恢复（`renderSettings()`）
+  - 声调键帽（设计规范 5.2）：`.tones .key` 里两层 `.key-base`（声调色，不动）和 `.key-face`（按下时只有它下移 4px）
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
   - `getJyutpingList(text)` 返回 `[字, 粤拼|null][]`
   - `getJyutpingText(text)` 返回空格分隔的粤拼
@@ -68,7 +70,8 @@
 - **M3.7**：状态栏方案 e：遮罩去掉过渡，一下子变暗、一下子恢复。真机打开同步，关闭晚 0.几秒
 - **M3.8**：关闭弹层时把 `#topTint` 换成新元素——真机没用，M3.9 撤掉
 - **M3.9**：歌曲页的「⋯」菜单和词卡状态栏不变暗：吸顶顶栏 `.bar` 被 Safari 拿来取色，弹层打开时它的背景色变透明（用背景图画底色）
-- **M3.10**：开发者决定回到方案 c（完全不闪，也不变暗），代码恢复成 M3.4 的样子。等 iPhone 验收
+- **M3.10**：开发者决定回到方案 c（完全不闪，也不变暗），代码恢复成 M3.4 的样子。真机：从主屏幕图标打开会闪
+- **M3.11**：状态栏换思路，不再调遮罩：备份改成整页「设置」（首页齿轮，从右边滑入，含「每天新学几句」2/4/6 先只显示）；去掉 `#topTint`；弹窗暗色层放进当前页面（absolute，跟着页面）；声调键帽按新规范 5.2 改成底座 + 键面两层；按下 class 改名 `.is-pressed`。等 iPhone 验收
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）

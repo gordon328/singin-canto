@@ -29,13 +29,13 @@ module.exports = { name: "m1", async run(b) {
   await F.closeSheet(b);
 
   await b.nav("/");
-  await b.ev(`document.querySelector("#btnBackup").click()`); await b.sleep(400);
+  await b.ev(`document.querySelector("#btnSettings").click()`); await b.sleep(800);
   const text = await b.ev(`document.querySelector("#bkOut").value`);
   const obj = JSON.parse(text);
   b.check("backup: v2，含 cards 和 meta，不含音频", obj.v === 2 && obj.cards.length === 3 && Array.isArray(obj.meta) && obj.songs.every(s => !("audio" in s)));
-  b.check("backup: 数量栏 2 首歌 · 3 个生词", (await b.ev(F.sheetText)).includes("2 首歌 · 3 个生词"));
-  const restore = t => `(async () => { if (document.querySelector("#sheet").hidden) document.querySelector("#btnBackup").click();
-    await new Promise(r => setTimeout(r, 400)); document.querySelector("#bkIn").value = ${JSON.stringify("__T__")}.replace("__T__", ${JSON.stringify(t)});
+  b.check("backup: 数量栏 2 首歌 · 3 个生词", (await b.ev(`document.querySelector("#settingsView").innerText`)).includes("2 首歌 · 3 个生词"));
+  const restore = t => `(async () => { if (document.querySelector("#settingsView").hidden) document.querySelector("#btnSettings").click();
+    await new Promise(r => setTimeout(r, 800)); document.querySelector("#bkIn").value = ${JSON.stringify("__T__")}.replace("__T__", ${JSON.stringify(t)});
     document.querySelector("#doRestore").click(); await new Promise(r => setTimeout(r, 900)); return document.querySelector("#bkMsg").innerText; })()`;
   await b.ev(F.WIPE); await b.nav("/");
   b.check("backup: 新设备恢复", (await b.ev(restore(text))).includes("已恢复 2 首歌、3 个生词") && (await b.ev(F.idbCount("cards"))) === 3);

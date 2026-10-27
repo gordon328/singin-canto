@@ -28,7 +28,7 @@ module.exports = { name: "delete", async run(b) {
   b.check("select-mode " + (await b.ev(`document.querySelector("#btnDelSel").innerText`)),
     (await b.ev(`document.querySelectorAll("#songs .song .check").length`)) === 3 && (await b.ev(`document.querySelector("#btnDelSel").innerText.trim()`)) === "删除（0）"
     && (await b.ev(`getComputedStyle(document.querySelector("#btnDelSel")).backgroundColor`)) === danger
-    && await b.ev(visible("#btnDone")) && !(await b.ev(visible("#btnBackup"))) && !(await b.ev(visible("#btnAdd"))) && !(await b.ev(visible("#btnSelect"))));
+    && await b.ev(visible("#btnDone")) && !(await b.ev(visible("#btnSettings"))) && !(await b.ev(visible("#btnAdd"))) && !(await b.ev(visible("#btnSelect"))));
   await b.shot("select-light"); await b.dark(true); await b.sleep(300); await b.shot("select-dark"); await b.dark(false);
   await b.ev(click("#btnDelSel")); await b.sleep(150);
   b.check("delete-none " + (await b.ev(toast)), (await b.ev(toast)) === "先点歌曲选择要删除的歌");
@@ -83,14 +83,14 @@ module.exports = { name: "delete", async run(b) {
   b.check("single-undo", (await b.ev(songIds)) === "t3" && !!(await b.ev(F.idbGet("songs", "t3"))));
   // 选择模式点「完成」退出
   await b.ev(click("#btnSelect")); await b.sleep(150); await b.ev(click('.song[data-id="t3"]')); await b.ev(click("#btnDone")); await b.sleep(200);
-  b.check("done-exits", !(await b.ev(visible("#btnDelSel"))) && await b.ev(visible("#btnBackup")) && (await b.ev(`document.querySelectorAll("#songs .song .check").length`)) === 0);
+  b.check("done-exits", !(await b.ev(visible("#btnDelSel"))) && await b.ev(visible("#btnSettings")) && (await b.ev(`document.querySelectorAll("#songs .song .check").length`)) === 0);
   await b.ev(click('.song[data-id="t3"]')); await b.sleep(900);
   b.check("tap-opens-after-done", await b.ev(visible("#playerView")));
   // 删除后 5 秒内恢复一份包含这首歌的备份：恢复的歌不能被稍后的真正删除删掉
   await b.ev(click("#playerView [data-back]")); await b.sleep(700);
   const t3 = await b.ev(`(async () => { const s = await (${F.idbGet("songs", "t3")}); delete s.audio; return s; })()`);
   await selectAndDelete(b, ["t3"]);
-  await b.ev(click("#btnBackup")); await b.sleep(500);
+  await b.ev(click("#btnSettings")); await b.sleep(500);
   await b.ev(`(() => { const t = document.querySelector("#bkIn"); t.value = ${JSON.stringify(JSON.stringify({ app: "yuechang", v: 2, songs: [t3], cards: [], meta: [] }))}; })()`);
   await b.ev(click("#doRestore")); await b.sleep(5800);
   b.check("restore-during-undo-keeps-song", !!(await b.ev(F.idbGet("songs", "t3"))));

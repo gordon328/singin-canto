@@ -7,7 +7,7 @@ module.exports = { name: "feedback", async run(b) {
   await F.seed(b);
 
   // bug 3：每个页面从一开始就有不透明底色
-  b.check("pages-opaque", await b.ev(`["home","importView","syncView","playerView","proofView"].every(id => { const c = getComputedStyle(document.getElementById(id)).backgroundColor; return c !== "rgba(0, 0, 0, 0)" && c !== "transparent"; })`));
+  b.check("pages-opaque", await b.ev(`["home","importView","syncView","playerView","proofView","settingsView"].every(id => { const c = getComputedStyle(document.getElementById(id)).backgroundColor; return c !== "rgba(0, 0, 0, 0)" && c !== "transparent"; })`));
 
   // 改进 8：--danger
   const danger = `getComputedStyle(document.documentElement).getPropertyValue("--danger").trim().toUpperCase()`;
@@ -26,24 +26,31 @@ module.exports = { name: "feedback", async run(b) {
   b.check("tone-spin-reduced-motion", (await b.ev(spinName)) === "");
   await b.reducedMotion(false); await b.sleep(400);
 
-  // 状态栏方案 a：一条永久的 fixed 顶部色带（页面底色），层级高于遮罩
-  const tint = await b.ev(`(() => { const e = document.querySelector("#topTint"); if (!e) return null; const s = getComputedStyle(e);
-    return { pos: s.position, top: s.top, z: +s.zIndex, bg: s.backgroundColor, body: getComputedStyle(document.body).backgroundColor, h: e.getBoundingClientRect().height,
-      bz: +getComputedStyle(document.querySelector("#backdrop")).zIndex, rule: [...document.styleSheets[0].cssRules].filter(r => r.selectorText === "#topTint").map(r => r.style.height).join() }; })()`);
-  b.check("top-tint " + JSON.stringify(tint), !!tint && tint.pos === "fixed" && tint.top === "0px" && tint.z > tint.bz && tint.bg === tint.body && tint.h >= 2 && /safe-area-inset-top/.test(tint.rule));
-
-  // 状态栏方案 b：弹层打开时，靠近屏幕顶部、有颜色的 fixed 元素只能是顶部色带（遮罩不用 fixed）
+  // M3.11 状态栏新思路：顶部附近不能出现有颜色的 fixed 元素（去掉 #topTint，遮罩也不用 fixed）。
+  // 弹窗的暗色层放进当前页面的根元素里，absolute 铺满整页、跟着页面走，和弹窗一起淡入淡出
   const topFixed = `[...document.querySelectorAll("body *")].filter(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect();
     return s.position === "fixed" && r.height > 0 && r.top <= 60 && r.bottom > 0 && s.visibility !== "hidden" && !/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor); }).map(e => e.id || e.className)`;
-  const covers = `(() => { const r = document.querySelector("#backdrop").getBoundingClientRect(); return r.top <= 0 && r.bottom >= innerHeight && getComputedStyle(document.querySelector("#backdrop")).position; })()`;
-  await b.ev(click("#btnBackup")); await b.sleep(500);
-  b.check("sheet-top-fixed-only-tint " + JSON.stringify(await b.ev(topFixed)), JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
-  b.check("backdrop-covers-home " + (await b.ev(covers)), (await b.ev(covers)) === "absolute");
-  await F.closeSheet(b);
+  const dim = `(() => { const e = document.querySelector("#backdrop"), s = getComputedStyle(e), p = e.parentElement, r = e.getBoundingClientRect(), pr = p.getBoundingClientRect();
+    return { parent: p.id, pos: s.position, fits: Math.abs(r.top - pr.top) < 1 && Math.abs(r.height - pr.height) < 1 && r.height >= innerHeight, op: +s.opacity, bg: s.backgroundColor, tr: s.transitionProperty, hidden: e.hidden }; })()`;
+  const scrim = await b.ev(`(() => { const d = document.createElement("div"); d.style.background = "var(--scrim)"; document.body.append(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
+  b.check("no-top-tint", !(await b.ev(`!!document.querySelector("#topTint")`)));
   await F.openSong(b, "t1");
+  await b.ev(click("#btnMenu")); await b.sleep(30);
+  const opening = await b.ev(dim);
+  b.check("dim-fades-in " + JSON.stringify(opening), opening.op < 1 && !opening.hidden);
+  await b.sleep(500);
+  const o = await b.ev(dim);
+  b.check("dim-in-page " + JSON.stringify(o), o.parent === "playerView" && o.pos === "absolute" && o.fits && o.op === 1 && o.bg === scrim && /opacity/.test(o.tr));
+  b.check("no-colored-fixed-at-top " + JSON.stringify(await b.ev(topFixed)), JSON.stringify(await b.ev(topFixed)) === "[]");
+  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(60);
+  const closing = await b.ev(dim);
+  b.check("dim-fades-out " + JSON.stringify(closing), closing.op < 1 && closing.op > 0 && !closing.hidden);
+  await b.sleep(500);
+  b.check("dim-hidden-after-close", (await b.ev(dim)).hidden);
   await b.ev("window.scrollTo(0, document.scrollingElement.scrollHeight)"); await b.sleep(300);
   await b.ev(click("#btnMenu")); await b.sleep(500);
-  b.check("backdrop-covers-scrolled " + (await b.ev(covers)), (await b.ev(covers)) === "absolute" && JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
+  const os = await b.ev(dim);
+  b.check("dim-covers-scrolled " + JSON.stringify(os), os.fits && os.op === 1 && JSON.stringify(await b.ev(topFixed)) === "[]");
   await F.closeSheet(b);
   await b.ev(click("#playerView [data-back]")); await b.sleep(900);
 
@@ -60,27 +67,27 @@ module.exports = { name: "feedback", async run(b) {
     && (await b.ev(cs("#fLyrics", "overflowY"))) === "auto" && (await b.ev(cs("#fLyrics", "clipPath"))) !== "none");
   await b.ev(click("#importView [data-back]")); await b.sleep(700);
 
-  // bug 2：按下效果由 JS 控制（.pressed），不用 CSS :active；跳转前先松开；回到首页时没有按下的元素
+  // bug 2：按下效果由 JS 控制（.is-pressed），不用 CSS :active；跳转前先松开；回到首页时没有按下的元素
   b.check("no-css-active", await b.ev(`![...document.styleSheets[0].cssRules].some(function walk(r) { return /:active/.test(r.selectorText || "") || [...(r.cssRules || [])].some(walk); })`));
   const tf = `getComputedStyle(document.querySelector("#btnAdd")).transform`;
   const pdown = (sel, type) => `document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new PointerEvent(${JSON.stringify(type)}, { bubbles: true, clientX: 300, clientY: 880 }))`;
   await b.ev(pdown("#btnAdd", "pointerdown")); await b.sleep(150);
-  b.check("press-on-down " + (await b.ev(tf)), await b.ev(`document.querySelector("#btnAdd").classList.contains("pressed")`) && (await b.ev(tf)) !== "none");
+  b.check("press-on-down " + (await b.ev(tf)), await b.ev(`document.querySelector("#btnAdd").classList.contains("is-pressed")`) && (await b.ev(tf)) !== "none");
   await b.ev(pdown("#btnAdd", "pointerup"));
-  b.check("release-on-up", !(await b.ev(`document.querySelector("#btnAdd").classList.contains("pressed")`)));
+  b.check("release-on-up", !(await b.ev(`document.querySelector("#btnAdd").classList.contains("is-pressed")`)));
   await b.ev(pdown("#btnAdd", "pointerdown")); await b.ev(pdown("#btnAdd", "pointercancel"));
-  b.check("release-on-cancel", !(await b.ev(`document.querySelector("#btnAdd").classList.contains("pressed")`)));
+  b.check("release-on-cancel", !(await b.ev(`document.querySelector("#btnAdd").classList.contains("is-pressed")`)));
   // 按着就点了跳转：跳转开始前已经松开
   await b.ev(`(() => { const e = document.querySelector("#btnAdd"); e.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); e.click(); window.__pressedAtNav = null;
-    requestAnimationFrame(() => { window.__pressedAtNav = e.classList.contains("pressed"); }); })()`);
+    requestAnimationFrame(() => { window.__pressedAtNav = e.classList.contains("is-pressed"); }); })()`);
   await b.sleep(50);
   b.check("released-before-nav", (await b.ev("window.__pressedAtNav")) === false);
   await b.sleep(700);
   await b.ev(`(() => { const e = document.querySelector("#importView [data-back]"); e.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); e.click(); })()`);
   await b.sleep(800);
-  await b.ev(`document.querySelector("#btnAdd").classList.add("pressed")`);
+  await b.ev(`document.querySelector("#btnAdd").classList.add("is-pressed")`);
   await b.ev(`window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))`);
-  b.check("home-clean-after-back", await b.ev(`!document.querySelector("#home").hidden && !document.querySelector(".pressed")`));
+  b.check("home-clean-after-back", await b.ev(`!document.querySelector("#home").hidden && !document.querySelector(".is-pressed")`));
 
   // bug 4：导入页保存按钮不灰掉；缺东西时提示并滚到那一步；连点只存一首
   await b.ev(click("#btnAdd")); await b.sleep(700);

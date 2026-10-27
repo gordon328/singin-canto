@@ -53,9 +53,6 @@
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font-cjk);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
-/* 状态栏方案 a：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色给状态栏上色（不再读 theme-color）。
-   放一条永久的页面底色色带，层级高于弹层遮罩，让 Safari 始终取到 --bg。至少 2px，Safari 模式下顶部安全区可能是 0 */
-#topTint{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),2px);z-index:45;background:var(--bg);pointer-events:none}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button,a,label,input,textarea,select,[role=button]{touch-action:manipulation}
@@ -67,18 +64,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:10px 18px;border-radius:16px;
   background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1);font-size:16px;font-weight:600;line-height:1.2;text-align:center;
   transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-.btn.pressed{transform:scale(.97);background:var(--surface-press)}
+.btn.is-pressed{transform:scale(.97);background:var(--surface-press)}
 .btn.primary{background:var(--accent);color:var(--on-accent)}
-.btn.primary.pressed{background:var(--accent-press)}
+.btn.primary.is-pressed{background:var(--accent-press)}
 .btn.inverse{background:var(--inverse);color:var(--on-inverse)}
-.btn.inverse.pressed{background:var(--ink-2)}
+.btn.inverse.is-pressed{background:var(--ink-2)}
 .btn.soft{background:var(--accent-soft);color:var(--accent);box-shadow:none}
-.btn.soft.pressed{background:var(--surface-press)}
+.btn.soft.is-pressed{background:var(--surface-press)}
 .btn.text{background:none;color:var(--muted);box-shadow:none}
-.btn.text.pressed{background:none}
+.btn.text.is-pressed{background:none}
 .btn.danger{color:var(--danger)}
 .btn.danger-fill{background:var(--danger);color:var(--on-accent)}
-.btn.danger-fill.pressed{background:var(--danger);opacity:.85}
+.btn.danger-fill.is-pressed{background:var(--danger);opacity:.85}
 .btn.small{min-height:44px;padding:8px 14px;border-radius:12px;font-size:15px}
 .btn.block{display:flex;width:100%}
 .btn.bottom{min-height:56px;border-radius:18px;font-size:17px}
@@ -95,7 +92,7 @@ textarea:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
 svg{display:block}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition-property:opacity!important;animation:none!important;scroll-behavior:auto!important}
-  .pressed{transform:none!important}
+  .is-pressed{transform:none!important}
   /* 减弱动态效果：播放条只淡入淡出 */
   .player.bar-in{animation:barFade var(--dur) var(--ease) both!important}
   .player.bar-out{animation:barFadeOut var(--dur) var(--ease) both!important}
@@ -108,20 +105,24 @@ svg{display:block}
 .sec-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:15px;font-weight:600}
 .sec-title .jp{font-weight:600}
 .tones{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:22px}
-.keycap{--tc:var(--muted);height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:18px;
-  background:var(--surface);box-shadow:inset 0 -4px 0 var(--tc),0 3px 6px rgba(34,31,51,.06);
-  transition:transform 100ms var(--ease),box-shadow 100ms var(--ease),background-color 100ms var(--ease)}
-.keycap.pressed{transform:translateY(3px);background:var(--surface-press);box-shadow:inset 0 -1px 0 var(--tc),inset 0 2px 4px rgba(34,31,51,.12)}
-.keycap .hz{font-size:22px;font-weight:600;line-height:1.1}
-.keycap .jp{font-size:12px;font-weight:600;color:var(--tc)}
-.keycap .hz,.keycap .jp{transition:opacity var(--dur) var(--ease)}
-.keycap.fade .hz,.keycap.fade .jp{opacity:0}
+/* 声调键帽（设计规范 5.2）：像实体按键，两层。底座（声调色）固定不动，平时露出键面下方 4px；
+   按下时只有键面往下移 4px 盖住底座。按钮本身不移动，也不用 box-shadow 画底边 */
+.tones .key{--tone:var(--muted);position:relative;height:66px;padding:0;border:0;background:none}
+.tones .key-base{position:absolute;left:0;right:0;top:4px;bottom:0;border-radius:18px;background:var(--tone)}
+.tones .key-face{position:absolute;left:0;right:0;top:0;bottom:4px;border-radius:18px;background:var(--surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  transition:transform 100ms var(--ease),background-color 100ms var(--ease)}
+.tones .key.is-pressed .key-face{transform:translateY(4px);background:var(--surface-press)}
+.tones .key .hz{font-size:22px;font-weight:600;line-height:1.1}
+.tones .key .jp{font-size:12px;font-weight:600;color:var(--tone)}
+.tones .key .hz,.tones .key .jp{transition:opacity var(--dur) var(--ease)}
+.tones .key.fade .hz,.tones .key.fade .jp{opacity:0}
 #btnToneNext.spin svg{animation:spin 400ms var(--ease)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .songs{display:flex;flex-direction:column;gap:10px;padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .song{display:flex;align-items:center;gap:14px;padding:14px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-.song.pressed{transform:scale(.98);background:var(--surface-press)}
+.song.is-pressed{transform:scale(.98);background:var(--surface-press)}
 .song .sq{flex:none;width:56px;height:56px;border-radius:18px;display:grid;place-items:center;font-size:24px;font-weight:700;background:var(--sq-bg);color:var(--sq-ink)}
 .song .meta{flex:1;min-width:0}
 .song .ttl{font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -143,7 +144,7 @@ svg{display:block}
   min-height:56px;padding:0 24px;border-radius:999px;box-shadow:var(--shadow-3)}
 
 /* 页面切换：前进时新页从右边滑入，旧页往左移并变暗；返回反过来 */
-body > section{background:var(--bg);min-height:100dvh}
+body > section{position:relative;background:var(--bg);min-height:100dvh}
 .nav-layer{position:fixed!important;left:0;right:0;pointer-events:none}
 .enter-fwd{animation:enterFwd var(--dur-slow) var(--ease) both}
 .leave-fwd{animation:leaveFwd var(--dur-slow) var(--ease) both}
@@ -216,10 +217,10 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .prog input::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:0}
 .ctrls{display:flex;align-items:center;justify-content:space-between;gap:4px}
 .ib{width:48px;height:48px;display:grid;place-items:center;border-radius:16px;color:var(--ink);transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-.ib.pressed{transform:scale(.94);background:var(--surface-press)}
+.ib.is-pressed{transform:scale(.94);background:var(--surface-press)}
 .ib.on{color:var(--accent);background:var(--accent-soft)}
 .ib.play{width:58px;height:58px;border-radius:20px;background:var(--accent);color:var(--on-accent)}
-.ib.play.pressed{background:var(--accent-press)}
+.ib.play.is-pressed{background:var(--accent-press)}
 .ib.rate{width:auto;min-width:56px;padding:0 10px;font-family:var(--font-latin);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 
 /* Import + sync：每一步是一张白卡片，保存按钮固定在底部 */
@@ -227,6 +228,8 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .card{background:var(--surface);border-radius:22px;box-shadow:var(--shadow-1);padding:16px;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 76px);transition:box-shadow var(--dur) var(--ease)}
 .card.need{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
 .field{display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;gap:8px}
+.seg .btn{flex:1}
 .field > textarea + .note{margin-top:4px}
 .field > .note:empty{display:none}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -240,7 +243,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .results{display:flex;flex-direction:column;gap:8px}
 .res{display:flex;justify-content:space-between;gap:8px;min-height:56px;padding:12px 14px;border-radius:18px;background:var(--bg);text-align:left;width:100%;
   transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-.res.pressed{transform:scale(.98);background:var(--surface-press)}
+.res.is-pressed{transform:scale(.98);background:var(--surface-press)}
 .res b{font-weight:600}
 .bottom-bar{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;max-width:688px;margin:0 auto}
 .sync-list{display:flex;flex-direction:column;gap:6px;padding-block:10px calc(240px + env(safe-area-inset-bottom,0px))}
@@ -277,10 +280,9 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 #prPlay.playing .i-pause{display:block}
 
 /* Sheet：从下面滑上来，可以往下拖关闭 */
-/* 状态栏方案 c：遮罩完全透明（只用来接住"点外面关闭"），不变暗也不模糊。
-   变暗的遮罩会让 iOS 26 Safari 的状态栏闪暗（fixed 时）或显得闪白（absolute 时，页面变暗而状态栏不变）。
-   仍然用 absolute 铺满整页（方案 b），弹层靠 --shadow-sheet 和页面分开 */
-.backdrop{position:absolute;left:0;right:0;top:0;z-index:40;background:transparent;opacity:0;transition:opacity var(--dur-slow) var(--ease)}
+/* 弹窗的暗色层：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以顶部附近不能有带颜色的 fixed 元素。
+   暗色层打开时放进当前页面的根元素里，absolute 铺满整页、跟着页面走，和弹窗一起淡入淡出；弹窗本身仍然固定在底部 */
+.backdrop{position:absolute;inset:0;z-index:40;background:var(--scrim);opacity:0;transition:opacity var(--dur-slow) var(--ease)}
 .backdrop.open{opacity:1}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:720px;margin:0 auto;background:var(--surface);border-radius:34px 34px 0 0;
   max-height:88dvh;overflow:auto;overscroll-behavior-y:contain;box-shadow:var(--shadow-sheet);padding-bottom:env(safe-area-inset-bottom,0px);
@@ -303,7 +305,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .wc-tip,.tip{padding:12px 14px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:14px;line-height:1.6}
 .wc-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btn.add-dashed{min-height:56px;border-radius:18px;background:none;box-shadow:none;color:var(--accent);border:2px dashed color-mix(in srgb,var(--accent) 40%,transparent)}
-.btn.add-dashed.pressed{background:var(--accent-soft)}
+.btn.add-dashed.is-pressed{background:var(--accent-soft)}
 .wc-known{min-height:56px;display:flex;align-items:center;justify-content:center;border-radius:18px;background:var(--bg);color:var(--muted);font-size:15px;font-weight:600}
 .mean{font-size:17px}
 .warn{padding:12px 14px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:13px;line-height:1.6}
@@ -319,7 +321,6 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 </style>
 </head>
 <body>
-<div id="topTint" aria-hidden="true"></div>
 
 <audio id="au" preload="auto" playsinline></audio>
 
@@ -329,7 +330,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
     <header class="home-head">
       <h1 class="brand">唱学粤语</h1>
       <button class="btn soft small" id="btnDone" type="button" hidden>完成</button>
-      <button class="btn soft icon" id="btnBackup" type="button" aria-label="备份"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+      <button class="btn soft icon" id="btnSettings" type="button" aria-label="设置"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </header>
     <div class="sec-title"><span>六个声调 · <span class="jp" id="toneSyl">si</span></span><button class="btn soft small" id="btnToneNext" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>换一组</button></div>
     <div class="tones" id="tones"></div>
@@ -445,6 +446,22 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
   </div>
 </section>
 
+<!-- SETTINGS -->
+<section id="settingsView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>设置</b></div>
+  </div></div>
+  <div class="wrap form">
+    <div class="card field">
+      <div class="label">每天新学几句</div>
+      <div class="seg" id="goalSeg"></div>
+      <div class="note">每天的学习功能做好后，按这里的数量安排新句子。</div>
+    </div>
+    <div class="card field" id="backupCard"></div>
+  </div>
+</section>
+
 <div id="backdrop" class="backdrop" hidden></div>
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
@@ -492,8 +509,8 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView","proofView"];
-const DEPTH={home:0,importView:1,syncView:1,playerView:1,proofView:2};
+const views=["home","importView","syncView","playerView","proofView","settingsView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,proofView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
@@ -513,13 +530,13 @@ function show(id,dir){
   to.style.position="relative";to.style.zIndex=2;to.classList.add(dir==="fwd"?"enter-fwd":"enter-back");
   navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating");if(bar)bar.classList.add("bar-in")},340);
 }
-// 按下效果用 JS 控制（不用 CSS :active，iPhone 上切页回来 :active 会卡住）：手指按下加 .pressed，抬起、取消、移出、滚动时立刻去掉
-const PRESSABLE=".btn,.keycap,.song,.ib,.res";
+// 按下效果用 JS 控制（不用 CSS :active，iPhone 上切页回来 :active 会卡住）：手指按下加 .is-pressed，抬起、取消、移出、滚动时立刻去掉
+const PRESSABLE=".btn,.tones .key,.song,.ib,.res";
 let pressedEl=null;
-function clearPressed(){document.querySelectorAll(".pressed").forEach(e=>e.classList.remove("pressed"));pressedEl=null}
+function clearPressed(){document.querySelectorAll(".is-pressed").forEach(e=>e.classList.remove("is-pressed"));pressedEl=null}
 document.addEventListener("pointerdown",e=>{
   clearPressed();const t=e.target.closest&&e.target.closest(PRESSABLE);
-  if(t&&!t.disabled){t.classList.add("pressed");pressedEl=t}
+  if(t&&!t.disabled){t.classList.add("is-pressed");pressedEl=t}
 },{passive:true,capture:true});
 ["pointerup","pointercancel"].forEach(ev=>document.addEventListener(ev,clearPressed,{passive:true,capture:true}));
 document.addEventListener("pointermove",e=>{
@@ -556,6 +573,7 @@ window.addEventListener("popstate",e=>{
   if(curView==="proofView"&&proof&&proof.dirty&&st.view!=="proofView"){history.pushState({view:"proofView",songId:proof.song.id},"");dirtyPrompt();return}
   closeSheet();
   if(curView==="proofView"){au.pause();if(proof)proof.stopAt=null}
+  if(st.view==="settingsView"){renderSettings();show("settingsView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
   // 回到首页：停掉播放，放开音频文件占的内存
@@ -587,14 +605,14 @@ function saveTones(rec){metaRecs.set("tones",rec);DB.put(rec,"meta")}
 function renderTones(animate){
   const set=LESSONS.TONE_SETS[metaRecs.get("tones").setIndex];
   $("#toneSyl").textContent=set.syl;
-  const html=set.chars.map((h,k)=>{const j=set.syl+(k+1);return `<button class="keycap" type="button" data-say="${h}" style="--tc:var(--t${k+1})" aria-label="${h} ${j} ${TONE_NAMES[k+1]}"><span class="hz">${h}</span><span class="jp">${j}</span></button>`}).join("");
+  const html=set.chars.map((h,k)=>{const j=set.syl+(k+1);return `<button class="key" type="button" data-say="${h}" style="--tone:var(--t${k+1})" aria-label="${h} ${j} ${TONE_NAMES[k+1]}"><span class="key-base"></span><span class="key-face"><span class="hz">${h}</span><span class="jp">${j}</span></span></button>`}).join("");
   const box=$("#tones");
   if(!animate||reduceMotion()||box.children.length!==6){box.innerHTML=html;return}
   // 六个键帽依次淡出，换字，再依次淡入（每个延迟 30ms）
   const tmp=document.createElement("div");tmp.innerHTML=html;
   [...box.children].forEach((cap,k)=>{
     setTimeout(()=>{cap.classList.add("fade");
-      setTimeout(()=>{const n=tmp.children[k];cap.dataset.say=n.dataset.say;cap.setAttribute("aria-label",n.getAttribute("aria-label"));cap.innerHTML=n.innerHTML;cap.classList.add("fade");void cap.offsetWidth;cap.classList.remove("fade")},220);
+      setTimeout(()=>{const n=tmp.children[k];cap.dataset.say=n.dataset.say;cap.setAttribute("aria-label",n.getAttribute("aria-label"));cap.querySelector(".key-face").innerHTML=n.querySelector(".key-face").innerHTML;cap.classList.add("fade");void cap.offsetWidth;cap.classList.remove("fade")},220);
     },k*30);
   });
 }
@@ -649,7 +667,7 @@ let selectMode=false,pendingDel=null;
 const selected=new Set();
 function renderSelectBar(){
   $("#btnSelect").hidden=selectMode||!songs.length;
-  $("#btnDone").hidden=!selectMode;$("#btnBackup").hidden=selectMode;
+  $("#btnDone").hidden=!selectMode;$("#btnSettings").hidden=selectMode;
   $("#btnAdd").hidden=selectMode;$("#btnDelSel").hidden=!selectMode;
   $("#btnDelSel").textContent=`删除（${selected.size}）`;
 }
@@ -1116,7 +1134,7 @@ let sheetTimer=0;
 function openSheet(html){
   const sh=$("#sheet"),bd=$("#backdrop");clearTimeout(sheetTimer);
   $("#sheetBody").innerHTML=`<div class="grab"></div>`+html;
-  if(sh.hidden||!sh.classList.contains("open")){bd.style.height=Math.max(document.documentElement.scrollHeight,innerHeight)+"px";sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
+  if(sh.hidden||!sh.classList.contains("open")){$("#"+curView).append(bd);sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
 }
 function closeSheet(){
   if(confirmDone)confirmDone(false);
@@ -1285,19 +1303,25 @@ function openPack(){
   const rm=$("#rmPack");if(rm)rm.addEventListener("click",async()=>{if(!await confirmSheet({title:"删除词汇包？",body:"重点词的意思、记忆提示和这首歌的大意会被删掉。生词卡片不受影响。"}))return;cur.pack=null;cur.updated=Date.now();await DB.put(cur);buildLyrics();applyToggles();closeSheet();toast("词汇包已删除")});
 }
 
-/* ---------- backup ---------- */
-$("#btnBackup").addEventListener("click",()=>{
+/* ---------- settings：每天新学几句（M4 接上功能）+ 备份与恢复 ---------- */
+$("#btnSettings").addEventListener("click",()=>{renderSettings();go("settingsView")});
+$("#goalSeg").addEventListener("click",e=>{const b=e.target.closest("[data-goal]");if(!b)return;prefs.goal=+b.dataset.goal;savePrefs();renderGoal()});
+function renderGoal(){
+  const g=[2,4,6].includes(prefs.goal)?prefs.goal:4;
+  $("#goalSeg").innerHTML=[2,4,6].map(n=>`<button class="btn small ${n===g?"primary":"soft"}" type="button" data-goal="${n}" aria-pressed="${n===g}">${n}</button>`).join("");
+}
+function renderSettings(){
+  renderGoal();
   const data=JSON.stringify({app:"yuechang",v:2,exported:new Date().toISOString(),songs:songs.map(s=>{const o={...s};delete o.audio;return o}),cards:[...cards.values()],meta:[...metaRecs.values()]});
-  openSheet(`
-    <h3>备份与恢复</h3>
+  $("#backupCard").innerHTML=`
+    <div class="label">备份与恢复</div>
     <p class="note" style="margin:0">备份包含歌词、时间轴、词汇包、改过的读音和生词卡片，不含音频。把备份文本存到备忘录里就行。</p>
     <div class="row"><button class="btn primary" type="button" id="cpBk">复制备份文本</button><span class="note">${songs.length} 首歌 · ${cards.size} 个生词 · ${Math.round(data.length/1024)} KB</span></div>
     <textarea id="bkOut" readonly hidden>${esc(data)}</textarea>
     <div class="label">恢复</div>
     <textarea id="bkIn" placeholder="粘贴之前复制的备份文本"></textarea>
     <div class="row"><button class="btn soft" type="button" id="doRestore">恢复</button><span id="bkMsg" class="note"></span></div>
-  `);
-  $("#sheetBody").onclick=null;
+  `;
   $("#cpBk").addEventListener("click",()=>{const box=$("#bkOut");const fb=()=>{box.hidden=false;box.focus();box.select();toast("已选中备份文本，请手动复制")};try{navigator.clipboard.writeText(data).then(()=>toast("已复制备份"),fb)}catch(e){fb()}});
   $("#doRestore").addEventListener("click",async()=>{
     await commitDelete(); // 先把还能撤销的删除真正做完，免得稍后把刚恢复的歌又删掉
@@ -1312,7 +1336,7 @@ $("#btnBackup").addEventListener("click",()=>{
     if(Array.isArray(obj.meta))for(const m of obj.meta)if(m&&typeof m.key==="string"&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}
     renderHome();$("#bkMsg").innerHTML=`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`;
   });
-});
+}
 
 /* ---------- boot ---------- */
 history.replaceState({view:"home"},"");

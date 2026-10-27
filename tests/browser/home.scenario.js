@@ -2,7 +2,7 @@
 const F = require("./fixtures.js");
 module.exports = { name: "home", async run(b) {
   await F.seed(b);
-  const caps = await b.ev(`[...document.querySelectorAll(".keycap")].map(k => ({ h: Math.round(k.getBoundingClientRect().height), t: k.innerText.replace(/\\s+/g, " ").trim() }))`);
+  const caps = await b.ev(`[...document.querySelectorAll("#tones .key")].map(k => ({ h: Math.round(k.getBoundingClientRect().height), t: k.innerText.replace(/\\s+/g, " ").trim() }))`);
   b.check("keycaps " + JSON.stringify(caps[0]), caps.length === 6 && caps.every(c => c.h === 66) && caps[0].t.includes("詩") && caps[0].t.includes("si1")
     && (await b.ev(`document.querySelector("#home").innerText`)).includes("六个声调 · si"));
   const cards = await b.ev(`[...document.querySelectorAll(".song")].map(s => { const r = s.getBoundingClientRect(); return [r.left, r.right]; })`);
