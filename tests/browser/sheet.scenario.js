@@ -5,13 +5,12 @@ module.exports = { name: "sheet", async run(b) {
   await F.openSong(b, "t1");
   await b.ev(F.tapChar(0, 2)); await b.sleep(600);
   const st = await b.ev(`(() => { const s = getComputedStyle(document.querySelector("#sheet")); const g = document.querySelector("#sheet .grab").getBoundingClientRect();
-    const scrim = getComputedStyle(document.documentElement).getPropertyValue("--scrim").trim().replace(/\\s/g, "");
-    return { r: s.borderTopLeftRadius, g: [Math.round(g.width), Math.round(g.height)], bd: getComputedStyle(document.querySelector("#backdrop")).backgroundColor.replace(/\\s/g, ""), scrim }; })()`);
-  b.check("sheet-style " + JSON.stringify(st), st.r === "34px" && st.g[0] === 40 && st.g[1] === 5 && st.bd.startsWith("rgba(34,31,51,0.3"));
-  // 暗色层用 --scrim（M3.11 起放在当前页面里，见 feedback 场景）；弹层另外有自己的阴影/描边（深色模式也要有），不模糊
-  const sep = `(() => { const s = getComputedStyle(document.querySelector("#sheet")); return [s.boxShadow, getComputedStyle(document.querySelector("#backdrop")).backdropFilter]; })()`;
+    return { r: s.borderTopLeftRadius, g: [Math.round(g.width), Math.round(g.height)] }; })()`);
+  b.check("sheet-style " + JSON.stringify(st), st.r === "34px" && st.g[0] === 40 && st.g[1] === 5);
+  // M3.12 不用暗幕：弹层靠更明显的阴影 + 描边浮在页面上（深色模式也要有），不模糊
+  const sep = `(() => { const s = getComputedStyle(document.querySelector("#sheet")); return [s.boxShadow, s.backdropFilter, !!document.querySelector("#backdrop")]; })()`;
   const lightSep = await b.ev(sep); await b.dark(true); await b.sleep(200); const darkSep = await b.ev(sep); await b.dark(false); await b.sleep(200);
-  b.check("sheet-separated " + JSON.stringify([lightSep, darkSep]), lightSep[0] !== "none" && darkSep[0] !== "none" && lightSep[1] === "none");
+  b.check("sheet-separated " + JSON.stringify([lightSep, darkSep]), lightSep[0].includes("rgba(34, 31, 51, 0.18) 0px -8px 40px") && darkSep[0] !== "none" && lightSep[1] === "none" && !lightSep[2]);
   b.check("sheet-open-anim", await b.ev(`document.querySelector("#sheet").classList.contains("open") && getComputedStyle(document.querySelector("#sheet")).transitionProperty.includes("transform")`));
   const sq = await b.ev(`(() => { const q = document.querySelector(".wc-square"); return q ? { t: q.innerText.replace(/\\s+/g, ""), bg: getComputedStyle(q).backgroundColor,
     soft: getComputedStyle(document.documentElement).getPropertyValue("--accent-soft").trim() } : null; })()`);
@@ -32,7 +31,7 @@ module.exports = { name: "sheet", async run(b) {
   await b.touch("touchStart", g[0], g[1]);
   for (let i = 1; i <= 5; i++) { await b.touch("touchMove", g[0], g[1] + i * 40); await b.sleep(16); }
   await b.touch("touchEnd"); await b.sleep(600);
-  b.check("drag-close", await b.ev(`document.querySelector("#sheet").hidden && document.querySelector("#backdrop").hidden`));
+  b.check("drag-close", await b.ev(`document.querySelector("#sheet").hidden`));
   await b.reducedMotion(true);
   await b.ev(F.tapChar(0, 0)); await b.sleep(500);
   b.check("reduced-motion", !(await b.ev(`getComputedStyle(document.querySelector("#sheet")).transitionProperty`)).includes("transform"));

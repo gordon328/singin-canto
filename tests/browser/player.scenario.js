@@ -22,8 +22,8 @@ module.exports = { name: "player", async run(b) {
   await b.ev(`window.scrollTo(0, 0)`); await b.sleep(300);
   await b.shot("player-light"); await b.dark(true); await b.sleep(300); await b.shot("player-dark"); await b.dark(false);
   await b.ev(`document.querySelector("#btnMenu").click()`); await b.sleep(500);
-  const menu = await b.ev(F.sheetText);
-  b.check("menu-items", menu.includes("词汇包") && menu.includes("删除这首歌"));
+  const menu = await b.ev(`document.querySelector("#songMenu").innerText`);
+  b.check("menu-items", menu.includes("编辑歌曲") && menu.includes("词汇包") && menu.includes("删除"));
   const danger = await b.ev(`(() => { const d = document.createElement("div"); d.style.color = "var(--danger)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`);
   b.check("menu-delete-red", (await b.ev(`getComputedStyle(document.querySelector('[data-menu="del"]')).color`)) === danger);
   await b.ev(`document.querySelector('[data-menu="del"]').click()`); await b.sleep(300);

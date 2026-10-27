@@ -26,33 +26,62 @@ module.exports = { name: "feedback", async run(b) {
   b.check("tone-spin-reduced-motion", (await b.ev(spinName)) === "");
   await b.reducedMotion(false); await b.sleep(400);
 
-  // M3.11 状态栏新思路：顶部附近不能出现有颜色的 fixed 元素（去掉 #topTint，遮罩也不用 fixed）。
-  // 弹窗的暗色层放进当前页面的根元素里，absolute 铺满整页、跟着页面走，和弹窗一起淡入淡出
+  // M3.12 弹出层不使用暗幕：Safari 的状态栏由它自己画，网页变暗时状态栏跟不上。顶部附近也不能出现有颜色的 fixed 元素。
+  // 歌曲页「⋯」改成下拉小菜单（挂在吸顶顶栏里，absolute）；底部弹窗靠阴影浮在页面上，点外面关闭（确认类弹窗除外）
   const topFixed = `[...document.querySelectorAll("body *")].filter(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect();
     return s.position === "fixed" && r.height > 0 && r.top <= 60 && r.bottom > 0 && s.visibility !== "hidden" && !/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor); }).map(e => e.id || e.className)`;
-  const dim = `(() => { const e = document.querySelector("#backdrop"), s = getComputedStyle(e), p = e.parentElement, r = e.getBoundingClientRect(), pr = p.getBoundingClientRect();
-    return { parent: p.id, pos: s.position, fits: Math.abs(r.top - pr.top) < 1 && Math.abs(r.height - pr.height) < 1 && r.height >= innerHeight, op: +s.opacity, bg: s.backgroundColor, tr: s.transitionProperty, hidden: e.hidden }; })()`;
-  const scrim = await b.ev(`(() => { const d = document.createElement("div"); d.style.background = "var(--scrim)"; document.body.append(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
+  const menu = `(() => { const m = document.querySelector("#songMenu"), s = getComputedStyle(m), r = m.getBoundingClientRect(), br = document.querySelector("#btnMenu").getBoundingClientRect();
+    return { hidden: m.hidden, open: m.classList.contains("open"), op: +s.opacity, tf: s.transform, pos: s.position, inBar: !!m.closest("#playerView .bar"), radius: s.borderTopLeftRadius,
+      below: r.top >= br.bottom && r.top - br.bottom < 12, right: Math.abs(r.right - br.right) < 1, items: [...m.querySelectorAll("[data-menu]")].map(e => e.innerText.trim()),
+      minH: Math.min(...[...m.querySelectorAll("[data-menu]")].map(e => e.getBoundingClientRect().height)) }; })()`;
+  const center = sel => `(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`;
+  const sheetShown = `!document.querySelector("#sheet").hidden`;
   b.check("no-top-tint", !(await b.ev(`!!document.querySelector("#topTint")`)));
+  b.check("no-scrim", !(await b.ev(`!!document.querySelector("#backdrop")`)) && (await b.ev(`getComputedStyle(document.documentElement).getPropertyValue("--scrim").trim()`)) === "");
   await F.openSong(b, "t1");
-  await b.ev(click("#btnMenu")); await b.sleep(30);
-  const opening = await b.ev(dim);
-  b.check("dim-fades-in " + JSON.stringify(opening), opening.op < 1 && !opening.hidden);
-  await b.sleep(500);
-  const o = await b.ev(dim);
-  b.check("dim-in-page " + JSON.stringify(o), o.parent === "playerView" && o.pos === "absolute" && o.fits && o.op === 1 && o.bg === scrim && /opacity/.test(o.tr));
+  await F.tapAt(b, ...(await b.ev(center("#btnMenu")))); await b.sleep(40);
+  const m0 = await b.ev(menu);
+  b.check("menu-anim-in " + JSON.stringify(m0), !m0.hidden && m0.open && m0.op < 1 && m0.tf !== "none");
+  await b.sleep(300);
+  const m1 = await b.ev(menu);
+  b.check("menu-dropdown " + JSON.stringify(m1), m1.op === 1 && m1.pos === "absolute" && m1.inBar && m1.below && m1.right && m1.radius === "16px" && m1.minH >= 44
+    && JSON.stringify(m1.items) === JSON.stringify(["编辑歌曲", "词汇包 ✓", "删除"]));
+  const surface = await b.ev(`(() => { const d = document.createElement("div"); d.style.background = "var(--surface)"; document.body.append(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
+  const dangerC = await b.ev(`(() => { const d = document.createElement("div"); d.style.color = "var(--danger)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`);
+  b.check("menu-style", (await b.ev(cs("#songMenu", "backgroundColor"))) === surface && (await b.ev(cs("#songMenu", "boxShadow"))) !== "none"
+    && (await b.ev(cs('[data-menu="del"]', "color"))) === dangerC && !(await b.ev(sheetShown)));
   b.check("no-colored-fixed-at-top " + JSON.stringify(await b.ev(topFixed)), JSON.stringify(await b.ev(topFixed)) === "[]");
-  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(60);
-  const closing = await b.ev(dim);
-  b.check("dim-fades-out " + JSON.stringify(closing), closing.op < 1 && closing.op > 0 && !closing.hidden);
-  await b.sleep(500);
-  b.check("dim-hidden-after-close", (await b.ev(dim)).hidden);
+  await b.shot("menu-light"); await b.dark(true); await b.sleep(300); await b.shot("menu-dark"); await b.dark(false); await b.sleep(200);
+  // 再点「⋯」关闭
+  await F.tapAt(b, ...(await b.ev(center("#btnMenu")))); await b.sleep(300);
+  b.check("menu-toggle-close", (await b.ev(menu)).hidden);
+  // 点菜单外面（歌词上的字）只关菜单，不会打开词卡
+  await F.tapAt(b, ...(await b.ev(center("#btnMenu")))); await b.sleep(300);
+  await F.tapAt(b, ...(await b.ev(center('#lyrics .line[data-li="1"] .c[data-ci="0"]')))); await b.sleep(400);
+  b.check("menu-outside-close", (await b.ev(menu)).hidden && !(await b.ev(sheetShown)));
+  // 词卡：后面不变暗，点外面关闭（也不会顺便打开另一个字）
+  await F.tapAt(b, ...(await b.ev(center('#lyrics .line[data-li="0"] .c[data-ci="2"]')))); await b.sleep(500);
+  b.check("wordcard-opens", await b.ev(sheetShown) && (await b.ev(F.sheetText)).includes("风衣"));
+  b.check("wordcard-no-dim", JSON.stringify(await b.ev(topFixed)) === "[]" && (await b.ev(cs("#sheet", "boxShadow"))).includes("-8px 40px"));
+  await F.tapAt(b, ...(await b.ev(center('#lyrics .line[data-li="1"] .c[data-ci="0"]')))); await b.sleep(500);
+  b.check("wordcard-outside-close", !(await b.ev(sheetShown)));
+  // 删除确认：点外面、往下拖都不关，必须点按钮；没有拖动条
+  await b.ev(click("#btnMenu")); await b.sleep(300);
+  await b.ev(click('[data-menu="del"]')); await b.sleep(500);
+  b.check("confirm-no-grab", (await b.ev(F.sheetText)).includes("删除这首歌？") && !(await b.ev(`!!document.querySelector("#sheet .grab")`)));
+  await F.tapAt(b, ...(await b.ev(center('#lyrics .line[data-li="1"] .c[data-ci="0"]')))); await b.sleep(500);
+  const st = await b.ev(`(() => { const r = document.querySelector("#sheet").getBoundingClientRect(); return [r.left + r.width / 2, r.top + 10]; })()`);
+  await b.touch("touchStart", st[0], st[1]); for (let i = 1; i <= 5; i++) { await b.touch("touchMove", st[0], st[1] + i * 40); await b.sleep(16); } await b.touch("touchEnd"); await b.sleep(500);
+  b.check("confirm-stays", await b.ev(sheetShown) && (await b.ev(`document.querySelector("#sheet").classList.contains("open")`)));
+  await b.ev(click('[data-confirm="cancel"]')); await b.sleep(500);
+  b.check("confirm-cancel", !(await b.ev(sheetShown)) && !!(await b.ev(F.idbGet("songs", "t1"))));
+  // 页面滚下去以后，菜单还是在「⋯」正下方
   await b.ev("window.scrollTo(0, document.scrollingElement.scrollHeight)"); await b.sleep(300);
-  await b.ev(click("#btnMenu")); await b.sleep(500);
-  const os = await b.ev(dim);
-  b.check("dim-covers-scrolled " + JSON.stringify(os), os.fits && os.op === 1 && JSON.stringify(await b.ev(topFixed)) === "[]");
-  await F.closeSheet(b);
+  await b.ev(click("#btnMenu")); await b.sleep(300);
+  const ms = await b.ev(menu);
+  b.check("menu-scrolled " + JSON.stringify(ms), ms.op === 1 && ms.below && ms.right && JSON.stringify(await b.ev(topFixed)) === "[]");
   await b.ev(click("#playerView [data-back]")); await b.sleep(900);
+  b.check("menu-closed-after-back", (await b.ev(menu)).hidden);
 
   // bug 5：歌词输入框固定高度，文字不溢出
   await b.ev(click("#btnAdd")); await b.sleep(700);

@@ -50,7 +50,9 @@ async function openSong(b, id) { await b.ev(`document.querySelector('.song[data-
 // 点歌词里的第 li 句第 ci 个字
 const tapChar = (li, ci) => `document.querySelector('#lyrics .line[data-li="${li}"] .c[data-ci="${ci}"]').click()`;
 const sheetText = `document.querySelector("#sheetBody").innerText`;
-// 关掉弹层并等它真正消失
-async function closeSheet(b) { await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(500); }
+// 手指在屏幕 (x, y) 点一下（真的触摸事件，会有 pointerdown/up 和 click）
+async function tapAt(b, x, y) { await b.touch("touchStart", x, y); await b.touch("touchEnd"); await b.sleep(50); }
+// 关掉弹层并等它真正消失：点弹层外面（屏幕上方，顶栏标题的位置）
+async function closeSheet(b) { await tapAt(b, 215, 90); await b.sleep(450); }
 
-module.exports = { silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, closeSheet };
+module.exports = { silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, tapAt, closeSheet };

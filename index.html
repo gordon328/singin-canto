@@ -21,11 +21,11 @@
 :root{
   --bg:#F7F6FB; --surface:#FFFFFF; --surface-press:#F1EFFA; --ink:#221F33; --ink-2:#45405C; --muted:#6E6A82; --rule:#E2DFEE;
   --accent:#5B4BDB; --accent-press:#4536B8; --accent-soft:#ECE9FD; --on-accent:#FFFFFF;
-  --inverse:#221F33; --on-inverse:#FFFFFF; --scrim:rgba(34,31,51,.30); --seg-current:#B7AEF2; --danger:#C2413A;
+  --inverse:#221F33; --on-inverse:#FFFFFF; --seg-current:#B7AEF2; --danger:#C2413A;
   --t1:#D9443B; --t2:#C67312; --t3:#2B8A56; --t4:#2F6BD6; --t5:#8A4FD8; --t6:#0F7F8E;
   --sq1-bg:#ECE9FD; --sq1-ink:#5B4BDB; --sq2-bg:#FDEDE3; --sq2-ink:#C2581A; --sq3-bg:#E3F4EA; --sq3-ink:#2B8A56; --sq4-bg:#E5EEFC; --sq4-ink:#2F6BD6;
   --shadow-1:0 2px 10px rgba(34,31,51,.05); --shadow-2:0 10px 30px rgba(34,31,51,.08); --shadow-3:0 12px 34px rgba(34,31,51,.12); --cur-glow:0 8px 24px rgba(91,75,219,.14);
-  --shadow-sheet:0 -8px 40px rgba(34,31,51,.18),0 0 0 1px var(--rule);
+  --shadow-sheet:0 -8px 40px rgba(34,31,51,.18),0 0 0 1px var(--rule); --shadow-menu:var(--shadow-3);
   --font-cjk:-apple-system,"PingFang HK","PingFang SC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif;
   --font-latin:"Outfit",var(--font-cjk);
   --dur-fast:120ms; --dur:220ms; --dur-slow:320ms; --ease:cubic-bezier(.2,.8,.2,1); --nav-dim:rgba(0,0,0,.10);
@@ -34,19 +34,21 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#15131F; --surface:#1F1C2C; --surface-press:#2A2640; --ink:#F1EFF8; --ink-2:#CFCBE0; --muted:#9C97B3; --rule:#2E2A42;
   --accent:#8E80FF; --accent-press:#A79CFF; --accent-soft:#2B2550; --on-accent:#14112A;
-  --inverse:#F1EFF8; --on-inverse:#15131F; --scrim:rgba(0,0,0,.50); --seg-current:#5A4FB0; --danger:#FF8A80;
+  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80;
   --t1:#FF7A70; --t2:#FFB547; --t3:#5FD38D; --t4:#6FA8FF; --t5:#B794FF; --t6:#4CC9DB;
   --sq1-bg:#2B2550; --sq1-ink:#A79CFF; --sq2-bg:#3A2618; --sq2-ink:#FFB27A; --sq3-bg:#17311F; --sq3-ink:#5FD38D; --sq4-bg:#182640; --sq4-ink:#6FA8FF;
   --shadow-1:none; --shadow-2:none; --shadow-3:none; --cur-glow:0 0 0 transparent; --shadow-sheet:0 -8px 40px rgba(0,0,0,.5),0 0 0 1px var(--rule);
+  --shadow-menu:0 12px 34px rgba(0,0,0,.5),0 0 0 1px var(--rule);
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --bg:#15131F; --surface:#1F1C2C; --surface-press:#2A2640; --ink:#F1EFF8; --ink-2:#CFCBE0; --muted:#9C97B3; --rule:#2E2A42;
   --accent:#8E80FF; --accent-press:#A79CFF; --accent-soft:#2B2550; --on-accent:#14112A;
-  --inverse:#F1EFF8; --on-inverse:#15131F; --scrim:rgba(0,0,0,.50); --seg-current:#5A4FB0; --danger:#FF8A80;
+  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80;
   --t1:#FF7A70; --t2:#FFB547; --t3:#5FD38D; --t4:#6FA8FF; --t5:#B794FF; --t6:#4CC9DB;
   --sq1-bg:#2B2550; --sq1-ink:#A79CFF; --sq2-bg:#3A2618; --sq2-ink:#FFB27A; --sq3-bg:#17311F; --sq3-ink:#5FD38D; --sq4-bg:#182640; --sq4-ink:#6FA8FF;
   --shadow-1:none; --shadow-2:none; --shadow-3:none; --cur-glow:0 0 0 transparent; --shadow-sheet:0 -8px 40px rgba(0,0,0,.5),0 0 0 1px var(--rule);
+  --shadow-menu:0 12px 34px rgba(0,0,0,.5),0 0 0 1px var(--rule);
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -279,11 +281,9 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 #prPlay .i-pause,#prPlay.playing .i-play{display:none}
 #prPlay.playing .i-pause{display:block}
 
-/* Sheet：从下面滑上来，可以往下拖关闭 */
-/* 弹窗的暗色层：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以顶部附近不能有带颜色的 fixed 元素。
-   暗色层打开时放进当前页面的根元素里，absolute 铺满整页、跟着页面走，和弹窗一起淡入淡出；弹窗本身仍然固定在底部 */
-.backdrop{position:absolute;inset:0;z-index:40;background:var(--scrim);opacity:0;transition:opacity var(--dur-slow) var(--ease)}
-.backdrop.open{opacity:1}
+/* Sheet：从下面滑上来，可以往下拖关闭。
+   弹出层不使用暗幕（设计规范 5.6）：Safari 的状态栏由它自己画，网页变暗时状态栏跟不上，会闪或者不协调。
+   所以弹层后面不变暗，靠更明显的阴影 --shadow-sheet 浮在页面上；点外面关闭（确认类弹窗必须点按钮） */
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:720px;margin:0 auto;background:var(--surface);border-radius:34px 34px 0 0;
   max-height:88dvh;overflow:auto;overscroll-behavior-y:contain;box-shadow:var(--shadow-sheet);padding-bottom:env(safe-area-inset-bottom,0px);
   transform:translateY(100%);opacity:0;transition:transform var(--dur-slow) var(--ease),opacity var(--dur-slow) var(--ease)}
@@ -292,6 +292,14 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .sheet .wrap{padding-block:10px 24px;display:flex;flex-direction:column;gap:14px}
 .grab{width:40px;height:5px;border-radius:3px;background:var(--rule);margin:2px auto 4px;flex:none}
 .sheet h3{margin:0;font-size:17px;font-weight:700}
+/* 下拉小菜单（设计规范 5.9）：挂在吸顶顶栏里，absolute 不是 fixed（顶部附近不能有带颜色的 fixed 元素，见 7.4），从「⋯」按钮的位置缩放淡入 */
+.bar .wrap{position:relative}
+.menu{position:absolute;z-index:30;min-width:200px;padding:6px;border-radius:16px;background:var(--surface);box-shadow:var(--shadow-menu);
+  display:flex;flex-direction:column;transform-origin:top right;transform:scale(.92);opacity:0;
+  transition:transform 180ms var(--ease),opacity 180ms var(--ease)}
+.menu.open{transform:none;opacity:1}
+.menu .btn{justify-content:flex-start;min-height:48px;border-radius:12px;background:none;box-shadow:none;font-weight:500}
+.menu .btn.is-pressed{transform:none;background:var(--surface-press)}
 .wc-top{display:flex;gap:16px;align-items:center}
 .wc-top.long{flex-direction:column;align-items:stretch}
 .wc-square{flex:none;display:flex;flex-wrap:wrap;max-width:100%;gap:6px;padding:16px 18px;border-radius:28px;background:var(--accent-soft)}
@@ -399,7 +407,12 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
     <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
     <div class="tt"><b id="pTitle"></b><span id="pArtist"></span></div>
     <button class="btn soft small" id="togJp" type="button" aria-pressed="true">粤拼 开</button>
-    <button class="btn icon" id="btnMenu" type="button" aria-label="更多"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+    <button class="btn icon" id="btnMenu" type="button" aria-label="更多" aria-haspopup="menu" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+    <div class="menu" id="songMenu" role="menu" hidden>
+      <button class="btn" type="button" role="menuitem" data-menu="proof">编辑歌曲</button>
+      <button class="btn" type="button" role="menuitem" data-menu="pack">词汇包</button>
+      <button class="btn danger" type="button" role="menuitem" data-menu="del">删除</button>
+    </div>
   </div></div>
   <div class="wrap">
     <div id="pBanner"></div>
@@ -462,7 +475,6 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
   </div>
 </section>
 
-<div id="backdrop" class="backdrop" hidden></div>
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -519,7 +531,7 @@ function show(id,dir){
   const from=$("#"+curView),to=$("#"+id),y=scrollY;
   clearTimeout(navTimer);document.body.classList.remove("navigating");views.forEach(v=>{const el=$("#"+v);el.classList.remove("nav-layer","enter-fwd","leave-fwd","enter-back","leave-back");el.style.cssText=""});
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
-  clearPressed();if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
+  clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
   document.querySelectorAll(".player").forEach(p=>p.classList.remove("bar-in","bar-out"));
   const bar=to.querySelector(".player");
@@ -535,7 +547,8 @@ const PRESSABLE=".btn,.tones .key,.song,.ib,.res";
 let pressedEl=null;
 function clearPressed(){document.querySelectorAll(".is-pressed").forEach(e=>e.classList.remove("is-pressed"));pressedEl=null}
 document.addEventListener("pointerdown",e=>{
-  clearPressed();const t=e.target.closest&&e.target.closest(PRESSABLE);
+  clearPressed();if(outsideLayer(e.target))return;// 点外面只是关掉菜单或弹层，下面的按钮不显示按下
+  const t=e.target.closest&&e.target.closest(PRESSABLE);
   if(t&&!t.disabled){t.classList.add("is-pressed");pressedEl=t}
 },{passive:true,capture:true});
 ["pointerup","pointercancel"].forEach(ev=>document.addEventListener(ev,clearPressed,{passive:true,capture:true}));
@@ -1087,15 +1100,17 @@ $("#proofSave").addEventListener("click",async()=>{if(await saveProof())goBack()
 function dirtyPrompt(){
   openSheet(`<h3>有改动还没保存</h3>
     <button class="btn primary block" type="button" data-dirty="save">保存</button>
-    <button class="btn block" type="button" data-dirty="discard">不保存</button>`);
+    <button class="btn block" type="button" data-dirty="discard">不保存</button>
+    <button class="btn block text" type="button" data-dirty="stay">继续编辑</button>`,{modal:true});
   $("#sheetBody").onclick=async e=>{
+    if(e.target.closest('[data-dirty="stay"]')){closeSheet();return}
     if(e.target.closest('[data-dirty="save"]')){closeSheet();if(await saveProof())goBack();return}
     if(e.target.closest('[data-dirty="discard"]')){proof.dirty=false;closeSheet();goBack()}
   };
 }
 
 /* ---------- 删除前确认（样式和"有改动还没保存"一样） ---------- */
-// 返回 Promise：点「删除」→ true；点「取消」、点遮罩或往下拖关 → false
+// 返回 Promise：点「删除」→ true；点「取消」→ false。确认类弹窗点外面不关，必须点按钮（系统返回时也算取消）
 let confirmDone=null;
 function confirmSheet({title,body,ok="删除"}){
   if(confirmDone)confirmDone(false);
@@ -1103,7 +1118,7 @@ function confirmSheet({title,body,ok="删除"}){
     confirmDone=v=>{confirmDone=null;res(v)};
     openSheet(`<h3>${esc(title)}</h3>${body?`<p class="note" style="margin:0">${esc(body)}</p>`:""}
       <button class="btn danger-fill block" type="button" data-confirm="ok">${esc(ok)}</button>
-      <button class="btn block" type="button" data-confirm="cancel">取消</button>`);
+      <button class="btn block" type="button" data-confirm="cancel">取消</button>`,{modal:true});
     $("#sheetBody").onclick=e=>{
       const b=e.target.closest("[data-confirm]");if(!b)return;
       const done=confirmDone;confirmDone=null;closeSheet();if(done)done(b.dataset.confirm==="ok");
@@ -1112,43 +1127,66 @@ function confirmSheet({title,body,ok="删除"}){
 }
 const SONG_DEL_NOTE="音频、歌词和学习进度会被删除，学过的词会保留在复习里。";
 
-/* ---------- more menu ---------- */
-$("#btnMenu").addEventListener("click",()=>{
-  openSheet(`<h3>${esc(cur.title)}</h3>
-    <button class="btn block" type="button" data-menu="proof">编辑歌曲</button>
-    <button class="btn block" type="button" data-menu="pack">${cur.pack?"词汇包 ✓":"词汇包"}</button>
-    <button class="btn block text danger" type="button" data-menu="del">删除这首歌</button>`);
-  $("#sheetBody").onclick=async e=>{
-    if(e.target.closest('[data-menu="proof"]')){openProof();return}
-    if(e.target.closest('[data-menu="pack"]')){openPack();return}
-    if(!e.target.closest('[data-menu="del"]'))return;
-    const id=cur.id;
-    if(!await confirmSheet({title:"删除这首歌？",body:SONG_DEL_NOTE}))return;
-    // 回到首页再显示「已删除 1 首歌 · 撤销」
-    deleteSongs([id]);goBack();
-  };
+/* ---------- more menu（「⋯」下拉小菜单，设计规范 5.9） ---------- */
+const songMenu=$("#songMenu");let menuTimer=0;
+const menuOpen=()=>songMenu.classList.contains("open");
+function openMenu(){
+  const b=$("#btnMenu");clearTimeout(menuTimer);
+  songMenu.querySelector('[data-menu="pack"]').textContent=cur.pack?"词汇包 ✓":"词汇包";
+  // 右边和「⋯」按钮对齐，在按钮正下方
+  songMenu.style.top=b.offsetTop+b.offsetHeight+6+"px";songMenu.style.right=b.offsetParent.clientWidth-b.offsetLeft-b.offsetWidth+"px";
+  songMenu.hidden=false;void songMenu.offsetHeight;songMenu.classList.add("open");b.setAttribute("aria-expanded","true");
+}
+function closeMenu(now){
+  clearTimeout(menuTimer);songMenu.classList.remove("open");$("#btnMenu").setAttribute("aria-expanded","false");
+  if(now)songMenu.hidden=true;else menuTimer=setTimeout(()=>{songMenu.hidden=true},180);
+}
+$("#btnMenu").addEventListener("click",()=>{if(menuOpen())closeMenu();else openMenu()});
+songMenu.addEventListener("click",async e=>{
+  const m=e.target.closest("[data-menu]");if(!m)return;
+  closeMenu();
+  if(m.dataset.menu==="proof"){openProof();return}
+  if(m.dataset.menu==="pack"){openPack();return}
+  const id=cur.id;
+  if(!await confirmSheet({title:"删除这首歌？",body:SONG_DEL_NOTE}))return;
+  // 回到首页再显示「已删除 1 首歌 · 撤销」
+  deleteSongs([id]);goBack();
 });
 
 /* ---------- sheet ---------- */
-let sheetTimer=0;
-function openSheet(html){
-  const sh=$("#sheet"),bd=$("#backdrop");clearTimeout(sheetTimer);
-  $("#sheetBody").innerHTML=`<div class="grab"></div>`+html;
-  if(sh.hidden||!sh.classList.contains("open")){$("#"+curView).append(bd);sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
+// 弹出层不使用暗幕（设计规范 5.6）。modal：确认类弹窗，点外面、往下拖都不关，必须点按钮
+let sheetTimer=0,sheetModal=false;
+const sheetOpen=()=>$("#sheet").classList.contains("open");
+function openSheet(html,{modal=false}={}){
+  const sh=$("#sheet");clearTimeout(sheetTimer);sheetModal=modal;
+  $("#sheetBody").innerHTML=(modal?"":`<div class="grab"></div>`)+html;
+  if(sh.hidden||!sh.classList.contains("open")){sh.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open")}
 }
 function closeSheet(){
   if(confirmDone)confirmDone(false);
-  const sh=$("#sheet"),bd=$("#backdrop");
+  const sh=$("#sheet");
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   if(sh.hidden)return;
-  sh.classList.remove("open","dragging");bd.classList.remove("open");sh.style.transform="";
-  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true;bd.hidden=true},320);
+  sh.classList.remove("open","dragging");sh.style.transform="";
+  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true},320);
 }
+// 点外面关闭下拉菜单或弹层。用 pointerdown/up 判断（iPhone 上点普通文字不一定有 click），手指移动超过 10px 算滚动，不关。
+// 这一下只用来关闭，后面跟着的 click 吞掉，不会顺便点到下面的按钮或字
+let outsideAt=null,eatClickAt=-1;
+const outsideLayer=t=>(menuOpen()&&!songMenu.contains(t))||(sheetOpen()&&!$("#sheet").contains(t));
+document.addEventListener("pointerdown",e=>{eatClickAt=-1;outsideAt=outsideLayer(e.target)?{x:e.clientX,y:e.clientY}:null},{passive:true,capture:true});
+document.addEventListener("pointercancel",()=>{outsideAt=null},{passive:true,capture:true});
+document.addEventListener("pointerup",e=>{
+  const o=outsideAt;outsideAt=null;if(!o||Math.hypot(e.clientX-o.x,e.clientY-o.y)>10)return;
+  eatClickAt=e.timeStamp;
+  if(menuOpen())closeMenu();else if(!sheetModal)closeSheet();
+},{passive:true,capture:true});
+document.addEventListener("click",e=>{if(eatClickAt>=0&&e.timeStamp-eatClickAt<600){eatClickAt=-1;e.stopPropagation();e.preventDefault()}},true);
 // 往下拖关闭：只从拖动条和弹层顶部 48px 开始
 let drag=null;
 $("#sheet").addEventListener("touchstart",e=>{
   const sh=$("#sheet"),y=e.touches[0].clientY;
-  if(y-sh.getBoundingClientRect().top>48||sh.scrollTop>0){drag=null;return}
+  if(sheetModal||y-sh.getBoundingClientRect().top>48||sh.scrollTop>0){drag=null;return}
   drag={y0:y,y,t:e.timeStamp,vy:0};sh.classList.add("dragging");
 },{passive:true});
 $("#sheet").addEventListener("touchmove",e=>{
@@ -1163,8 +1201,7 @@ $("#sheet").addEventListener("touchend",()=>{
   drag=null;
 });
 $("#sheet").addEventListener("touchcancel",()=>{if(!drag)return;const sh=$("#sheet");sh.classList.remove("dragging");sh.style.transform="";drag=null});
-$("#backdrop").addEventListener("click",closeSheet);
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheet").hidden)closeSheet()});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(menuOpen())closeMenu();else if(sheetOpen()&&!sheetModal)closeSheet()});
 
 /* ---------- word card ---------- */
 function openWord(li,ci){

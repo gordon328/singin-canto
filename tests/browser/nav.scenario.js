@@ -23,7 +23,7 @@ module.exports = { name: "nav", async run(b) {
   await F.openSong(b, "t1");
   await b.ev(F.tapChar(0, 0)); await b.sleep(500);
   await b.ev("history.back()"); await b.sleep(700);
-  b.check("back-closes-sheet", await b.ev(`document.querySelector("#sheet").hidden && document.querySelector("#backdrop").hidden`) && await b.ev(visible("home")));
+  b.check("back-closes-sheet", await b.ev(`document.querySelector("#sheet").hidden`) && await b.ev(visible("home")));
 
   const n1 = await b.ev("history.length");
   await b.ev(`document.querySelector("#btnAdd").click()`); await b.sleep(500);

@@ -14,7 +14,7 @@ module.exports = { name: "proof", async run(b) {
   await F.seed(b);
   await F.openSong(b, "t1");
   await b.ev(click("#btnMenu")); await b.sleep(500);
-  b.check("menu-entry-label", (await b.ev(F.sheetText)).includes("编辑歌曲"));
+  b.check("menu-entry-label", (await b.ev(`document.querySelector("#songMenu").innerText`)).includes("编辑歌曲"));
   await b.ev(click('[data-menu="proof"]')); await b.sleep(800);
   b.check("menu-entry", await b.ev(visible("proofView")) && (await b.ev("history.state && history.state.view")) === "proofView");
   b.check("list", (await b.ev(`document.querySelectorAll("#proofView .pl").length`)) === 16 && (await b.ev(time(0))) === "0:01.0"
@@ -29,7 +29,13 @@ module.exports = { name: "proof", async run(b) {
 
   await b.ev(click("#proofView [data-back]")); await b.sleep(600);
   const prompt = await b.ev(F.sheetText);
-  b.check("unsaved-back-prompts", await b.ev(visible("proofView")) && prompt.includes("有改动还没保存") && prompt.includes("不保存"));
+  b.check("unsaved-back-prompts", await b.ev(visible("proofView")) && prompt.includes("有改动还没保存") && prompt.includes("不保存") && prompt.includes("继续编辑"));
+  // 未保存提示点外面不关（必须点按钮）；「继续编辑」留在编辑页
+  await F.tapAt(b, 215, 90); await b.sleep(500);
+  b.check("unsaved-prompt-stays", await b.ev(`document.querySelector("#sheet").classList.contains("open")`));
+  await b.ev(click('[data-dirty="stay"]')); await b.sleep(500);
+  b.check("unsaved-stay", await b.ev(visible("proofView")) && await b.ev(`document.querySelector("#sheet").hidden`));
+  await b.ev(click("#proofView [data-back]")); await b.sleep(600);
   await b.ev(click('[data-dirty="discard"]')); await b.sleep(900);
   b.check("discard-back-to-player", await b.ev(visible("playerView")) && (await b.ev(F.idbGet("songs", "t1"))).lines[0].t === 1);
 
