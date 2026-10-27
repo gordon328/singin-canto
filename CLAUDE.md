@@ -24,7 +24,7 @@
   - 删除类操作都用 `confirmSheet({title, body})`（返回 Promise<boolean>）先确认；删除歌曲走 `deleteSongs(ids)`：先从列表拿掉，5 秒内可撤销，`commitDelete()` 才真正删数据库（5 秒后、离开首页、切后台），卡片保留只去掉出处
   - 按下效果：**不用 CSS `:active`**，JS 在 pointerdown 时给 `.btn,.keycap,.song,.ib,.res` 加 `.pressed`，抬起/取消/移出/滚动时去掉；`go()`/`goBack()` 先 `clearPressed()` 再等一帧才切页；popstate、pageshow 也清掉。`:hover` 只能写在 `@media (hover: hover)` 里
   - 浮动播放条 `.player`：`show()` 在切页动画结束后加 `bar-in`；`goBack()` 先加 `bar-out` 等 200ms 再 `history.back()`
-  - 状态栏：iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，页面最上面放了永久色带 `#topTint`（方案 a，见设计规范 7.4）
+  - 状态栏：iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，页面最上面放了永久色带 `#topTint`，遮罩 `#backdrop` 用 absolute 不用 fixed（方案 a + b，见设计规范 7.4）
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
   - `getJyutpingList(text)` 返回 `[字, 粤拼|null][]`
   - `getJyutpingText(text)` 返回空格分隔的粤拼
@@ -60,7 +60,8 @@
 - **M2 完成**：丁香界面改版、iPhone 适配（不透明顶栏、输入框 16px、安全区）、Safari 和主屏幕右滑返回、字体和粤拼库自带。M2 里定的：「今天的学习」卡片留到 M4；声调键帽固定 si 组（轮换在 M3）；词汇包和删除歌曲在播放页「⋯」菜单；备份是首页右上角图标 2026-10-27 iPhone 验收通过（含验收反馈修复：歌词输入框、标点和词换行、只用系统右滑）
 - **M3 完成**：校对歌词（播放页「⋯」→ 校对歌词：整首挪、单句微调、改错字、试听、对准现在的歌声、未保存提示）、首页声调字每天换一组 + 「换一组」（meta `tones`）
 - **M3.1（M3 验收反馈）**：修状态栏闪暗、按钮停在按下状态、编辑页滑入透明、导入页保存（不再灰掉，提示「还差：…」）、歌词输入框露半行；切页变暗不用 filter、回首页放开音频；「换一组」图标转圈；`--danger` 红色；删除都先确认；「校对歌词」改名「编辑歌曲」（歌名歌手、更换音频、插入/拆开/合并/删除一句）；首页多选删除 + 5 秒撤销。2026-10-27 验收：其余通过，状态栏闪暗和按钮停在按下状态没解决
-- **M3.2**：状态栏方案 a（顶部永久色带 `#topTint`）；按下效果改 JS 控制；播放条滑入滑出动画。等 iPhone 验收
+- **M3.2**：状态栏方案 a（顶部永久色带 `#topTint`）；按下效果改 JS 控制；播放条滑入滑出动画。方案 a 真机仍闪
+- **M3.3**：状态栏方案 b（遮罩改 absolute，铺满整页，不再是 fixed）。等 iPhone 验收
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）

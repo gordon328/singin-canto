@@ -32,21 +32,20 @@ module.exports = { name: "feedback", async run(b) {
       bz: +getComputedStyle(document.querySelector("#backdrop")).zIndex, rule: [...document.styleSheets[0].cssRules].filter(r => r.selectorText === "#topTint").map(r => r.style.height).join() }; })()`);
   b.check("top-tint " + JSON.stringify(tint), !!tint && tint.pos === "fixed" && tint.top === "0px" && tint.z > tint.bz && tint.bg === tint.body && tint.h >= 2 && /safe-area-inset-top/.test(tint.rule));
 
-  // bug 1：遮罩不盖住顶部安全区（状态栏那一条不变色）
-  const sa = await b.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 47, topMax: 47, bottom: 34, bottomMax: 34, left: 0, leftMax: 0, right: 0, rightMax: 0 } });
-  if (sa.error) {
-    // 本机 Chrome 不能模拟安全区：直接看样式表里遮罩的 top 是不是顶部安全区
-    const rule = await b.ev(`[...document.styleSheets[0].cssRules].filter(r => r.selectorText === ".backdrop").map(r => r.style.top).join()`);
-    b.check("backdrop-below-safe-area(css) " + rule, /safe-area-inset-top/.test(rule));
-  } else {
-    await b.sleep(200);
-    await b.ev(click("#btnBackup")); await b.sleep(500);
-    const top = await b.ev(`document.querySelector("#backdrop").getBoundingClientRect().top`);
-    const strip = await b.ev(`(() => { const s = getComputedStyle(document.body, "::before"); return [s.height, s.zIndex]; })()`);
-    b.check("backdrop-below-safe-area " + top + " " + strip, top === 47 && strip[0] === "47px");
-    await F.closeSheet(b);
-    await b.send("Emulation.setSafeAreaInsetsOverride", { insets: {} });
-  }
+  // 状态栏方案 b：弹层打开时，靠近屏幕顶部、有颜色的 fixed 元素只能是顶部色带（遮罩不用 fixed）
+  const topFixed = `[...document.querySelectorAll("body *")].filter(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect();
+    return s.position === "fixed" && r.height > 0 && r.top <= 60 && r.bottom > 0 && s.visibility !== "hidden" && !/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor); }).map(e => e.id || e.className)`;
+  const covers = `(() => { const r = document.querySelector("#backdrop").getBoundingClientRect(); return r.top <= 0 && r.bottom >= innerHeight && getComputedStyle(document.querySelector("#backdrop")).position; })()`;
+  await b.ev(click("#btnBackup")); await b.sleep(500);
+  b.check("sheet-top-fixed-only-tint " + JSON.stringify(await b.ev(topFixed)), JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
+  b.check("backdrop-covers-home " + (await b.ev(covers)), (await b.ev(covers)) === "absolute");
+  await F.closeSheet(b);
+  await F.openSong(b, "t1");
+  await b.ev("window.scrollTo(0, document.scrollingElement.scrollHeight)"); await b.sleep(300);
+  await b.ev(click("#btnMenu")); await b.sleep(500);
+  b.check("backdrop-covers-scrolled " + (await b.ev(covers)), (await b.ev(covers)) === "absolute" && JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
+  await F.closeSheet(b);
+  await b.ev(click("#playerView [data-back]")); await b.sleep(900);
 
   // bug 5：歌词输入框固定高度，文字不溢出
   await b.ev(click("#btnAdd")); await b.sleep(700);

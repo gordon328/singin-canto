@@ -276,8 +276,9 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 #prPlay.playing .i-pause{display:block}
 
 /* Sheet：从下面滑上来，可以往下拖关闭 */
-/* 遮罩不盖住顶部安全区：状态栏那一条始终是 --bg，打开关闭弹层时不会闪 */
-.backdrop{position:fixed;inset:0;top:env(safe-area-inset-top,0px);z-index:40;background:var(--scrim);opacity:0;transition:opacity var(--dur-slow) var(--ease)}
+/* 状态栏方案 b：遮罩不用 fixed（iOS 26 Safari 会拿顶部附近 fixed 元素的颜色染状态栏），
+   改成从页面最上面铺到最下面的 absolute，高度在打开弹层时按整页算 */
+.backdrop{position:absolute;left:0;right:0;top:0;z-index:40;background:var(--scrim);opacity:0;transition:opacity var(--dur-slow) var(--ease)}
 .backdrop.open{opacity:1}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:720px;margin:0 auto;background:var(--surface);border-radius:34px 34px 0 0;
   max-height:88dvh;overflow:auto;overscroll-behavior-y:contain;box-shadow:var(--shadow-3);padding-bottom:env(safe-area-inset-bottom,0px);
@@ -1113,7 +1114,7 @@ let sheetTimer=0;
 function openSheet(html){
   const sh=$("#sheet"),bd=$("#backdrop");clearTimeout(sheetTimer);
   $("#sheetBody").innerHTML=`<div class="grab"></div>`+html;
-  if(sh.hidden||!sh.classList.contains("open")){sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
+  if(sh.hidden||!sh.classList.contains("open")){bd.style.height=Math.max(document.documentElement.scrollHeight,innerHeight)+"px";sh.hidden=false;bd.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open");bd.classList.add("open")}
 }
 function closeSheet(){
   if(confirmDone)confirmDone(false);
