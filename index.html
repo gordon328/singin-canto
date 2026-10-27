@@ -1123,7 +1123,9 @@ function closeSheet(){
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   if(sh.hidden)return;
   // 遮罩立刻撤掉：Safari 给状态栏取色不跟过渡，一下子恢复才能和页面同步
+  // 顶部色带换一条新的：Safari 对新出现的顶部元素会马上取色，旧的要等 0.几秒
   sh.classList.remove("open","dragging");bd.classList.remove("open");bd.hidden=true;sh.style.transform="";
+  const tint=$("#topTint");tint.replaceWith(tint.cloneNode());
   clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true},320);
 }
 // 往下拖关闭：只从拖动条和弹层顶部 48px 开始

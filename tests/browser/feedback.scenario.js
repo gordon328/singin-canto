@@ -39,8 +39,11 @@ module.exports = { name: "feedback", async run(b) {
   b.check("no-shade", await b.ev(`!document.querySelector("#sheetShade")`));
   // M3.7：Safari 给状态栏取色不跟过渡走（v10 打开闪白、关闭闪暗），改成一下子变暗、一下子恢复
   b.check("backdrop-no-transition " + o.tr, o.tr === "all" ? (await b.ev(`getComputedStyle(document.querySelector("#backdrop")).transitionDuration`)) === "0s" : !/background|opacity/.test(o.tr));
+  await b.ev(`window.__tint = document.querySelector("#topTint")`);
   await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(20);
   b.check("close-undims-at-once", (await b.ev(bd)).hidden);
+  // M3.8：关闭时状态栏恢复慢 0.几秒；换一条新的顶部色带，让 Safari 当成新元素马上取色（打开时新出现的遮罩是立刻取色的）
+  b.check("close-refreshes-tint", await b.ev(`(() => { const t = document.querySelector("#topTint"); return !!t && t !== window.__tint && t.isConnected && getComputedStyle(t).position === "fixed" && document.querySelectorAll("#topTint").length === 1; })()`));
   await b.sleep(500);
   await b.ev(click("#btnBackup")); await b.sleep(20);
   b.check("open-dims-at-once", (await b.ev(bd)).bg === scrim);
