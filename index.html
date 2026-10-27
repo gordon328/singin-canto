@@ -277,10 +277,12 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 #prPlay.playing .i-pause{display:block}
 
 /* Sheet：从下面滑上来，可以往下拖关闭 */
-/* 状态栏方案 d：整屏变暗（连状态栏一起）。iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，而且不看 opacity，
-   所以遮罩的 opacity 一直是 1，变化的是它自己的背景色（透明 → --scrim），Safari 每次取到的都是遮罩当时真实的颜色 */
+/* 状态栏方案 e：整屏变暗（连状态栏一起）。iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，不跟过渡动画走，
+   所以遮罩没有过渡：打开一下子变暗，关闭立刻隐藏 */
 .backdrop{position:fixed;inset:0;z-index:40;background:transparent}
 .backdrop.open{background:var(--scrim)}
+/* 吸顶顶栏也会被 Safari 拿来染状态栏（遮罩盖在上面也没用）。弹层打开时它的背景色变透明、底色改用背景图画，看起来不变，Safari 就跳过它 */
+body:has(#backdrop:not([hidden])) .bar{background-color:transparent;background-image:linear-gradient(var(--bg),var(--bg))}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:720px;margin:0 auto;background:var(--surface);border-radius:34px 34px 0 0;
   max-height:88dvh;overflow:auto;overscroll-behavior-y:contain;box-shadow:var(--shadow-sheet);padding-bottom:env(safe-area-inset-bottom,0px);
   transform:translateY(100%);opacity:0;transition:transform var(--dur-slow) var(--ease),opacity var(--dur-slow) var(--ease)}
@@ -1123,9 +1125,7 @@ function closeSheet(){
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   if(sh.hidden)return;
   // 遮罩立刻撤掉：Safari 给状态栏取色不跟过渡，一下子恢复才能和页面同步
-  // 顶部色带换一条新的：Safari 对新出现的顶部元素会马上取色，旧的要等 0.几秒
   sh.classList.remove("open","dragging");bd.classList.remove("open");bd.hidden=true;sh.style.transform="";
-  const tint=$("#topTint");tint.replaceWith(tint.cloneNode());
   clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true},320);
 }
 // 往下拖关闭：只从拖动条和弹层顶部 48px 开始

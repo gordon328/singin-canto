@@ -39,11 +39,8 @@ module.exports = { name: "feedback", async run(b) {
   b.check("no-shade", await b.ev(`!document.querySelector("#sheetShade")`));
   // M3.7：Safari 给状态栏取色不跟过渡走（v10 打开闪白、关闭闪暗），改成一下子变暗、一下子恢复
   b.check("backdrop-no-transition " + o.tr, o.tr === "all" ? (await b.ev(`getComputedStyle(document.querySelector("#backdrop")).transitionDuration`)) === "0s" : !/background|opacity/.test(o.tr));
-  await b.ev(`window.__tint = document.querySelector("#topTint")`);
   await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(20);
   b.check("close-undims-at-once", (await b.ev(bd)).hidden);
-  // M3.8：关闭时状态栏恢复慢 0.几秒；换一条新的顶部色带，让 Safari 当成新元素马上取色（打开时新出现的遮罩是立刻取色的）
-  b.check("close-refreshes-tint", await b.ev(`(() => { const t = document.querySelector("#topTint"); return !!t && t !== window.__tint && t.isConnected && getComputedStyle(t).position === "fixed" && document.querySelectorAll("#topTint").length === 1; })()`));
   await b.sleep(500);
   await b.ev(click("#btnBackup")); await b.sleep(20);
   b.check("open-dims-at-once", (await b.ev(bd)).bg === scrim);
@@ -101,6 +98,17 @@ module.exports = { name: "feedback", async run(b) {
   const before = await b.ev(F.idbCount("songs"));
   await b.ev(`(() => { const s = document.querySelector("#btnSave"); s.click(); s.click(); })()`); await b.sleep(1200);
   b.check("save-once " + before + "→" + (await b.ev(F.idbCount("songs"))), (await b.ev(F.idbCount("songs"))) === before + 1 && await b.ev(`!document.querySelector("#playerView").hidden`));
+
+  // M3.9：歌曲页有吸顶的顶栏（sticky），Safari 会拿它的背景色染状态栏，盖在上面的遮罩不起作用。
+  // 弹层打开时顶栏的背景色变透明（底色改用背景图画，看起来不变），让 Safari 跳过它
+  const barBg = `(() => { const s = getComputedStyle(document.querySelector("#playerView .bar")); return { c: s.backgroundColor, img: s.backgroundImage }; })()`;
+  b.check("bar-normal " + JSON.stringify(await b.ev(barBg)), (await b.ev(barBg)).c !== "rgba(0, 0, 0, 0)" && (await b.ev(barBg)).img === "none");
+  await b.ev(click("#btnMenu")); await b.sleep(20);
+  const ob = await b.ev(barBg);
+  b.check("bar-skipped-while-sheet " + JSON.stringify(ob), ob.c === "rgba(0, 0, 0, 0)" && /gradient/.test(ob.img));
+  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(20);
+  b.check("bar-back-after-close " + JSON.stringify(await b.ev(barBg)), (await b.ev(barBg)).c !== "rgba(0, 0, 0, 0)" && (await b.ev(barBg)).img === "none");
+  await b.sleep(400);
 
   b.check("feedback: 页面没有报错", b.errors.length === 0);
 } };
