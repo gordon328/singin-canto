@@ -1313,12 +1313,18 @@ function renderSettings(){
     let obj;try{obj=JSON.parse($("#bkIn").value)}catch(e){$("#bkMsg").innerHTML='<span class="err">备份文本不完整或格式不对</span>';return}
     if(!obj||obj.app!=="yuechang"||!Array.isArray(obj.songs)){$("#bkMsg").innerHTML='<span class="err">这不是唱学粤语的备份</span>';return}
     let n=0;
-    for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};if(ex)merged.progress=STUDY.mergeProgress(ex.progress,s.progress,merged.lines.length);await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
+    // 同一时间只有一首"正在学"：本机已经有的话，备份里新加的歌不标正在学
+    const hasCurrent=songs.some(x=>STUDY.progressOf(x).current);
+    for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};
+      if(ex)merged.progress=STUDY.mergeProgress(ex.progress,s.progress,merged.lines.length);else if(hasCurrent)merged.progress={...STUDY.progressOf(merged),current:false};
+      await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
     const merged=SRS.mergeCards([...cards.values()],obj.cards,Date.now());
     for(const c of merged)await DB.put(c,"cards");
     cards=new Map(merged.map(c=>[c.w,c]));
-    // meta：只恢复本机还没有的记录（以后用到 meta 时再定合并规则）
-    if(Array.isArray(obj.meta))for(const m of obj.meta)if(m&&typeof m.key==="string"&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}
+    // meta：daily 用备份里的每天几句（今天的计数留本机的）；其他只恢复本机还没有的记录
+    if(Array.isArray(obj.meta))for(const m of obj.meta){if(!m||typeof m.key!=="string")continue;
+      if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(Date.now())));
+      else if(!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
     renderHome();$("#bkMsg").innerHTML=`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`;
   });
 }

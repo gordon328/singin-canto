@@ -17,10 +17,19 @@ module.exports = { name: "progress", async run(b) {
   b.check("goal-shows-6", (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "6");
   const bk = JSON.parse(await b.ev(`document.querySelector("#bkOut").value`));
   bk.songs.find(s => s.id === "t1").progress = { learned: [1, 3] };
+  // 备份里多一首本机没有的歌，也标了"正在学"；备份里每天学 7 句
+  bk.songs.push({ ...bk.songs.find(s => s.id === "t2"), id: "t3", progress: { learned: [], current: true } });
+  bk.meta = bk.meta.filter(m => m.key !== "daily").concat({ key: "daily", goal: 7, date: "2026-01-01", newLines: 0, extra: 0, reviewed: 0 });
   await b.ev(`document.querySelector("#bkIn").value = ${JSON.stringify(JSON.stringify(bk))}`);
   await b.ev(click("#doRestore")); await b.sleep(900);
   const t1 = await b.ev(F.idbGet("songs", "t1"));
   b.check("restore-merges-learned", JSON.stringify(t1.progress.learned) === "[0,1,3]" && t1.progress.current === true);
+  b.check("restore-one-current", (await b.ev(F.idbGet("songs", "t3")))?.progress?.current === false);
+  b.check("restore-goal", (await b.ev(F.idbGet("meta", "daily")))?.goal === 7);
+  await b.ev(`document.querySelector("#settingsView [data-back]").click()`); await b.sleep(800);
+  await b.ev(click("#btnSettings")); await b.sleep(800);
+  b.check("restore-goal-shown", (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "自定义"
+    && (await b.ev(`document.querySelector("#goalNum").innerText.trim()`)) === "7");
   b.check("restore-keeps-audio", (await b.ev(F.idbGet("songs", "t1") + `.then(s => s.audio && s.audio.size)`)) > 1000);
   b.check("no-errors", b.errors.length === 0);
 } };

@@ -68,6 +68,15 @@ test("dailyFor: 凌晨 4 点前还是同一天", () => {
   assert.equal(S.dailyFor({ key: "daily", goal: 4, date: "2026-10-28", newLines: 3, extra: 0, reviewed: 0 }, today).newLines, 3);
 });
 
+test("mergeDaily: 恢复备份时用备份里的 goal，今天的计数留本机的", () => {
+  const local = { key: "daily", goal: 4, date: "2026-10-28", newLines: 2, extra: 0, reviewed: 5 };
+  assert.deepEqual(S.mergeDaily(local, { key: "daily", goal: 7, date: "2026-10-20", newLines: 9, extra: 2, reviewed: 1 }, "2026-10-28"),
+    { key: "daily", goal: 7, date: "2026-10-28", newLines: 2, extra: 0, reviewed: 5 });
+  assert.equal(S.mergeDaily(local, { key: "daily", goal: 99 }, "2026-10-28").goal, 4);
+  assert.equal(S.mergeDaily(undefined, { key: "daily", goal: 6, date: "2026-10-28", newLines: 3 }, "2026-10-28").newLines, 3);
+  assert.equal(S.mergeDaily({ ...local, date: "2026-10-27" }, { key: "daily", goal: 6, date: "2026-10-28", newLines: 3 }, "2026-10-28").newLines, 3);
+});
+
 test("dailyFor: 没有记录", () => {
   assert.deepEqual(S.dailyFor(undefined, "2026-10-28"), { key: "daily", goal: 4, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 0 });
 });

@@ -56,7 +56,14 @@
     return { key: "daily", goal, date: today, newLines: n(rec.newLines), extra: n(rec.extra), reviewed: n(rec.reviewed) };
   }
 
-  const STUDY = { GOALS, GOAL_MIN, GOAL_MAX, DEFAULT_GOAL, progressOf, withLearned, mergeProgress, currentSong, setCurrent, goalOf, dailyFor };
+  // 恢复备份：每天几句用备份里的（合法时）；今天的计数本机是今天的就留本机的
+  function mergeDaily(local, incoming, today) {
+    const base = local && local.date === today ? dailyFor(local, today) : dailyFor(incoming, today);
+    const g = incoming && incoming.goal;
+    return { ...base, goal: goalOf({ goal: g }) === g ? g : goalOf(local) };
+  }
+
+  const STUDY = { GOALS, GOAL_MIN, GOAL_MAX, DEFAULT_GOAL, progressOf, withLearned, mergeProgress, currentSong, setCurrent, goalOf, dailyFor, mergeDaily };
   root.STUDY = STUDY;
   if (typeof module !== "undefined" && module.exports) module.exports = STUDY;
 })(typeof self !== "undefined" ? self : globalThis);
