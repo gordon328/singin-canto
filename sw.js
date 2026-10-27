@@ -4,7 +4,7 @@
    每次改了要缓存的文件列表，把 VERSION 加一。 */
 const VERSION = "v15";
 const CACHE = "yuechang-" + VERSION;
-const SHELL = ["./", "./srs.js", "./lessons.js", "./proof.js", "./gesture.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
+const SHELL = ["./", "./pack.js", "./srs.js", "./lessons.js", "./proof.js", "./gesture.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil((async () => {

@@ -475,6 +475,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 <div id="toast" class="toast" hidden></div>
 
 <script src="vendor/to-jyutping.js"></script>
+<script src="pack.js"></script>
 <script src="srs.js"></script>
 <script src="lessons.js"></script>
 <script src="proof.js"></script>
@@ -483,7 +484,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 (function(){
 "use strict";
 const $=s=>document.querySelector(s);
-const HAN=/\p{Script=Han}/u;
+const HAN=PACK.HAN;
 const TJ=(()=>{const g=window.ToJyutping;if(!g)return null;if(typeof g.getJyutpingList==="function")return g;if(g.default&&typeof g.default.getJyutpingList==="function")return g.default;return null})();
 const au=$("#au");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -874,27 +875,9 @@ function setCurrent(i){
 
 /* ---------- lyric model ---------- */
 function autoJp(text){return TJ?TJ.getJyutpingList(text):[...text].map(c=>[c,null])}
-function fixText(text){let t=text;if(cur.pack)for(const f of cur.pack.fix||[])if(f.from)t=t.split(f.from).join(f.to);return t}
-function computeLine(li){
-  const text=fixText(cur.lines[li].text);
-  const chars=[...text];const auto=autoJp(text);const same=auto.length===chars.length;
-  const items=chars.map((c,i)=>{if(/\s/.test(c))return{space:true};const h=HAN.test(c);return{ch:c,han:h,word:-1,jp:h?(same?auto[i][1]:autoJp(c)[0][1]):null}});
-  const words=cur.pack?cur.pack.words:[];
-  if(words.length){
-    const order=words.map((_,i)=>i).sort((a,b)=>[...words[b].w].length-[...words[a].w].length);
-    for(const wi of order){
-      const w=words[wi],wc=[...w.w],syl=w.jp?w.jp.split(/\s+/):null;
-      for(let i=0;i+wc.length<=chars.length;i++){
-        if(wc.every((c,k)=>chars[i+k]===c&&!items[i+k].space&&items[i+k].word===-1)){
-          let si=0;wc.forEach((c,k)=>{const it=items[i+k];it.word=wi;if(syl&&it.han)it.jp=syl[si++]});
-          i+=wc.length-1;
-        }
-      }
-    }
-  }
-  items.forEach((it,ci)=>{const o=cur.overrides&&cur.overrides[li+":"+ci];if(o&&!it.space){it.jp=o;it.ov=true}});
-  return {text,items,words};
-}
+function fixText(text){return PACK.fixText(cur,text)}
+function computeLineFor(song,li){return PACK.computeLineFor(song,li,autoJp)}
+function computeLine(li){return computeLineFor(cur,li)}
 function charHTML(it,ci,words){
   if(it.space)return `<span class="sp"></span>`;
   const w=it.word>=0?words[it.word]:null;
@@ -1231,7 +1214,7 @@ function openWord(li,ci){
     ${idxs.length>1?'<div class="note">点上面单个字可以听单字</div>':""}
     ${cardRow}
     ${ttsNote}
-    ${!cur.pack?'<div class="note">导入词汇包后，重点词会显示普通话意思和记忆提示。</div>':(!w?'<div class="note">这个字不在词汇包的重点词里，读音是自动生成的。</div>':"")}
+    ${!cur.pack?'<div class="note">导入词汇包后，重点词会显示普通话意思和记忆提示。</div>':(!w?'<div class="note">这个字不在词汇包里，读音是自动生成的。可以重新生成词汇包。</div>':"")}
     ${it.han&&cands.length?`<div class="field"><div class="label">「${esc(it.ch)}」读错了？选正确读音</div><div class="cands">${cands.map(c=>`<button class="cand" type="button" data-set="${esc(c)}" aria-pressed="${c===it.jp}"><span class="t${toneOf(c)}">${esc(c)}</span></button>`).join("")}${it.ov?`<button class="cand" type="button" data-reset="1">恢复为 ${esc(orig&&orig.jp||"")}</button>`:""}</div></div>`:""}
   `);
   $("#sheetBody").onclick=async e=>{
@@ -1255,56 +1238,11 @@ function openWord(li,ci){
 function computeLineNoOverride(li){const sv=cur.overrides;cur.overrides={};const r=computeLine(li);cur.overrides=sv;return r}
 
 /* ---------- word pack ---------- */
-function buildPrompt(s){
-  const lyr=s.lines.map(l=>l.text).join("\n");
-  return `你是粤语老师。下面是一首粤语歌的歌词，只供你参考，不要在回复里重复歌词。请为普通话母语、粤语零基础的学习者整理这首歌的"词汇包"。只输出一个 JSON 代码块，不要写其他文字。
-
-歌曲：${s.title}${s.artist?" - "+s.artist:""}
-
-要求：
-1. 不要输出完整歌词，也不要逐句翻译，只整理词汇。
-2. words：挑出 30 到 50 个值得学的词，包括粤语口语字、和普通话读音差别大的字、多音字、常用词。每个词写：
-   - w：词，写法和歌词里完全一致（繁体）
-   - jp：粤拼（Jyutping），每个汉字一个音节，用空格分开，带声调数字 1-6，按歌里实际唱的读音
-   - zh：普通话意思
-   - tip：一句帮助记忆的提示，比如普粤读音的对应规律或用法
-   - oral：粤语口语字设为 true，其他可以省略
-3. fix：歌词里明显的错别字，写成 {"from": "错的写法", "to": "正确写法"}，每处不超过 4 个字。没有就写空列表。
-4. summary：用你自己的话，两三句概括这首歌讲什么。
-
-格式示例（示例内容和这首歌无关）：
-{"summary":"…","words":[{"w":"今日","jp":"gam1 jat6","zh":"今天","tip":"粤语说今日，不说今天"},{"w":"佢","jp":"keoi5","zh":"他/她","tip":"最常用的粤语口语字之一","oral":true}],"fix":[]}
-
-歌词：
-${lyr}`;
-}
-function importPack(raw,s){
-  const errs=[],warns=[];
-  const txt=raw.trim();const a=txt.indexOf("{"),b=txt.lastIndexOf("}");
-  if(a<0||b<a)return{errs:["没找到 JSON 内容。请复制 Claude 回复里从 { 开始到 } 结束的整段。"],warns};
-  let obj;try{obj=JSON.parse(txt.slice(a,b+1))}catch(e){return{errs:["JSON 格式有误（"+e.message+"）。通常是没复制完整。请确认复制了整段，或者让 Claude 重新输出。"],warns}}
-  if(!obj||!Array.isArray(obj.words))return{errs:["内容里缺少 words 列表。"],warns};
-  const fix=(Array.isArray(obj.fix)?obj.fix:[]).filter(f=>f&&typeof f.from==="string"&&typeof f.to==="string"&&f.from&&f.from!==f.to&&[...f.from].length<=8).map(f=>({from:f.from,to:f.to}));
-  const all=s.lines.map(l=>{let t=l.text;fix.forEach(f=>t=t.split(f.from).join(f.to));return t}).join("\n");
-  const seen=new Set(),words=[];let missing=0;
-  obj.words.forEach(w=>{
-    if(!w||typeof w.w!=="string"||!w.w.trim())return;
-    const ww=w.w.trim();if(seen.has(ww))return;seen.add(ww);
-    let jp=String(w.jp||"").trim().toLowerCase().replace(/\s+/g," ");
-    const han=[...ww].filter(c=>HAN.test(c)).length,syl=jp?jp.split(" "):[];
-    if(syl.length!==han||syl.some(x=>!/^[a-z]+[1-6]$/.test(x))){warns.push(`「${ww}」的粤拼「${jp}」不对，改用自动粤拼`);jp=""}
-    if(!all.includes(ww))missing++;
-    words.push({w:ww,jp,key:true,oral:!!w.oral,zh:typeof w.zh==="string"?w.zh:"",tip:typeof w.tip==="string"?w.tip:""});
-  });
-  if(!words.length)errs.push("词汇列表是空的。");
-  if(missing)warns.push(`有 ${missing} 个词在歌词里没找到（可能写法不同），它们不会显示下划线`);
-  return{errs,warns,pack:errs.length?null:{v:2,summary:typeof obj.summary==="string"?obj.summary:"",words,fix,imported:Date.now()}};
-}
 function openPack(){
-  const prompt=buildPrompt(cur);
+  const prompt=PACK.buildPrompt(cur);
   openSheet(`
     <h3>词汇包${cur.pack?' <span class="chip">已导入</span>':""}</h3>
-    <p class="note" style="margin:0">词汇包让 Claude 帮你挑出这首歌的重点词，写好正确读音、普通话意思和记忆提示，再加上整首歌的大意。</p>
+    <p class="note" style="margin:0">词汇包让 Claude 帮你整理这首歌的每个词：正确读音、普通话意思；其中的重点词还有记忆提示，在歌词里显示下划线。再加上整首歌的大意。</p>
     <ol class="steps">
       <li><div><button class="btn primary" type="button" id="cpPrompt">复制提示词</button><div class="note" style="margin-top:6px">提示词里已经放好了这首歌的歌词。</div></div></li>
       <li><div>在 Claude 里新开一个对话，粘贴发送。等它回复完。</div></li>
@@ -1323,7 +1261,7 @@ function openPack(){
   });
   $("#doImport").addEventListener("click",async()=>{
     const raw=$("#packIn").value;if(!raw.trim()){toast("先粘贴 Claude 的回复");return}
-    const r=importPack(raw,cur);const msg=$("#packMsg");
+    const r=PACK.parsePack(raw,cur.lines);const msg=$("#packMsg");
     if(r.errs.length){msg.innerHTML=r.errs.slice(0,10).map(x=>`<div class="err">✗ ${esc(x)}</div>`).join("")+(r.errs.length>10?`<div class="err">……还有 ${r.errs.length-10} 个问题</div>`:"")+'<div class="note">可以把这些问题发给 Claude，请它修正后重新输出。</div>';return}
     cur.pack=r.pack;cur.overrides={};cur.updated=Date.now();await DB.put(cur);
     buildLyrics();applyToggles();if(loopIdx!=null)setLoop(loopIdx);if(curIdx>=0)$("#lyrics").children[curIdx]?.classList.add("cur");
