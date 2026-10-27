@@ -97,7 +97,6 @@ svg{display:block}
   .is-pressed{transform:none!important}
   /* 减弱动态效果：播放条只淡入淡出 */
   .player.bar-in{animation:barFade var(--dur) var(--ease) both!important}
-  .player.bar-out{animation:barFadeOut var(--dur) var(--ease) both!important}
 }
 
 /* Home（首页左右边距 20px） */
@@ -162,13 +161,10 @@ body > section{position:relative;background:var(--bg);min-height:100dvh}
 @keyframes dimOut{from{opacity:1}to{opacity:0}}
 @keyframes leaveBack{from{transform:none;opacity:1}to{transform:translateX(30%);opacity:0}}
 body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity:0;transition:none}
-/* 浮动播放条：页面滑入后从下方滑入并淡入（带一点回弹）；返回时先往下滑出 */
+/* 浮动播放条：页面滑入后从下方滑入并淡入（带一点回弹）；返回时没有消失动画，跟着切页直接隐藏 */
 .player.bar-in{animation:barIn var(--dur-slow) var(--ease) both}
-.player.bar-out{animation:barOut var(--dur) var(--ease) both}
 @keyframes barIn{0%{transform:translateY(120%);opacity:0}70%{transform:translateY(-6px);opacity:1}100%{transform:none;opacity:1}}
-@keyframes barOut{from{transform:none;opacity:1}to{transform:translateY(120%);opacity:0}}
 @keyframes barFade{from{opacity:0}to{opacity:1}}
-@keyframes barFadeOut{from{opacity:1}to{opacity:0}}
 .fab,.bottom-bar{transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease),opacity var(--dur) var(--ease)}
 
 /* Top bar：不透明，避免 iOS 顶部模糊 */
@@ -533,7 +529,7 @@ function show(id,dir){
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
   clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
-  document.querySelectorAll(".player").forEach(p=>p.classList.remove("bar-in","bar-out"));
+  document.querySelectorAll(".player").forEach(p=>p.classList.remove("bar-in"));
   const bar=to.querySelector(".player");
   if(!dir||from===to||reduceMotion()){if(bar)bar.classList.add("bar-in");return}
   // 旧页面暂时固定在原位，和新页面一起播动画
@@ -574,10 +570,7 @@ function go(view,data={}){
 function goBack(){
   if(navAnim||navPending||curView==="home")return;if(curView==="proofView"&&proof&&proof.dirty){dirtyPrompt();return}
   navAnim=true;clearPressed();setTimeout(()=>{navAnim=false},1200);
-  // 有浮动播放条的页面：播放条先往下滑出，再返回
-  const bar=$("#"+curView).querySelector(".player");
-  if(bar&&bar.getClientRects().length){bar.classList.remove("bar-in");bar.classList.add("bar-out");setTimeout(()=>history.back(),200)}
-  else afterPaint(()=>history.back());
+  afterPaint(()=>history.back());
 }
 window.addEventListener("popstate",e=>{
   clearPressed();
