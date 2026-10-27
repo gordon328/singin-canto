@@ -35,13 +35,16 @@ module.exports = { name: "feedback", async run(b) {
   b.check("tint-exists", await b.ev(`getComputedStyle(document.querySelector("#topTint")).position === "fixed"`));
   await b.ev(click("#btnBackup")); await b.sleep(500);
   const o = await b.ev(bd);
-  b.check("backdrop-full-dim " + JSON.stringify(o), o.pos === "fixed" && o.top === 0 && o.covers && o.op === 1 && o.bg === scrim && /background-color/.test(o.tr) && !/opacity/.test(o.tr) && o.tintZ < o.z);
+  b.check("backdrop-full-dim " + JSON.stringify(o), o.pos === "fixed" && o.top === 0 && o.covers && o.op === 1 && o.bg === scrim && o.tintZ < o.z);
   b.check("no-shade", await b.ev(`!document.querySelector("#sheetShade")`));
-  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(60);
-  const closing = await b.ev(bd);
-  b.check("closing-fades-color " + JSON.stringify(closing), closing.op === 1 && closing.bg !== scrim && !closing.hidden);
+  // M3.7：Safari 给状态栏取色不跟过渡走（v10 打开闪白、关闭闪暗），改成一下子变暗、一下子恢复
+  b.check("backdrop-no-transition " + o.tr, o.tr === "all" ? (await b.ev(`getComputedStyle(document.querySelector("#backdrop")).transitionDuration`)) === "0s" : !/background|opacity/.test(o.tr));
+  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(20);
+  b.check("close-undims-at-once", (await b.ev(bd)).hidden);
   await b.sleep(500);
-  b.check("closed-hidden", (await b.ev(bd)).hidden);
+  await b.ev(click("#btnBackup")); await b.sleep(20);
+  b.check("open-dims-at-once", (await b.ev(bd)).bg === scrim);
+  await b.ev(`document.querySelector("#backdrop").click()`); await b.sleep(500);
 
   // bug 5：歌词输入框固定高度，文字不溢出
   await b.ev(click("#btnAdd")); await b.sleep(700);

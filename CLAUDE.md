@@ -24,7 +24,7 @@
   - 删除类操作都用 `confirmSheet({title, body})`（返回 Promise<boolean>）先确认；删除歌曲走 `deleteSongs(ids)`：先从列表拿掉，5 秒内可撤销，`commitDelete()` 才真正删数据库（5 秒后、离开首页、切后台），卡片保留只去掉出处
   - 按下效果：**不用 CSS `:active`**，JS 在 pointerdown 时给 `.btn,.keycap,.song,.ib,.res` 加 `.pressed`，抬起/取消/移出/滚动时去掉；`go()`/`goBack()` 先 `clearPressed()` 再等一帧才切页；popstate、pageshow 也清掉。`:hover` 只能写在 `@media (hover: hover)` 里
   - 浮动播放条 `.player`：`show()` 在切页动画结束后加 `bar-in`；`goBack()` 先加 `bar-out` 等 200ms 再 `history.back()`
-  - 状态栏：iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，页面最上面放了永久色带 `#topTint`，遮罩 `#backdrop` 是 fixed 整屏、opacity 固定 1、过渡背景色（方案 d，见设计规范 7.4 的试验记录）
+  - 状态栏：iOS 26 Safari 用顶部 fixed 元素的颜色染状态栏，页面最上面放了永久色带 `#topTint`，遮罩 `#backdrop` 是 fixed 整屏、opacity 固定 1、没有过渡动画，打开一下子变暗、关闭立刻隐藏（方案 e，见设计规范 7.4 的试验记录）
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
   - `getJyutpingList(text)` 返回 `[字, 粤拼|null][]`
   - `getJyutpingText(text)` 返回空格分隔的粤拼
@@ -64,7 +64,8 @@
 - **M3.3**：状态栏方案 b（遮罩改 absolute，铺满整页，不再是 fixed）。真机不闪暗但闪白
 - **M3.4**：状态栏方案 c（遮罩透明，弹层用 `--shadow-sheet` 阴影 + 描边）。真机完全不闪，但开发者不喜欢没有变暗
 - **M3.5**：弹层后面加下半屏渐变变暗（开发者不喜欢，已去掉）
-- **M3.6**：状态栏方案 d：整屏变暗回来了，遮罩 opacity 固定 1、过渡背景色；`#topTint` 在遮罩下面跟着变暗。等 iPhone 验收
+- **M3.6**：状态栏方案 d：整屏变暗回来了，遮罩 opacity 固定 1、过渡背景色；`#topTint` 在遮罩下面跟着变暗。真机打开闪白、关闭闪暗
+- **M3.7**：状态栏方案 e：遮罩去掉过渡，一下子变暗、一下子恢复。等 iPhone 验收
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）
