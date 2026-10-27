@@ -26,6 +26,12 @@ module.exports = { name: "feedback", async run(b) {
   b.check("tone-spin-reduced-motion", (await b.ev(spinName)) === "");
   await b.reducedMotion(false); await b.sleep(400);
 
+  // 状态栏方案 a：一条永久的 fixed 顶部色带（页面底色），层级高于遮罩
+  const tint = await b.ev(`(() => { const e = document.querySelector("#topTint"); if (!e) return null; const s = getComputedStyle(e);
+    return { pos: s.position, top: s.top, z: +s.zIndex, bg: s.backgroundColor, body: getComputedStyle(document.body).backgroundColor, h: e.getBoundingClientRect().height,
+      bz: +getComputedStyle(document.querySelector("#backdrop")).zIndex, rule: [...document.styleSheets[0].cssRules].filter(r => r.selectorText === "#topTint").map(r => r.style.height).join() }; })()`);
+  b.check("top-tint " + JSON.stringify(tint), !!tint && tint.pos === "fixed" && tint.top === "0px" && tint.z > tint.bz && tint.bg === tint.body && tint.h >= 2 && /safe-area-inset-top/.test(tint.rule));
+
   // bug 1：遮罩不盖住顶部安全区（状态栏那一条不变色）
   const sa = await b.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 47, topMax: 47, bottom: 34, bottomMax: 34, left: 0, leftMax: 0, right: 0, rightMax: 0 } });
   if (sa.error) {
@@ -55,20 +61,27 @@ module.exports = { name: "feedback", async run(b) {
     && (await b.ev(cs("#fLyrics", "overflowY"))) === "auto" && (await b.ev(cs("#fLyrics", "clipPath"))) !== "none");
   await b.ev(click("#importView [data-back]")); await b.sleep(700);
 
-  // bug 2：回到首页时按钮是初始状态（iPhone 上 :active 会卡住，这里用 forcePseudoState 模拟卡住）
-  await b.send("DOM.enable"); await b.send("CSS.enable");
-  const root = (await b.send("DOM.getDocument")).result.root.nodeId;
-  const fab = (await b.send("DOM.querySelector", { nodeId: root, selector: "#btnAdd" })).result.nodeId;
-  await b.ev(click("#btnAdd")); await b.sleep(700);
-  await b.send("CSS.forcePseudoState", { nodeId: fab, forcedPseudoClasses: ["active", "hover"] });
-  await b.ev(click("#importView [data-back]")); await b.sleep(700);
-  const bg = `getComputedStyle(document.querySelector("#btnAdd")).backgroundColor`;
+  // bug 2：按下效果由 JS 控制（.pressed），不用 CSS :active；跳转前先松开；回到首页时没有按下的元素
+  b.check("no-css-active", await b.ev(`![...document.styleSheets[0].cssRules].some(function walk(r) { return /:active/.test(r.selectorText || "") || [...(r.cssRules || [])].some(walk); })`));
   const tf = `getComputedStyle(document.querySelector("#btnAdd")).transform`;
-  const inverse = await b.ev(`(() => { const d = document.createElement("div"); d.style.color = "var(--inverse)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`);
-  b.check("press-reset-after-nav " + (await b.ev(tf)) + " " + (await b.ev(bg)), (await b.ev(tf)) === "none" && (await b.ev(bg)) === inverse);
-  await b.touch("touchStart", 10, 400); await b.touch("touchEnd", 10, 400); await b.sleep(150);
-  b.check("press-works-after-touch " + (await b.ev(tf)), (await b.ev(tf)) !== "none");
-  await b.send("CSS.forcePseudoState", { nodeId: fab, forcedPseudoClasses: [] });
+  const pdown = (sel, type) => `document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new PointerEvent(${JSON.stringify(type)}, { bubbles: true, clientX: 300, clientY: 880 }))`;
+  await b.ev(pdown("#btnAdd", "pointerdown")); await b.sleep(150);
+  b.check("press-on-down " + (await b.ev(tf)), await b.ev(`document.querySelector("#btnAdd").classList.contains("pressed")`) && (await b.ev(tf)) !== "none");
+  await b.ev(pdown("#btnAdd", "pointerup"));
+  b.check("release-on-up", !(await b.ev(`document.querySelector("#btnAdd").classList.contains("pressed")`)));
+  await b.ev(pdown("#btnAdd", "pointerdown")); await b.ev(pdown("#btnAdd", "pointercancel"));
+  b.check("release-on-cancel", !(await b.ev(`document.querySelector("#btnAdd").classList.contains("pressed")`)));
+  // 按着就点了跳转：跳转开始前已经松开
+  await b.ev(`(() => { const e = document.querySelector("#btnAdd"); e.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); e.click(); window.__pressedAtNav = null;
+    requestAnimationFrame(() => { window.__pressedAtNav = e.classList.contains("pressed"); }); })()`);
+  await b.sleep(50);
+  b.check("released-before-nav", (await b.ev("window.__pressedAtNav")) === false);
+  await b.sleep(700);
+  await b.ev(`(() => { const e = document.querySelector("#importView [data-back]"); e.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); e.click(); })()`);
+  await b.sleep(800);
+  await b.ev(`document.querySelector("#btnAdd").classList.add("pressed")`);
+  await b.ev(`window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))`);
+  b.check("home-clean-after-back", await b.ev(`!document.querySelector("#home").hidden && !document.querySelector(".pressed")`));
 
   // bug 4：导入页保存按钮不灰掉；缺东西时提示并滚到那一步；连点只存一首
   await b.ev(click("#btnAdd")); await b.sleep(700);

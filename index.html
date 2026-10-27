@@ -52,7 +52,9 @@
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font-cjk);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+/* 状态栏方案 a：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色给状态栏上色（不再读 theme-color）。
+   放一条永久的页面底色色带，层级高于弹层遮罩，让 Safari 始终取到 --bg。至少 2px，Safari 模式下顶部安全区可能是 0 */
+#topTint{position:fixed;top:0;left:0;right:0;height:max(env(safe-area-inset-top,0px),2px);z-index:45;background:var(--bg);pointer-events:none}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button,a,label,input,textarea,select,[role=button]{touch-action:manipulation}
@@ -64,18 +66,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:10px 18px;border-radius:16px;
   background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1);font-size:16px;font-weight:600;line-height:1.2;text-align:center;
   transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-body:not(.settling) .btn:active{transform:scale(.97);background:var(--surface-press)}
+.btn.pressed{transform:scale(.97);background:var(--surface-press)}
 .btn.primary{background:var(--accent);color:var(--on-accent)}
-body:not(.settling) .btn.primary:active{background:var(--accent-press)}
+.btn.primary.pressed{background:var(--accent-press)}
 .btn.inverse{background:var(--inverse);color:var(--on-inverse)}
-body:not(.settling) .btn.inverse:active{background:var(--ink-2)}
+.btn.inverse.pressed{background:var(--ink-2)}
 .btn.soft{background:var(--accent-soft);color:var(--accent);box-shadow:none}
-body:not(.settling) .btn.soft:active{background:var(--surface-press)}
+.btn.soft.pressed{background:var(--surface-press)}
 .btn.text{background:none;color:var(--muted);box-shadow:none}
-body:not(.settling) .btn.text:active{background:none}
+.btn.text.pressed{background:none}
 .btn.danger{color:var(--danger)}
 .btn.danger-fill{background:var(--danger);color:var(--on-accent)}
-body:not(.settling) .btn.danger-fill:active{background:var(--danger);opacity:.85}
+.btn.danger-fill.pressed{background:var(--danger);opacity:.85}
 .btn.small{min-height:44px;padding:8px 14px;border-radius:12px;font-size:15px}
 .btn.block{display:flex;width:100%}
 .btn.bottom{min-height:56px;border-radius:18px;font-size:17px}
@@ -92,7 +94,10 @@ textarea:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
 svg{display:block}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition-property:opacity!important;animation:none!important;scroll-behavior:auto!important}
-  .btn:active,[role=button]:active,button:active{transform:none!important}
+  .pressed{transform:none!important}
+  /* 减弱动态效果：播放条只淡入淡出 */
+  .player.bar-in{animation:barFade var(--dur) var(--ease) both!important}
+  .player.bar-out{animation:barFadeOut var(--dur) var(--ease) both!important}
 }
 
 /* Home（首页左右边距 20px） */
@@ -105,7 +110,7 @@ svg{display:block}
 .keycap{--tc:var(--muted);height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:18px;
   background:var(--surface);box-shadow:inset 0 -4px 0 var(--tc),0 3px 6px rgba(34,31,51,.06);
   transition:transform 100ms var(--ease),box-shadow 100ms var(--ease),background-color 100ms var(--ease)}
-body:not(.settling) .keycap:active{transform:translateY(3px);background:var(--surface-press);box-shadow:inset 0 -1px 0 var(--tc),inset 0 2px 4px rgba(34,31,51,.12)}
+.keycap.pressed{transform:translateY(3px);background:var(--surface-press);box-shadow:inset 0 -1px 0 var(--tc),inset 0 2px 4px rgba(34,31,51,.12)}
 .keycap .hz{font-size:22px;font-weight:600;line-height:1.1}
 .keycap .jp{font-size:12px;font-weight:600;color:var(--tc)}
 .keycap .hz,.keycap .jp{transition:opacity var(--dur) var(--ease)}
@@ -115,7 +120,7 @@ body:not(.settling) .keycap:active{transform:translateY(3px);background:var(--su
 .songs{display:flex;flex-direction:column;gap:10px;padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
 .song{display:flex;align-items:center;gap:14px;padding:14px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-body:not(.settling) .song:active{transform:scale(.98);background:var(--surface-press)}
+.song.pressed{transform:scale(.98);background:var(--surface-press)}
 .song .sq{flex:none;width:56px;height:56px;border-radius:18px;display:grid;place-items:center;font-size:24px;font-weight:700;background:var(--sq-bg);color:var(--sq-ink)}
 .song .meta{flex:1;min-width:0}
 .song .ttl{font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -153,7 +158,13 @@ body > section{background:var(--bg);min-height:100dvh}
 @keyframes dimOut{from{opacity:1}to{opacity:0}}
 @keyframes leaveBack{from{transform:none;opacity:1}to{transform:translateX(30%);opacity:0}}
 body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity:0;transition:none}
-.player{transition:opacity var(--dur) var(--ease)}
+/* 浮动播放条：页面滑入后从下方滑入并淡入（带一点回弹）；返回时先往下滑出 */
+.player.bar-in{animation:barIn var(--dur-slow) var(--ease) both}
+.player.bar-out{animation:barOut var(--dur) var(--ease) both}
+@keyframes barIn{0%{transform:translateY(120%);opacity:0}70%{transform:translateY(-6px);opacity:1}100%{transform:none;opacity:1}}
+@keyframes barOut{from{transform:none;opacity:1}to{transform:translateY(120%);opacity:0}}
+@keyframes barFade{from{opacity:0}to{opacity:1}}
+@keyframes barFadeOut{from{opacity:1}to{opacity:0}}
 .fab,.bottom-bar{transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease),opacity var(--dur) var(--ease)}
 
 /* Top bar：不透明，避免 iOS 顶部模糊 */
@@ -204,10 +215,10 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
 .prog input::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:0}
 .ctrls{display:flex;align-items:center;justify-content:space-between;gap:4px}
 .ib{width:48px;height:48px;display:grid;place-items:center;border-radius:16px;color:var(--ink);transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-body:not(.settling) .ib:active{transform:scale(.94);background:var(--surface-press)}
+.ib.pressed{transform:scale(.94);background:var(--surface-press)}
 .ib.on{color:var(--accent);background:var(--accent-soft)}
 .ib.play{width:58px;height:58px;border-radius:20px;background:var(--accent);color:var(--on-accent)}
-body:not(.settling) .ib.play:active{background:var(--accent-press)}
+.ib.play.pressed{background:var(--accent-press)}
 .ib.rate{width:auto;min-width:56px;padding:0 10px;font-family:var(--font-latin);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 
 /* Import + sync：每一步是一张白卡片，保存按钮固定在底部 */
@@ -228,7 +239,7 @@ body:not(.settling) .ib.play:active{background:var(--accent-press)}
 .results{display:flex;flex-direction:column;gap:8px}
 .res{display:flex;justify-content:space-between;gap:8px;min-height:56px;padding:12px 14px;border-radius:18px;background:var(--bg);text-align:left;width:100%;
   transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
-body:not(.settling) .res:active{transform:scale(.98);background:var(--surface-press)}
+.res.pressed{transform:scale(.98);background:var(--surface-press)}
 .res b{font-weight:600}
 .bottom-bar{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;max-width:688px;margin:0 auto}
 .sync-list{display:flex;flex-direction:column;gap:6px;padding-block:10px calc(240px + env(safe-area-inset-bottom,0px))}
@@ -289,7 +300,7 @@ body:not(.settling) .res:active{transform:scale(.98);background:var(--surface-pr
 .wc-tip,.tip{padding:12px 14px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:14px;line-height:1.6}
 .wc-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btn.add-dashed{min-height:56px;border-radius:18px;background:none;box-shadow:none;color:var(--accent);border:2px dashed color-mix(in srgb,var(--accent) 40%,transparent)}
-body:not(.settling) .btn.add-dashed:active{background:var(--accent-soft)}
+.btn.add-dashed.pressed{background:var(--accent-soft)}
 .wc-known{min-height:56px;display:flex;align-items:center;justify-content:center;border-radius:18px;background:var(--bg);color:var(--muted);font-size:15px;font-weight:600}
 .mean{font-size:17px}
 .warn{padding:12px 14px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:13px;line-height:1.6}
@@ -304,7 +315,8 @@ body:not(.settling) .btn.add-dashed:active{background:var(--accent-soft)}
 .toast{position:fixed;left:50%;bottom:calc(160px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--inverse);color:var(--on-inverse);padding:12px 18px;border-radius:18px;font-size:14px;max-width:min(90vw,420px);text-align:center;box-shadow:var(--shadow-3)}
 </style>
 </head>
-<body ontouchstart="">
+<body>
+<div id="topTint" aria-hidden="true"></div>
 
 <audio id="au" preload="auto" playsinline></audio>
 
@@ -480,30 +492,62 @@ function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}
 const views=["home","importView","syncView","playerView","proofView"];
 const DEPTH={home:0,importView:1,syncView:1,playerView:1,proofView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
-// 页面按层级：首页(0) → 导入/打轴/播放(1) → 校对歌词(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
-let curView="home",navAnim=false,navTimer=0;
+// 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
+let curView="home",navAnim=false,navTimer=0,navPending=false;
 const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 function show(id,dir){
   const from=$("#"+curView),to=$("#"+id),y=scrollY;
   clearTimeout(navTimer);document.body.classList.remove("navigating");views.forEach(v=>{const el=$("#"+v);el.classList.remove("nav-layer","enter-fwd","leave-fwd","enter-back","leave-back");el.style.cssText=""});
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
-  // iPhone 上点过的按钮切页回来可能停在"按下"的样子：先关掉按下效果，下一次手指按下时再打开
-  document.body.classList.add("settling");if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
-  if(!dir||from===to||reduceMotion())return;
+  clearPressed();if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
+  // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
+  document.querySelectorAll(".player").forEach(p=>p.classList.remove("bar-in","bar-out"));
+  const bar=to.querySelector(".player");
+  if(!dir||from===to||reduceMotion()){if(bar)bar.classList.add("bar-in");return}
   // 旧页面暂时固定在原位，和新页面一起播动画
   document.body.classList.add("navigating");
   from.hidden=false;from.classList.add("nav-layer",dir==="fwd"?"leave-fwd":"leave-back");from.style.top=-y+"px";from.style.zIndex=dir==="fwd"?1:3;
   to.style.position="relative";to.style.zIndex=2;to.classList.add(dir==="fwd"?"enter-fwd":"enter-back");
-  navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating")},340);
+  navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating");if(bar)bar.classList.add("bar-in")},340);
 }
+// 按下效果用 JS 控制（不用 CSS :active，iPhone 上切页回来 :active 会卡住）：手指按下加 .pressed，抬起、取消、移出、滚动时立刻去掉
+const PRESSABLE=".btn,.keycap,.song,.ib,.res";
+let pressedEl=null;
+function clearPressed(){document.querySelectorAll(".pressed").forEach(e=>e.classList.remove("pressed"));pressedEl=null}
+document.addEventListener("pointerdown",e=>{
+  clearPressed();const t=e.target.closest&&e.target.closest(PRESSABLE);
+  if(t&&!t.disabled){t.classList.add("pressed");pressedEl=t}
+},{passive:true,capture:true});
+["pointerup","pointercancel"].forEach(ev=>document.addEventListener(ev,clearPressed,{passive:true,capture:true}));
+document.addEventListener("pointermove",e=>{
+  if(!pressedEl)return;const r=pressedEl.getBoundingClientRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)clearPressed();
+},{passive:true});
+window.addEventListener("scroll",()=>{if(pressedEl)clearPressed()},{passive:true,capture:true});
+window.addEventListener("pageshow",clearPressed);
+// 跳转前先松开按钮，等页面画出"松开"的样子再切页（Safari 右滑返回时用的快照也是松开的）
+const afterPaint=fn=>requestAnimationFrame(()=>requestAnimationFrame(fn));
 function go(view,data={}){
+  if(navPending)return;
   if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear()}
-  const st={view,...data};
-  if(DEPTH[view]>DEPTH[curView])history.pushState(st,"");else history.replaceState(st,"");
-  show(view,"fwd");
+  clearPressed();navPending=true;
+  afterPaint(()=>{
+    navPending=false;
+    const st={view,...data};
+    if(DEPTH[view]>DEPTH[curView])history.pushState(st,"");else history.replaceState(st,"");
+    show(view,"fwd");
+  });
 }
-function goBack(){if(navAnim||curView==="home")return;if(curView==="proofView"&&proof&&proof.dirty){dirtyPrompt();return}navAnim=true;history.back();setTimeout(()=>{navAnim=false},1000)}
+function goBack(){
+  if(navAnim||navPending||curView==="home")return;if(curView==="proofView"&&proof&&proof.dirty){dirtyPrompt();return}
+  navAnim=true;clearPressed();setTimeout(()=>{navAnim=false},1200);
+  // 有浮动播放条的页面：播放条先往下滑出，再返回
+  const bar=$("#"+curView).querySelector(".player");
+  if(bar&&bar.getClientRects().length){bar.classList.remove("bar-in");bar.classList.add("bar-out");setTimeout(()=>history.back(),200)}
+  else afterPaint(()=>history.back());
+}
 window.addEventListener("popstate",e=>{
+  clearPressed();
   const st=e.state||{view:"home"},anim=navAnim?"back":null;navAnim=false;
   // 校对页有改动没保存，却被系统右滑返回了：回到校对页，弹出保存提示
   if(curView==="proofView"&&proof&&proof.dirty&&st.view!=="proofView"){history.pushState({view:"proofView",songId:proof.song.id},"");dirtyPrompt();return}
@@ -516,7 +560,6 @@ window.addEventListener("popstate",e=>{
   show("home",anim);renderHome();
 });
 document.querySelectorAll("[data-back]").forEach(b=>b.addEventListener("click",goBack));
-["touchstart","pointerdown"].forEach(ev=>document.addEventListener(ev,()=>document.body.classList.remove("settling"),{passive:true,capture:true}));
 
 
 /* ---------- speech ---------- */
@@ -924,8 +967,8 @@ function renderProofMeta(){
 $("#prAudio").addEventListener("change",e=>{
   const f=e.target.files[0];e.target.value="";if(!f||!proof)return;
   const p=proof,u=URL.createObjectURL(f),a=new Audio();a.preload="metadata";
-  // 读完之前已经离开编辑页（或者又打开了一次）：不再换音频
-  a.onloadedmetadata=()=>{URL.revokeObjectURL(u);if(proof!==p||curView!=="proofView")return;proof.newAudio={blob:f,name:f.name,dur:a.duration};proof.dirty=true;proof.stopAt=null;au.pause();setAudio(f);renderProofMeta();toast("已换成新音频，保存后生效")};
+  // 读完之前已经离开（或正在离开）编辑页、或者又打开了一次：不再换音频
+  a.onloadedmetadata=()=>{URL.revokeObjectURL(u);if(proof!==p||curView!=="proofView"||navAnim)return;proof.newAudio={blob:f,name:f.name,dur:a.duration};proof.dirty=true;proof.stopAt=null;au.pause();setAudio(f);renderProofMeta();toast("已换成新音频，保存后生效")};
   a.onerror=()=>{URL.revokeObjectURL(u);toast("这个文件播放不了，可能是加密格式。请换一个 mp3 或 m4a")};
   a.src=u;
 });
