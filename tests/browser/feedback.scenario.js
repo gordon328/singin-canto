@@ -39,7 +39,13 @@ module.exports = { name: "feedback", async run(b) {
   await b.ev(click("#btnBackup")); await b.sleep(500);
   b.check("sheet-top-fixed-only-tint " + JSON.stringify(await b.ev(topFixed)), JSON.stringify(await b.ev(topFixed)) === '["topTint"]');
   b.check("backdrop-covers-home " + (await b.ev(covers)), (await b.ev(covers)) === "absolute");
+  // 下半屏渐变变暗：从弹层上沿往上渐渐变透明，屏幕上 1/4 完全不碰
+  const shade = `(() => { const e = document.querySelector("#sheetShade"); if (!e) return null; const s = getComputedStyle(e), r = e.getBoundingClientRect(), sh = document.querySelector("#sheet").getBoundingClientRect();
+    return { pos: s.position, op: +s.opacity, img: s.backgroundImage.slice(0, 15), top: Math.round(r.top), bottom: Math.round(r.bottom), sheetTop: Math.round(sh.top), h: innerHeight, pe: s.pointerEvents }; })()`;
+  const sd = await b.ev(shade);
+  b.check("shade " + JSON.stringify(sd), !!sd && sd.pos === "fixed" && sd.op === 1 && sd.img.startsWith("linear-gradient") && sd.top >= sd.h * 0.25 && sd.top < sd.sheetTop && sd.bottom === sd.h && sd.pe === "none");
   await F.closeSheet(b);
+  b.check("shade-hidden-after-close", await b.ev(`!document.querySelector("#sheetShade") || document.querySelector("#sheetShade").hidden`));
   await F.openSong(b, "t1");
   await b.ev("window.scrollTo(0, document.scrollingElement.scrollHeight)"); await b.sleep(300);
   await b.ev(click("#btnMenu")); await b.sleep(500);
