@@ -31,6 +31,7 @@
   - 浮动播放条 `.player`：`show()` 在切页动画结束后加 `bar-in`；返回时没有消失动画（M3.12 去掉了 `bar-out`），切页时 `body.navigating` 直接把它隐藏
   - 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以**顶部附近不能有带颜色的 fixed 元素**（`#topTint` 已去掉）。**弹出层不使用暗幕**（M3.12，设计规范 5.6）：底部弹窗 `openSheet(html, {modal})` 只靠 `--shadow-sheet` 阴影；点外面关闭（document 上的 pointerdown/pointerup 判断，移动超过 10px 算滚动，紧跟的 click 吞掉）；`modal: true` 的确认类弹窗（`confirmSheet`、未保存提示）没有拖动条，点外面、往下拖都不关
   - 歌曲页「⋯」是下拉小菜单 `#songMenu`（设计规范 5.9）：放在吸顶顶栏 `.bar .wrap` 里，absolute，`openMenu()`/`closeMenu(now)`，切页时 `show()` 直接收起
+  - 每日学习：首页 `#today` 卡片（`renderToday()`）→ 学习页 `studyView`（DEPTH 1，`startStudy()`/`studyNext()`/`renderStudy()`，学词 `renderWord`、整句 `renderLine`、完成 `renderDone`）。**进度每一步立刻存**（「会读了」建卡、「这句会了」标 learned + `daily.newLines/done`），不另存"学到哪"，下次进来用 `STUDY.nextLine` + 排除已有卡片算出断开的地方。原唱用 `playStudyLine(loop)`（0.8×，`tick()` 里按 `study.stopAt` 停或循环）。正在学的歌：`STUDY.currentSong`，`setCurrentSong(id)`；存歌用 `saveSong(s)`（原地更新 `songs` 里的对象）
   - 设置页 `settingsView`：首页右上角齿轮进入；「每天新学几句」2/4/6/自定义（自定义展开「− 数字 +」，1–20；存 meta `daily.goal`，默认 4；旧的 `prefs.goal` 启动时搬过去）+ 备份与恢复（`renderSettings()`）
   - 声调键帽（设计规范 5.2）：`.tones .key` 里两层 `.key-base`（声调色，不动）和 `.key-face`（按下时只有它下移 4px）
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
@@ -80,6 +81,7 @@
 - **M3.11**：状态栏换思路，不再调遮罩：备份改成整页「设置」（首页齿轮，从右边滑入，含「每天新学几句」2/4/6 先只显示）；去掉 `#topTint`；弹窗暗色层放进当前页面（absolute，跟着页面）；声调键帽按新规范 5.2 改成底座 + 键面两层；按下 class 改名 `.is-pressed`。真机：不闪，但状态栏不变暗，和变暗的页面不协调
 - **M3.12**：整个 App 不再使用暗幕：「⋯」改成下拉小菜单（编辑歌曲 / 词汇包 / 删除）；底部弹窗去掉暗色层、只用阴影，点外面关闭（确认类弹窗必须点按钮，未保存提示加了「继续编辑」）；设计规范 5.6 改写、新增 5.9 下拉菜单。2026-10-28 iPhone 验收通过。之后去掉了播放条返回时的消失动画
 - **M4a 完成**（2026-10-28 iPhone 验收通过）：词汇包 v3（新提示词覆盖所有词、只有重点词有下划线、兼容旧包）；「每天新学几句」存到 meta `daily`，加了「自定义」1–20；`progress` 规则（恢复备份时已学句子取并集）
+- **M4b 完成（待 iPhone 验收）**：首页「今天的学习」（M5 前不显示复习格）、学词卡片、整句（原唱 0.8× 循环）、完成页、再学 2 句、中途退出继续、副歌和没汉字的句子自动跳过、「设为正在学」、整首学完「选下一首歌」。细节见规格 9 M4b
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）
@@ -89,4 +91,5 @@
 4. M4 拆成两半（2026-10-28 开发者决定），一次只做一半：
    - M4a：词汇包 v3（规格第 4 节）+ 设置页「每天新学几句」接上功能（存 `meta.daily`）+ `progress` 数据结构，计划在 `docs/superpowers/plans/2026-10-28-m4a-pack-v3.md`
    - M4b：每日学习流程（规格 5.1–5.6），计划在 `docs/superpowers/plans/2026-10-28-m4b-daily-study.md`
-5. 之后按规格依次做 M5–M7
+5. M5：复习（规格第 6 节），首页「今天的学习」加回「① 复习 N 个词」那一格
+6. 之后按规格做 M6–M7

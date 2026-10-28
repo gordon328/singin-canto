@@ -125,11 +125,31 @@ svg{display:block}
 .st-btns{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px}
 .st-say{width:64px;height:64px;min-height:64px;padding:0;border-radius:50%;box-shadow:var(--shadow-3)}
 .study-foot{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:20;max-width:688px;margin:0 auto;display:flex;flex-direction:column;gap:2px}
+.st-hint{margin:6px 0 12px;text-align:center;font-size:14px;color:var(--muted)}
+.st-whole{padding:22px 16px}
+.st-wline{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 8px}
+.st-wline .grp{display:inline-flex;gap:6px}
+.st-whole .st-ch .jp{font-size:14px}
+.st-whole .st-ch .hz{font-size:34px}
+.st-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.st-big{flex-direction:column;gap:2px;min-height:76px;border-radius:22px}
+.st-big small{font-size:12px;font-weight:500;opacity:.85}
+.st-done{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:28px}
+.st-check{width:96px;height:96px;border-radius:30px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.st-check.pop{animation:pop 480ms cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.st-done h2{margin:22px 0 6px;font-size:26px;font-weight:700}
+.st-fin{margin-top:6px;font-weight:600;color:var(--accent)}
+.st-stats{align-self:stretch;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}
+.st-stat{display:flex;flex-direction:column;gap:2px;padding:14px 6px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1)}
+.st-stat b{font-size:32px;font-weight:700}
+.st-stat span{font-size:13px;color:var(--muted)}
+.st-preview{align-self:stretch;margin-top:12px;padding:14px 16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;font-size:14px;line-height:1.6;color:var(--ink-2)}
 .st-anim.out{animation:stOut var(--dur) var(--ease) both}
 .st-anim.in{animation:stIn var(--dur) var(--ease) both}
 @keyframes stOut{to{transform:translateX(-30%);opacity:0}}
 @keyframes stIn{from{transform:translateX(30%);opacity:0}}
-@media (prefers-reduced-motion: reduce){@keyframes stOut{to{opacity:0}}@keyframes stIn{from{opacity:0}}}
+@media (prefers-reduced-motion: reduce){@keyframes stOut{to{opacity:0}}@keyframes stIn{from{opacity:0}}@keyframes pop{from{opacity:0}}}
 /* 首页「今天的学习」卡片（设计规范 5.4） */
 .today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:20px;margin-bottom:22px;box-shadow:var(--shadow-2)}
 .today-head{font-size:17px;font-weight:700;margin-bottom:14px}
@@ -1470,8 +1490,52 @@ function renderWord(){
   $("#stFoot").innerHTML='<button class="btn inverse bottom block" type="button" data-act="got">会读了，下一个</button><button class="btn text block" type="button" data-act="known">我早就认识这个词</button>';
   try{speak(u.w,0.8)}catch(e){} // iOS 可能拦截自动朗读，被拦就算了
 }
-function renderLine(){}
-function renderDone(){}
+function renderLine(){
+  const v=computeLineFor(study.song,study.li),n=study.units.length;
+  studyCells(n,n);$("#stCount").textContent="整句";$("#stCount").classList.add("whole");
+  const ch=it=>it.space?'<span class="sp"></span>':studyCharHTML({ch:it.ch,jp:it.jp||""});
+  $("#stBody").innerHTML=`<p class="st-hint">把这句连起来读</p>
+    <div class="st-card st-whole st-anim"><div class="st-wline">${wrapGroups(v.items).map(cis=>`<span class="grp">${cis.map(ci=>ch(v.items[ci])).join("")}</span>`).join("")}</div></div>
+    <div class="st-two"><button class="btn st-big" type="button" data-act="slowline"><span>标准慢读</span><small>一个字一个字</small></button><button class="btn primary st-big" type="button" data-act="loop" id="stLoop"></button></div>
+    <div class="wc-tip">先听原唱，再跟着小声唱出来。能跟上了就点下面。</div>`;
+  $("#stFoot").innerHTML='<button class="btn inverse bottom block" type="button" data-act="lineok">这句会了，下一句</button>';
+  refreshLoop();
+}
+function refreshLoop(){const b=$("#stLoop");if(b)b.innerHTML=`<span>原唱 ↻</span><small>${study&&study.loop?"0.8× · 循环中":"0.8× · 单句循环"}</small>`}
+function renderDone(){
+  const s=study.song,d=getDaily(),now=Date.now(),day=SRS.today(now),learned=STUDY.progressOf(s).learned;
+  const newWords=[...cards.values()].filter(c=>SRS.today(c.created)===day).length;
+  const due=STUDY.dueCount(cards.values(),SRS.dayDue(now,1),Infinity),up=STUDY.upcoming(lineTexts(s),learned,d.goal);
+  studyCells(1,1);$("#stCount").textContent="";$("#stCount").classList.remove("whole");
+  $("#stBody").innerHTML=`<div class="st-done st-anim">
+    <div class="st-check pop"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div>
+    <h2>今天的 ${d.newLines} 句学完了</h2>
+    <div class="note">${esc(s.title||"未命名")}${d.done.length?" · "+lineRange(d.done):""}</div>
+    ${study.finished?'<div class="st-fin">这首歌全部学完了 🎉</div>':""}
+    <div class="st-stats"><div class="st-stat"><b class="num">${d.reviewed}</b><span>复习的词</span></div><div class="st-stat"><b class="num">${newWords}</b><span>新学的词</span></div><div class="st-stat"><b class="num">${learned.length}</b><span>已学句子</span></div></div>
+    <div class="st-preview">明天要复习 ${due} 个词${up.length?"，再学"+lineRange(up):""}。</div>
+  </div>`;
+  $("#stFoot").innerHTML=(study.finished?'<button class="btn primary bottom block" type="button" data-act="pick">选下一首歌</button>':'<button class="btn primary bottom block" type="button" data-act="more">还有精神，再学 2 句</button>')
+    +'<button class="btn bottom block" type="button" data-act="home">回到首页</button>';
+}
+async function lineLearned(){
+  stopStudyAudio();
+  const s=study.song,li=study.li;
+  s.progress=STUDY.withLearned(s,li);await saveSong(s);
+  const d=getDaily();await saveDaily({...d,newLines:d.newLines+1,done:[...d.done,li]});
+  studyNext(true);
+}
+// 整首歌学完：选下一首（设为正在学，回首页）；没有别的歌可学就去导入
+function openPickNext(){
+  const others=songs.filter(x=>x.id!==study.song.id&&STUDY.nextLine(lineTexts(x),STUDY.progressOf(x).learned).li!==null);
+  openSheet(`<h3>选下一首歌</h3>${others.length
+    ?`<div class="today-picks">${others.map(x=>`<button class="btn soft block" type="button" data-pick="${esc(x.id)}">${esc(x.title||"未命名")}</button>`).join("")}</div>`
+    :'<p class="note">其他歌都学完了，导入一首新歌接着学吧。</p><button class="btn inverse block" type="button" data-import>＋ 导入新歌</button>'}`);
+  $("#sheetBody").onclick=async e=>{
+    const pk=e.target.closest("[data-pick]");if(pk){await setCurrentSong(pk.dataset.pick);closeSheet();goBack();return}
+    if(e.target.closest("[data-import]")){closeSheet();openImport()}
+  };
+}
 function playStudyLine(loop){
   const s=study.song,L=s.lines[study.li];
   if(!s.audio){toast("先加上音频");return}
@@ -1496,6 +1560,11 @@ function studyAct(a){
   const u=study.units[study.i];
   if(a==="say")speak(u.w,0.8);else if(a==="slow")speak(u.w,0.6);else if(a==="orig")playStudyLine(false);
   else if(a==="got")learnWord(false);else if(a==="known")learnWord(true);
+  else if(a==="slowline"){stopStudyAudio();speak(PACK.fixText(study.song,study.song.lines[study.li].text),0.6);refreshLoop()}
+  else if(a==="loop"){if(study.loop&&!au.paused)stopStudyAudio();else playStudyLine(true);refreshLoop()}
+  else if(a==="lineok")lineLearned();
+  else if(a==="more"){const d=getDaily();saveDaily({...d,extra:d.extra+2}).then(()=>studyNext(true))}
+  else if(a==="home")goBack();else if(a==="pick")openPickNext();
 }
 $("#studyView").addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(b)studyAct(b.dataset.act)});
 
