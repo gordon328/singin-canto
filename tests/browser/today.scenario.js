@@ -19,6 +19,10 @@ module.exports = { name: "today", async run(b) {
   b.check("card-shown", await b.ev(visible("#today")) && t.includes("今天的学习") && t.includes("新学") && !t.includes("复习")
     && (await b.ev(`document.querySelector("#today .big").innerText.trim()`)) === "4" && t.includes("測試歌") && t.includes("第 1–4 句")
     && t.includes("开始今天的学习"));
+  // 只有「新学」一格时：不要大方块，紧凑的一行「新学 4 句 · 歌名 第 1–4 句」
+  b.check("compact-line", !(await b.ev(`!!document.querySelector("#today .today-cell")`))
+    && /新学\s*4\s*句\s*·\s*測試歌\s*第 1–4 句/.test(await b.ev(`document.querySelector("#today .today-line").innerText`))
+    && (await b.ev(`getComputedStyle(document.querySelector("#today .big")).fontFamily`)).includes("Outfit"));
   await b.shot("today-light");
 
   await b.ev(click("#btnSettings")); await b.sleep(800);

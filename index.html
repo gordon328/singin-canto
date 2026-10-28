@@ -96,7 +96,7 @@ svg{display:block}
   *,*::before,*::after{transition-property:opacity!important;animation:none!important;scroll-behavior:auto!important}
   .is-pressed{transform:none!important}
   /* 减弱动态效果：播放条只淡入淡出 */
-  .player.bar-in{animation:barFade var(--dur) var(--ease) both!important}
+  .player.bar-in,.fab.bar-in,.study-foot.bar-in{animation:barFade var(--dur) var(--ease) both!important}
 }
 
 /* Home（首页左右边距 20px） */
@@ -154,6 +154,12 @@ svg{display:block}
 .today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:20px;margin-bottom:22px;box-shadow:var(--shadow-2)}
 .today-head{font-size:17px;font-weight:700;margin-bottom:14px}
 .today-cell{background:var(--on-accent-veil);border-radius:20px;padding:12px 16px}
+.today-cells{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* 只有一格（新学）时不用大方块：紧凑的一行「新学 4 句 · 歌名 第 1–4 句」 */
+.today-line{margin:0 0 16px;font-size:15px;font-weight:600;line-height:1.5}
+.today-line .big{font-size:30px;margin:0 2px}
+.today-line .today-src{font-size:14px;font-weight:500;opacity:.85}
+.today-line .done-mark{font-size:20px;font-weight:700}
 .today-cell .lbl{display:block;font-size:13px;font-weight:600;opacity:.85}
 .today .big{font-size:28px;font-weight:700;margin-right:4px}
 .today-sub{font-size:13px;line-height:1.6;margin:12px 0 14px;opacity:.85}
@@ -219,8 +225,8 @@ body > section{position:relative;background:var(--bg);min-height:100dvh}
 @keyframes dimOut{from{opacity:1}to{opacity:0}}
 @keyframes leaveBack{from{transform:none;opacity:1}to{transform:translateX(30%);opacity:0}}
 body.navigating .player,body.navigating .fab,body.navigating .bottom-bar,body.navigating .study-foot{opacity:0;transition:none}
-/* 浮动播放条：页面滑入后从下方滑入并淡入（带一点回弹）；返回时没有消失动画，跟着切页直接隐藏 */
-.player.bar-in{animation:barIn var(--dur-slow) var(--ease) both}
+/* 浮动播放条、首页「＋ 导入新歌」、学习页底部按钮：页面滑入后从下方滑入并淡入（带一点回弹）；离开时没有动画，跟着切页直接隐藏 */
+.player.bar-in,.fab.bar-in,.study-foot.bar-in{animation:barIn var(--dur-slow) var(--ease) both}
 @keyframes barIn{0%{transform:translateY(120%);opacity:0}70%{transform:translateY(-6px);opacity:1}100%{transform:none;opacity:1}}
 @keyframes barFade{from{opacity:0}to{opacity:1}}
 .fab,.bottom-bar{transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease),opacity var(--dur) var(--ease)}
@@ -588,7 +594,7 @@ const DB={db:null,mem:{songs:new Map(),cards:new Map(),meta:new Map()},ok:false,
 
 let songs=[];
 let cards=new Map(), metaRecs=new Map();
-let cur=null, view=[], curIdx=-1, loopIdx=null, raf=0, rate=1, objURL=null, userScrollAt=0;
+let cur=null, view=[], curIdx=-1, loopIdx=null, raf=0, rate=1, objURL=null, audioBlob=null, userScrollAt=0;
 const prefs={jp:true,zh:true};
 try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(prefs,p)}catch(e){}
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
@@ -606,14 +612,15 @@ function show(id,dir){
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
   clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
-  document.querySelectorAll(".player").forEach(p=>p.classList.remove("bar-in"));
-  const bar=to.querySelector(".player");
-  if(!dir||from===to||reduceMotion()){if(bar)bar.classList.add("bar-in");return}
+  const BARS=".player,.fab,.study-foot";
+  document.querySelectorAll(BARS).forEach(p=>p.classList.remove("bar-in"));
+  const bars=to.querySelectorAll(BARS),barIn=()=>bars.forEach(x=>x.classList.add("bar-in"));
+  if(!dir||from===to||reduceMotion()){barIn();return}
   // 旧页面暂时固定在原位，和新页面一起播动画
   document.body.classList.add("navigating");
   from.hidden=false;from.classList.add("nav-layer",dir==="fwd"?"leave-fwd":"leave-back");from.style.top=-y+"px";from.style.zIndex=dir==="fwd"?1:3;
   to.style.position="relative";to.style.zIndex=2;to.classList.add(dir==="fwd"?"enter-fwd":"enter-back");
-  navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating");if(bar)bar.classList.add("bar-in")},340);
+  navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating");barIn()},340);
 }
 // 按下效果用 JS 控制（不用 CSS :active，iPhone 上切页回来 :active 会卡住）：手指按下加 .is-pressed，抬起、取消、移出、滚动时立刻去掉
 const PRESSABLE=".btn,.tones .key,.song,.ib,.res";
@@ -756,13 +763,11 @@ function renderToday(){
     body=`<div class="today-sub">${title} · 这首学完了 🎉 ${others.length?"选下一首：":"导入一首新歌接着学吧"}</div>
       ${others.length?`<div class="today-picks">${others.map(x=>`<button class="btn today-btn" type="button" data-pick="${esc(x.id)}">${esc(x.title||"未命名")}</button>`).join("")}</div>`:""}`;
   }else if(left===0){
-    body=`<div class="today-cell"><span class="big">今天完成了 ✓</span></div>
-      <div class="today-sub">${title}${d.done.length&&d.songId===s.id?" · "+lineRange(d.done):""}</div>
+    body=`<div class="today-line"><span class="done-mark">今天完成了 ✓</span> <span class="today-src">· ${title}${d.done.length&&d.songId===s.id?" "+lineRange(d.done):""}</span></div>
       <button class="btn today-btn" type="button" data-today="more">再学 2 句</button>`;
   }else{
     const up=STUDY.upcoming(texts,learned,left);
-    body=`<div class="today-cell"><span class="lbl">新学</span><b class="big num">${up.length}</b>句</div>
-      <div class="today-sub">${title} · ${lineRange(up)}</div>
+    body=`<div class="today-line">新学 <b class="big num">${up.length}</b> 句 <span class="today-src">· ${title} ${lineRange(up)}</span></div>
       ${s.pack?'<button class="btn today-btn" type="button" data-today="start">开始今天的学习</button>':'<button class="btn today-btn" type="button" data-today="pack">先导入词汇包</button>'}`;
   }
   box.innerHTML=`<div class="today"><div class="today-head">今天的学习</div>${body}</div>`;box.hidden=false;
@@ -962,11 +967,12 @@ $("#sSeek").addEventListener("input",e=>{au.currentTime=+e.target.value});
 
 /* ---------- audio ---------- */
 function setAudio(blob){
+  audioBlob=blob||null;
   if(objURL){URL.revokeObjectURL(objURL);objURL=null}
   if(blob){objURL=URL.createObjectURL(blob);au.src=objURL}else au.removeAttribute("src");
   au.load();applyRate();
 }
-function applyRate(){au.defaultPlaybackRate=rate;au.playbackRate=rate;au.preservesPitch=true;au.webkitPreservesPitch=true}
+function applyRate(){const r=study&&curView==="studyView"?0.8:rate;au.defaultPlaybackRate=r;au.playbackRate=r;au.preservesPitch=true;au.webkitPreservesPitch=true}
 au.addEventListener("loadedmetadata",()=>{applyRate();["#pSeek","#sSeek","#prSeek"].forEach(s=>$(s).max=au.duration||1);$("#pDur").textContent=$("#sDur").textContent=$("#prDur").textContent=fmt(au.duration)});
 au.addEventListener("play",()=>{$("#icPlay").style.display="none";$("#icPause").style.display="";$("#sPlay").textContent="暂停";$("#prPlay").classList.add("playing");cancelAnimationFrame(raf);raf=requestAnimationFrame(tick)});
 au.addEventListener("pause",()=>{$("#icPlay").style.display="";$("#icPause").style.display="none";$("#sPlay").textContent="播放";$("#prPlay").classList.remove("playing");tick()});
@@ -979,7 +985,10 @@ function tick(){
     const i=lineAt(au.currentTime);if(i!==curIdx)setCurrent(i);
     setProg(t);$("#pCur").textContent=fmt(t);
   }
-  if(study&&!$("#studyView").hidden&&study.stopAt!=null&&t>=study.stopAt){if(study.loop)au.currentTime=study.from;else stopStudyAudio()}
+  if(study&&!$("#studyView").hidden&&study.stopAt!=null){
+    if(t<study.from-0.6&&au.readyState>=1)au.currentTime=study.from; // 跳转没生效（从头播了）：拉回这句开头
+    else if(t>=study.stopAt){if(study.loop)au.currentTime=study.from;else{stopStudyAudio();refreshLoop()}}
+  }
   if(!$("#syncView").hidden){$("#sSeek").value=t;$("#sCur").textContent=fmt(t)}
   if(proof&&!$("#proofView").hidden){
     if(proof.stopAt!=null&&t>=proof.stopAt){proof.stopAt=null;au.pause()}
@@ -1541,14 +1550,33 @@ function openPickNext(){
     if(e.target.closest("[data-import]")){closeSheet();openImport()}
   };
 }
+// 原唱只播这一句：从这句开始，到下一句开始时停（最后一句到它的结束时间），0.8 倍速。
+// 必须在点击里直接调用（iOS 要求 play() 由点击触发）；失败时提示原因
+let playTok=0;
 function playStudyLine(loop){
-  const s=study.song,L=s.lines[study.li];
-  if(!s.audio){toast("先加上音频");return}
+  const s=study.song,L=s.lines[study.li],next=s.lines[study.li+1];
+  if(!s.audio){toast("先加上音频：这首歌还没有音频文件，可以在歌曲页「⋯」→「编辑歌曲」里选",5000);return}
   try{speechSynthesis.cancel()}catch(e){}
-  au.defaultPlaybackRate=au.playbackRate=0.8;au.currentTime=L.t;
-  study.from=L.t;study.stopAt=L.end;study.loop=loop;
-  au.play().catch(()=>{});
+  if(audioBlob!==s.audio)setAudio(s.audio);
+  study.from=L.t;study.stopAt=next?next.t:L.end;study.loop=loop;
+  au.defaultPlaybackRate=au.playbackRate=0.8;
+  // iPhone 不预先加载音频，第一次点播放才加载：没加载好时先记下，加载完再跳到这句开头
+  if(au.readyState>=1)au.currentTime=L.t;else au.addEventListener("loadedmetadata",()=>{if(study&&study.from===L.t)au.currentTime=L.t},{once:true});
+  const tok=++playTok;let started=false;
+  au.addEventListener("playing",()=>{started=true},{once:true});
+  au.play().then(()=>{started=true}).catch(e=>{
+    if(tok!==playTok||(e&&e.name==="AbortError"))return; // 被暂停打断，不算失败
+    stopStudyAudio();refreshLoop();toast(playErrMsg(e),6000);
+  });
+  setTimeout(()=>{if(tok===playTok&&!started&&study&&study.stopAt!=null){stopStudyAudio();refreshLoop();toast("原唱没有播出来，再点一次试试。一直这样的话，可能是音频文件读不出来，可以在「编辑歌曲」里重新选一次音频",6000)}},3000);
 }
+function playErrMsg(e){
+  const n=e&&e.name;
+  if(n==="NotAllowedError")return "iPhone 拦住了播放，请再点一次原唱按钮";
+  if(n==="NotSupportedError")return "这个音频文件 iPhone 播放不了，可以在「编辑歌曲」里换成 mp3 或 m4a";
+  return "原唱播放失败（"+(n||e&&e.message||"未知原因")+"）";
+}
+au.addEventListener("error",()=>{if(curView==="studyView"&&study&&study.stopAt!=null){stopStudyAudio();refreshLoop();toast("音频文件读不出来，可以在「编辑歌曲」里重新选一次音频",6000)}});
 function stopStudyAudio(){if(study){study.stopAt=null;study.loop=false}if(!au.paused)au.pause()}
 async function learnWord(known){
   const st=study,u=st.units[st.i];
@@ -1585,7 +1613,7 @@ history.replaceState({view:"home"},"");
   // 「每天新学几句」以前存在 prefs.goal，搬到 meta daily
   if(!metaRecs.has("daily"))await saveDaily({...getDaily(),goal:STUDY.goalOf({goal:prefs.goal})});
   if("goal" in prefs){delete prefs.goal;savePrefs()}
-  renderHome();
+  renderHome();$("#btnAdd").classList.add("bar-in");
 })();
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
