@@ -103,6 +103,33 @@ svg{display:block}
 .wrap.home{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 .home-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:calc(env(safe-area-inset-top,0px) + 28px);padding-bottom:22px}
 .brand{font-weight:700;font-size:30px;margin:0;line-height:1.1}
+/* 学习页（规格 5.4–5.6，设计规范 5.8） */
+.cells{flex:1;display:flex;gap:6px}
+.cells i{flex:1;height:8px;border-radius:4px;background:var(--rule);transition:background-color var(--dur) var(--ease)}
+.cells i.done{background:var(--accent)}
+.cells i.cur{background:var(--seg-current)}
+.st-count{min-width:44px;text-align:right;font-size:14px;font-weight:600;color:var(--muted)}
+.st-count.whole{color:var(--accent)}
+.study{padding-top:4px;padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+.st-line{background:var(--surface);border-radius:18px;padding:12px 16px;margin-bottom:14px;font-size:15px;line-height:1.6;color:var(--ink-2);box-shadow:var(--shadow-1)}
+.st-line .hl{background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 2px}
+.st-card{background:var(--surface);border-radius:30px;box-shadow:var(--shadow-2);padding:28px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.st-chars{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px}
+.st-ch{display:flex;flex-direction:column;align-items:center}
+.st-ch .jp{font-size:20px;font-weight:700}
+.st-ch .hz{font-size:72px;font-weight:700;line-height:1.1}
+.st-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.st-mean{font-size:22px;font-weight:600}
+.st-mean.none{font-size:17px;color:var(--muted)}
+.st-card .wc-tip{align-self:stretch;text-align:left}
+.st-btns{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px}
+.st-say{width:64px;height:64px;min-height:64px;padding:0;border-radius:50%;box-shadow:var(--shadow-3)}
+.study-foot{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:20;max-width:688px;margin:0 auto;display:flex;flex-direction:column;gap:2px}
+.st-anim.out{animation:stOut var(--dur) var(--ease) both}
+.st-anim.in{animation:stIn var(--dur) var(--ease) both}
+@keyframes stOut{to{transform:translateX(-30%);opacity:0}}
+@keyframes stIn{from{transform:translateX(30%);opacity:0}}
+@media (prefers-reduced-motion: reduce){@keyframes stOut{to{opacity:0}}@keyframes stIn{from{opacity:0}}}
 /* 首页「今天的学习」卡片（设计规范 5.4） */
 .today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:20px;margin-bottom:22px;box-shadow:var(--shadow-2)}
 .today-head{font-size:17px;font-weight:700;margin-bottom:14px}
@@ -171,7 +198,7 @@ body > section{position:relative;background:var(--bg);min-height:100dvh}
 @keyframes dimIn{from{opacity:0}to{opacity:1}}
 @keyframes dimOut{from{opacity:1}to{opacity:0}}
 @keyframes leaveBack{from{transform:none;opacity:1}to{transform:translateX(30%);opacity:0}}
-body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity:0;transition:none}
+body.navigating .player,body.navigating .fab,body.navigating .bottom-bar,body.navigating .study-foot{opacity:0;transition:none}
 /* 浮动播放条：页面滑入后从下方滑入并淡入（带一点回弹）；返回时没有消失动画，跟着切页直接隐藏 */
 .player.bar-in{animation:barIn var(--dur-slow) var(--ease) both}
 @keyframes barIn{0%{transform:translateY(120%);opacity:0}70%{transform:translateY(-6px);opacity:1}100%{transform:none;opacity:1}}
@@ -488,6 +515,17 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
   </div>
 </section>
 
+<!-- STUDY：每日学习（学词、整句、完成） -->
+<section id="studyView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="关闭"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="cells" id="stCells"></div>
+    <span class="st-count num" id="stCount"></span>
+  </div></div>
+  <div class="wrap study" id="stBody"></div>
+  <div class="study-foot" id="stFoot"></div>
+</section>
+
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -536,8 +574,8 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView","proofView","settingsView"];
-const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,proofView:2};
+const views=["home","importView","syncView","playerView","proofView","settingsView","studyView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,proofView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
@@ -598,6 +636,7 @@ window.addEventListener("popstate",e=>{
   if(curView==="proofView"&&proof&&proof.dirty&&st.view!=="proofView"){history.pushState({view:"proofView",songId:proof.song.id},"");dirtyPrompt();return}
   closeSheet();
   if(curView==="proofView"){au.pause();if(proof)proof.stopAt=null}
+  if(curView==="studyView"){stopStudyAudio();try{speechSynthesis.cancel()}catch(e){}study=null}
   if(st.view==="settingsView"){renderSettings();show("settingsView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
@@ -915,6 +954,7 @@ function tick(){
     const i=lineAt(au.currentTime);if(i!==curIdx)setCurrent(i);
     setProg(t);$("#pCur").textContent=fmt(t);
   }
+  if(study&&!$("#studyView").hidden&&study.stopAt!=null&&t>=study.stopAt){if(study.loop)au.currentTime=study.from;else stopStudyAudio()}
   if(!$("#syncView").hidden){$("#sSeek").value=t;$("#sCur").textContent=fmt(t)}
   if(proof&&!$("#proofView").hidden){
     if(proof.stopAt!=null&&t>=proof.stopAt){proof.stopAt=null;au.pause()}
@@ -1383,7 +1423,81 @@ function renderSettings(){
 }
 
 /* ---------- 每日学习 ---------- */
-function startStudy(){toast("学习页马上就好")}
+// 进度每一步立刻存：每个词点「会读了」就建卡，每句点「这句会了」就标记 learned。下次进来按规则算出断开的地方
+let study=null;
+async function startStudy(){
+  const s=STUDY.currentSong(songs);if(!s)return;
+  if(!STUDY.progressOf(s).current)await setCurrentSong(s.id);
+  const d=getDaily();if(d.songId!==s.id)await saveDaily({...d,songId:s.id,done:[]});
+  study={song:s,li:null,units:[],i:0,phase:"word",stopAt:null,loop:false,from:0};
+  setAudio(s.audio||null);
+  go("studyView");studyNext(false);
+}
+async function studyNext(anim){
+  const s=study.song,r=STUDY.nextLine(lineTexts(s),STUDY.progressOf(s).learned);
+  // 副歌重复句、没有汉字的句子：自动标记学会，不占今天的数量
+  if(r.skip.length){let p=STUDY.progressOf(s);for(const li of r.skip)p=STUDY.withLearned({...s,progress:p},li);s.progress=p;await saveSong(s)}
+  if(r.li===null||STUDY.remaining(getDaily())===0){study.phase="done";study.finished=r.li===null;renderStudy(anim);return}
+  study.li=r.li;study.units=STUDY.lineUnits(computeLineFor(s,r.li)).filter(u=>!cards.has(u.w));study.i=0;
+  study.phase=study.units.length?"word":"line";renderStudy(anim);
+}
+function renderStudy(anim){
+  if(!study)return;
+  const draw=()=>{if(!study)return;stopStudyAudio();
+    if(study.phase==="word")renderWord();else if(study.phase==="line")renderLine();else renderDone();
+    if(anim)$("#stBody .st-anim")?.classList.add("in")};
+  const old=$("#stBody .st-anim");
+  if(anim&&old){old.classList.add("out");setTimeout(draw,200)}else draw();
+}
+function studyCells(n,cur){$("#stCells").innerHTML=Array.from({length:Math.max(1,n)},(_,k)=>`<i class="${k<cur?"done":k===cur?"cur":""}"></i>`).join("")}
+const studyCharHTML=c=>`<span class="st-ch"><span class="jp t${toneOf(c.jp)}">${esc(c.jp)}</span><span class="hz">${esc(c.ch)}</span></span>`;
+function renderWord(){
+  const u=study.units[study.i],n=study.units.length,text=PACK.fixText(study.song,study.song.lines[study.li].text),at=text.indexOf(u.w);
+  studyCells(n,study.i);$("#stCount").textContent=`${study.i+1} / ${n}`;$("#stCount").classList.remove("whole");
+  const line=at<0?esc(text):esc(text.slice(0,at))+`<span class="hl">${esc(u.w)}</span>`+esc(text.slice(at+u.w.length));
+  const zh=u.word&&u.word.zh,tip=u.word&&u.word.tip;
+  const ttsOff=TJ&&TJ.getJyutpingText(u.w).replace(/\s+/g," ").trim()!==u.jp;
+  $("#stBody").innerHTML=`<div class="st-line">今日第 ${getDaily().newLines+1} 句 · ${line}</div>
+    <div class="st-card st-anim">
+      <div class="st-chars">${u.chars.map(studyCharHTML).join("")}</div>
+      <div class="st-tags">${u.chars.map(c=>{const t=toneOf(c.jp);return t?`<span class="tone-tag" style="--tc:var(--t${t})">第 ${t} 声 · ${TONE_NAMES[t]}</span>`:""}).join("")}</div>
+      ${zh?`<div class="st-mean">${esc(zh)}</div>`:'<div class="st-mean none">暂无释义</div>'}
+      ${u.word?"":'<div class="note">这个字词汇包里没有，可以重新生成词汇包</div>'}
+      ${tip?`<div class="wc-tip">${esc(tip)}</div>`:""}
+      <div class="st-btns"><button class="btn primary st-say" type="button" data-act="say" aria-label="听标准发音"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></button><button class="btn soft" type="button" data-act="slow">慢速再听</button><button class="btn soft" type="button" data-act="orig">听原唱</button></div>
+      ${ttsOff?'<div class="note">系统朗读可能不准，以粤拼为准</div>':""}
+    </div>`;
+  $("#stFoot").innerHTML='<button class="btn inverse bottom block" type="button" data-act="got">会读了，下一个</button><button class="btn text block" type="button" data-act="known">我早就认识这个词</button>';
+  try{speak(u.w,0.8)}catch(e){} // iOS 可能拦截自动朗读，被拦就算了
+}
+function renderLine(){}
+function renderDone(){}
+function playStudyLine(loop){
+  const s=study.song,L=s.lines[study.li];
+  if(!s.audio){toast("先加上音频");return}
+  try{speechSynthesis.cancel()}catch(e){}
+  au.defaultPlaybackRate=au.playbackRate=0.8;au.currentTime=L.t;
+  study.from=L.t;study.stopAt=L.end;study.loop=loop;
+  au.play().catch(()=>{});
+}
+function stopStudyAudio(){if(study){study.stopAt=null;study.loop=false}if(!au.paused)au.pause()}
+async function learnWord(known){
+  const u=study.units[study.i];
+  if(!cards.has(u.w)){
+    const w=u.word||{},c=SRS.newCard({w:u.w,jp:u.jp,zh:w.zh,tip:w.tip,oral:w.oral},{songId:study.song.id,li:study.li},Date.now());
+    if(known)c.known=true;
+    cards.set(c.w,c);await DB.put(c,"cards");
+  }
+  study.i++;if(study.i>=study.units.length)study.phase="line";
+  renderStudy(true);
+}
+function studyAct(a){
+  if(!study)return;
+  const u=study.units[study.i];
+  if(a==="say")speak(u.w,0.8);else if(a==="slow")speak(u.w,0.6);else if(a==="orig")playStudyLine(false);
+  else if(a==="got")learnWord(false);else if(a==="known")learnWord(true);
+}
+$("#studyView").addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(b)studyAct(b.dataset.act)});
 
 /* ---------- boot ---------- */
 history.replaceState({view:"home"},"");

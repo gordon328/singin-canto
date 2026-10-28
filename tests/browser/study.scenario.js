@@ -1,0 +1,61 @@
+// M4b：学习页（学词卡片、整句、完成页）。句子都是编的。
+// T1 第 0 句「我穿風褸出去」：旧词汇包里只有「風褸」，其余是单字 → 我、穿、風褸、出、去 五张卡
+const F = require("./fixtures.js");
+const click = sel => `document.querySelector(${JSON.stringify(sel)}).click()`;
+const visible = sel => `(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && !e.hidden && e.getBoundingClientRect().height > 0; })()`;
+const patchSong = (id, patch) => `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const st = db.transaction("songs", "readwrite").objectStore("songs");
+  st.get(${JSON.stringify(id)}).onsuccess = e => { st.put(Object.assign(e.target.result, ${JSON.stringify(patch)})).onsuccess = () => { db.close(); res(); }; }; }; })`;
+const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};`;
+const said = `window.__said`;
+const body = `document.querySelector("#studyView").innerText`;
+const count = `document.querySelector("#stCount").innerText.trim()`;
+const cells = `[...document.querySelectorAll("#stCells i")].map(e => e.className).join(",")`;
+const act = a => click(`#studyView [data-act="${a}"]`);
+const bigWord = `[...document.querySelectorAll("#studyView .st-ch .hz")].map(e => e.innerText).join("")`;
+async function start(b) { await b.ev(RECORD); await b.ev(click('#today [data-today="start"]')); await b.sleep(900); }
+async function next(b, a = "got") { await b.ev(act(a)); await b.sleep(450); }
+module.exports = { name: "study", async run(b) {
+  await F.seed(b);
+  await b.ev(patchSong("t1", { progress: { learned: [], current: true } }));
+  await b.nav("/");
+  await start(b);
+  b.check("enter", await b.ev(visible("#studyView")) && (await b.ev("history.state.view")) === "studyView");
+
+  b.check("word-card-1", (await b.ev(bigWord)) === "我" && (await b.ev(count)) === "1 / 5"
+    && (await b.ev(cells)) === "cur,,,," && (await b.ev(`document.querySelector("#studyView .st-line").innerText`)).includes("今日第 1 句")
+    && (await b.ev(`document.querySelector("#studyView .st-line .hl").innerText`)) === "我"
+    && /^[a-z]+[1-6]$/.test(await b.ev(`document.querySelector("#studyView .st-ch .jp").innerText`))
+    && (await b.ev(body)).includes("声 ·") && (await b.ev(body)).includes("暂无释义") && (await b.ev(body)).includes("重新生成词汇包"));
+  b.check("speak-auto", JSON.stringify((await b.ev(said))[0]) === JSON.stringify(["我", 0.8]));
+  await b.ev(act("say")); await b.ev(act("slow"));
+  b.check("speak-buttons", JSON.stringify((await b.ev(said)).slice(-2)) === JSON.stringify([["我", 0.8], ["我", 0.6]]));
+  b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#studyView button")].filter(e => e.getClientRects().length).every(e => e.getBoundingClientRect().height >= 44)`));
+  await b.shot("study-word-light");
+  await b.ev(act("orig")); await b.sleep(600);
+  const au = `({ paused: document.querySelector("#au").paused, rate: document.querySelector("#au").playbackRate, t: document.querySelector("#au").currentTime })`;
+  const a1 = await b.ev(au);
+  b.check("orig-plays", !a1.paused && Math.abs(a1.rate - 0.8) < 0.01 && a1.t >= 1);
+  await b.sleep(4200);
+  const a2 = await b.ev(au);
+  b.check("orig-stops-at-end", a2.paused && a2.t < 4.5);
+
+  await next(b); await next(b);
+  b.check("word-card-3", (await b.ev(bigWord)) === "風褸" && (await b.ev(count)) === "3 / 5" && (await b.ev(cells)) === "done,done,cur,," && (await b.ev(body)).includes("风衣"));
+  await next(b, "known");
+  const kw = await b.ev(F.idbGet("cards", "風褸")), w0 = await b.ev(F.idbGet("cards", "我"));
+  b.check("known", kw && kw.known === true && w0 && w0.known === false && w0.srs.interval === 1 && w0.sources[0].songId === "t1" && w0.sources[0].li === 0);
+  b.check("word-card-4", (await b.ev(bigWord)) === "出");
+
+  await b.ev(click("#studyView [data-back]")); await b.sleep(900);
+  b.check("close", await b.ev(visible("#home")) && await b.ev(`document.querySelector("#au").paused`));
+
+  // 没有音频的歌：原唱按钮提示「先加上音频」
+  await b.ev(patchSong("t2", { progress: { learned: [], current: true }, pack: { v: 3, summary: "", fix: [], imported: 1, words: [{ w: "短", jp: "dyun2", key: true, oral: false, zh: "短", tip: "" }] } }));
+  await b.ev(patchSong("t1", { progress: { learned: [], current: false } }));
+  await b.nav("/");
+  await start(b);
+  await b.ev(act("orig")); await b.sleep(200);
+  b.check("no-audio", (await b.ev(`document.querySelector("#toast").innerText`)).includes("先加上音频"));
+  await b.ev(click("#studyView [data-back]")); await b.sleep(900);
+  b.check("no-errors", b.errors.length === 0);
+} };
