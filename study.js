@@ -49,13 +49,14 @@
   }
 
   // 今天的计数：日期变了就清零（goal 保留）。today 用 SRS.today(now)，凌晨 4 点换日。
-  // songId：今天学的歌；done：今天学会的行号（完成页显示"第几到第几句"）
+  // songId：今天学的歌；done：今天学会的行号（完成页显示"第几到第几句"）；reviewedW：今天评过分的词（「复习的词」每个词只算一次）
   function dailyFor(rec, today) {
     const goal = goalOf(rec);
-    if (!rec || rec.date !== today) return { key: "daily", goal, date: today, newLines: 0, extra: 0, reviewed: 0, songId: null, done: [] };
+    if (!rec || rec.date !== today) return { key: "daily", goal, date: today, newLines: 0, extra: 0, reviewed: 0, songId: null, done: [], reviewedW: [] };
     const n = x => (Number.isInteger(x) && x >= 0 ? x : 0);
     return { key: "daily", goal, date: today, newLines: n(rec.newLines), extra: n(rec.extra), reviewed: n(rec.reviewed),
-      songId: typeof rec.songId === "string" ? rec.songId : null, done: Array.isArray(rec.done) ? rec.done.filter(x => Number.isInteger(x) && x >= 0) : [] };
+      songId: typeof rec.songId === "string" ? rec.songId : null, done: Array.isArray(rec.done) ? rec.done.filter(x => Number.isInteger(x) && x >= 0) : [],
+      reviewedW: Array.isArray(rec.reviewedW) ? rec.reviewedW.filter(x => typeof x === "string") : [] };
   }
 
   // 今天还要新学几句

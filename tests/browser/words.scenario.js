@@ -35,6 +35,10 @@ module.exports = { name: "words", async run(b) {
     && (await b.ev(rows)).find(x => x.includes("知")).includes("已认识"));
   await b.ev(click('#sheetBody [data-known]')); await b.sleep(400);
   b.check("unmark-known", (await b.ev(F.idbGet("cards", "知"))).known === false && (await b.ev(rows)).find(x => x.includes("知")).includes("3 天后复习"));
+  // 删除 → 取消：回到这个词的弹窗，不是整个关掉
+  await b.ev(click('#sheetBody [data-del]')); await b.sleep(500);
+  await b.ev(click('#sheetBody [data-confirm="cancel"]')); await b.sleep(600);
+  b.check("delete-cancel-back", (await b.ev(sheet)).includes("标记为已认识") && !!(await b.ev(F.idbGet("cards", "知"))));
   await b.ev(click('#sheetBody [data-del]')); await b.sleep(500);
   b.check("delete-confirm", (await b.ev(sheet)).includes("删除"));
   await b.ev(click('#sheetBody [data-confirm="ok"]')); await b.sleep(600);
@@ -45,6 +49,13 @@ module.exports = { name: "words", async run(b) {
   await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
   await b.ev("history.back()"); await b.sleep(900);
   b.check("swipe-back", await b.ev(visible("#settingsView")));
+
+  // 从备份恢复的卡可能没有 known 字段：排序不能乱（要复习的在前，已认识的在后）
+  const noKnown = { ...mk("早", "zou2", "早", Date.now() + 86400e3) }; delete noKnown.known;
+  await b.ev(putCards([noKnown]));
+  await b.nav("/"); await b.ev(click("#btnSettings")); await b.sleep(800); await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
+  const r2 = await b.ev(rows);
+  b.check("sort-missing-known", r2.length === 3 && r2[0].includes("風褸") && r2[1].includes("早") && r2[2].includes("已认识"));
 
   // 没有生词
   await b.nav("/__blank"); await b.ev(F.WIPE); await b.ev(F.SEED_V1); await b.nav("/");

@@ -54,11 +54,11 @@ test("goalOf", () => {
 
 test("dailyFor: 新的一天清零但保留 goal", () => {
   assert.deepEqual(S.dailyFor({ key: "daily", goal: 2, date: "2026-10-27", newLines: 2, extra: 2, reviewed: 9, songId: "t1", done: [3] }, "2026-10-28"),
-    { key: "daily", goal: 2, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 0, songId: null, done: [] });
+    { key: "daily", goal: 2, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 0, songId: null, done: [], reviewedW: [] });
 });
 
 test("dailyFor: 同一天不变", () => {
-  const r = { key: "daily", goal: 7, date: "2026-10-28", newLines: 3, extra: 2, reviewed: 9, songId: "t1", done: [3, 4] };
+  const r = { key: "daily", goal: 7, date: "2026-10-28", newLines: 3, extra: 2, reviewed: 9, songId: "t1", done: [3, 4], reviewedW: ["我"] };
   assert.deepEqual(S.dailyFor(r, "2026-10-28"), r);
 });
 
@@ -71,14 +71,26 @@ test("dailyFor: 凌晨 4 点前还是同一天", () => {
 test("mergeDaily: 恢复备份时用备份里的 goal，今天的计数留本机的", () => {
   const local = { key: "daily", goal: 4, date: "2026-10-28", newLines: 2, extra: 0, reviewed: 5 };
   assert.deepEqual(S.mergeDaily(local, { key: "daily", goal: 7, date: "2026-10-20", newLines: 9, extra: 2, reviewed: 1 }, "2026-10-28"),
-    { key: "daily", goal: 7, date: "2026-10-28", newLines: 2, extra: 0, reviewed: 5, songId: null, done: [] });
+    { key: "daily", goal: 7, date: "2026-10-28", newLines: 2, extra: 0, reviewed: 5, songId: null, done: [], reviewedW: [] });
   assert.equal(S.mergeDaily(local, { key: "daily", goal: 99 }, "2026-10-28").goal, 4);
   assert.equal(S.mergeDaily(undefined, { key: "daily", goal: 6, date: "2026-10-28", newLines: 3 }, "2026-10-28").newLines, 3);
   assert.equal(S.mergeDaily({ ...local, date: "2026-10-27" }, { key: "daily", goal: 6, date: "2026-10-28", newLines: 3 }, "2026-10-28").newLines, 3);
 });
 
+test("dailyFor: reviewedW（今天评过的词）同一天保留、新的一天清空", () => {
+  const r = { key: "daily", goal: 4, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 2, songId: null, done: [], reviewedW: ["我", "你"] };
+  assert.deepEqual(S.dailyFor(r, "2026-10-28").reviewedW, ["我", "你"]);
+  assert.deepEqual(S.dailyFor(r, "2026-10-29").reviewedW, []);
+  assert.deepEqual(S.dailyFor({ ...r, reviewedW: "x" }, "2026-10-28").reviewedW, []);
+});
+
+test("mergeDaily: 本机是今天时 reviewedW 留本机的", () => {
+  const local = { key: "daily", goal: 4, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 1, reviewedW: ["我"] };
+  assert.deepEqual(S.mergeDaily(local, { key: "daily", goal: 6, date: "2026-10-28", reviewedW: ["他"] }, "2026-10-28").reviewedW, ["我"]);
+});
+
 test("dailyFor: 没有记录", () => {
-  assert.deepEqual(S.dailyFor(undefined, "2026-10-28"), { key: "daily", goal: 4, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 0, songId: null, done: [] });
+  assert.deepEqual(S.dailyFor(undefined, "2026-10-28"), { key: "daily", goal: 4, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 0, songId: null, done: [], reviewedW: [] });
 });
 
 // ---------- M5：复习规则 ----------

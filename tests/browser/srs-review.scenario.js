@@ -21,7 +21,7 @@ const jpShown = `[...document.querySelectorAll("#studyView .st-card .st-ch .jp")
 const auState = `({ paused: document.querySelector("#au").paused, rate: document.querySelector("#au").playbackRate, t: document.querySelector("#au").currentTime })`;
 const daily = b => b.ev(F.idbGet("meta", "daily"));
 const screen = `document.querySelector("#stCount").innerText + "|" + document.querySelector("#stBody").innerText`;
-async function step(b, a) { const s0 = await b.ev(screen); await b.ev(act(a)); for (let i = 0; i < 50 && (await b.ev(screen)) === s0; i++) await b.sleep(100); await b.sleep(300); }
+async function step(b, a) { const s0 = await b.ev(screen); await b.ev(act(a)); for (let i = 0; i < 50 && (await b.ev(screen)) === s0; i++) await b.sleep(100); await b.sleep(400); }
 async function start(b, sel = '#today [data-today="start"]') { await b.ev(RECORD); await b.ev(click(sel)); await b.sleep(900); }
 module.exports = { name: "srs-review", async run(b) {
   await F.seed(b);
@@ -94,5 +94,33 @@ module.exports = { name: "srs-review", async run(b) {
   const d = await daily(b);
   b.check("review-only-done", (await b.ev(body)).includes("学完了") && d.reviewed === 5
     && (await b.ev(`document.querySelector("#studyView .st-stat b").innerText.trim()`)) === "5");
+  // 选过「忘了」的「我」又到期了：再评分不重复算「复习的词」（每张卡今天只算一次）
+  const r0 = (await daily(b)).reviewed;
+  await b.ev(putCards([mk("我", "ngo5", "我", Date.now() - 9000, [{ songId: "t1", li: 0 }]), mk("子", "zi2", "", Date.now() - 1000, [{ songId: "t2", li: 0 }])]));
+  await b.nav("/");
+  await start(b, '#today [data-today="review"]');
+  b.check("recount-start", (await b.ev(bigWord)) === "我" && (await b.ev(count)) === "1 / 2");
+  // 连点「翻面」：第二下落在刚出现的评分按钮上，不能算评分
+  await b.ev(act("flip") + ";" + act("hard"));
+  await b.sleep(150);
+  b.check("double-flip-no-grade", (await b.ev(jpShown)) === "ngo5" && (await b.ev(count)) === "1 / 2" && (await b.ev(F.idbGet("cards", "我"))).srs.due < Date.now());
+  await b.sleep(400);
+  // 评分后切换动画里点 🔊：不能读下一张的词
+  await b.ev(act("good") + ";" + act("say"));
+  await b.sleep(700);
+  b.check("say-during-switch", JSON.stringify((await b.ev("window.__said")).slice(-1)) === JSON.stringify([["我", 0.8]]) && (await b.ev(bigWord)) === "子");
+  b.check("no-recount", (await daily(b)).reviewed === r0);
+  await step(b, "flip");
+  b.check("no-orig-without-audio", (await b.ev(body)).includes("出自") && !(await b.ev(has("orig"))));
+  await step(b, "good");
+  b.check("count-new-card", (await daily(b)).reviewed === r0 + 1);
+
+  // 正在学的歌已经全部学完 → 只复习，完成页是「这首歌全部学完了」+「选下一首歌」
+  await b.ev(patchSong("t1", { progress: { learned: [...Array(16).keys()], current: true } }));
+  await b.ev(putCards([mk("丑", "cau2", "", Date.now() - 1000, [])]));
+  await b.nav("/");
+  await start(b, '#today [data-today="review"]');
+  await step(b, "flip"); await b.sleep(400); await step(b, "good");
+  b.check("finished-review-only", (await b.ev(body)).includes("这首歌全部学完了") && await b.ev(has("pick")) && !(await b.ev(has("more"))));
   b.check("no-errors", b.errors.length === 0);
 } };
