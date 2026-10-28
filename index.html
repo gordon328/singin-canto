@@ -145,6 +145,15 @@ svg{display:block}
 .st-stat b{font-size:32px;font-weight:700}
 .st-stat span{font-size:13px;color:var(--muted)}
 .st-preview{align-self:stretch;margin-top:12px;padding:14px 16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;font-size:14px;line-height:1.6;color:var(--ink-2)}
+/* 复习（规格 6.1）：连续进度条、翻面、三个评分按钮 */
+.st-bar{flex:1;height:8px;border-radius:4px;background:var(--rule);overflow:hidden}
+.st-bar i{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width var(--dur) var(--ease)}
+.st-flip{cursor:pointer;min-height:260px;justify-content:center}
+.st-src{align-self:stretch;text-align:left;font-size:14px;line-height:1.6;color:var(--ink-2)}
+.st-src .lbl{display:block;font-size:12px;color:var(--muted)}
+.st-src .hl{background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 2px}
+.st-grades{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.st-grades .st-big{min-height:64px;border-radius:18px}
 .st-anim.out{animation:stOut var(--dur) var(--ease) both}
 .st-anim.in{animation:stIn var(--dur) var(--ease) both}
 @keyframes stOut{to{transform:translateX(-30%);opacity:0}}
@@ -1479,13 +1488,17 @@ function renderSettings(){
 /* ---------- 每日学习 ---------- */
 // 进度每一步立刻存：每个词点「会读了」就建卡，每句点「这句会了」就标记 learned。下次进来按规则算出断开的地方
 let study=null;
-async function startStudy(){
+async function startStudy(opts={}){
   const s=STUDY.currentSong(songs);if(!s)return;
   if(!STUDY.progressOf(s).current)await setCurrentSong(s.id);
   const d=getDaily();if(d.songId!==s.id)await saveDaily({...d,songId:s.id,done:[]});
-  study={song:s,li:null,units:[],i:0,phase:"word",stopAt:null,loop:false,from:0};
+  // 先复习到期的卡（规格 5.2），复习完再学新句子；reviewOnly（今天新句子学完了）复习完到完成页
+  const queue=STUDY.reviewQueue(cards.values(),Date.now());
+  study={song:s,li:null,units:[],i:0,phase:queue.length?"review":"word",stopAt:null,loop:false,from:0,reviewOnly:!!opts.reviewOnly,
+    review:{queue,i:0,requeued:new Set(),counted:new Set(),flipped:false}};
   setAudio(s.audio||null);
-  go("studyView");studyNext(false);
+  go("studyView");
+  if(queue.length)renderStudy(false);else if(study.reviewOnly){study.phase="done";renderStudy(false)}else studyNext(false);
 }
 async function studyNext(anim){
   const st=study,s=st.song,r=STUDY.nextLine(lineTexts(s),STUDY.progressOf(s).learned);
@@ -1498,7 +1511,7 @@ async function studyNext(anim){
 function renderStudy(anim){
   if(!study)return;
   const draw=()=>{if(!study)return;study.busy=false;stopStudyAudio();
-    if(study.phase==="word")renderWord();else if(study.phase==="line")renderLine();else renderDone();
+    if(study.phase==="review")renderReview();else if(study.phase==="word")renderWord();else if(study.phase==="line")renderLine();else renderDone();
     if(anim)$("#stBody .st-anim")?.classList.add("in")};
   const old=$("#stBody .st-anim");
   if(anim&&old){old.classList.add("out");setTimeout(draw,200)}else draw();
@@ -1524,6 +1537,43 @@ function renderWord(){
   $("#stFoot").innerHTML='<button class="btn inverse bottom block" type="button" data-act="got">会读了，下一个</button><button class="btn text block" type="button" data-act="known">我早就认识这个词</button>';
   try{speak(u.w,0.8)}catch(e){} // iOS 可能拦截自动朗读，被拦就算了
 }
+function renderReview(){
+  const r=study.review,w=r.queue[r.i],c=cards.get(w);
+  if(!c){r.i++;return r.i<r.queue.length?renderReview():reviewDone()} // 这张卡刚被删了
+  $("#stCells").innerHTML=`<span class="st-bar"><i style="width:${Math.round(r.i/r.queue.length*100)}%"></i></span>`;
+  $("#stCount").textContent=`${r.i+1} / ${r.queue.length}`;$("#stCount").classList.remove("whole");
+  if(!r.flipped){
+    $("#stBody").innerHTML=`<div class="st-card st-anim st-flip" data-act="flip"><div class="st-chars"><span class="st-ch"><span class="hz">${esc(c.w)}</span></span></div><div class="note">心里读一遍，再点翻面</div></div>`;
+    $("#stFoot").innerHTML='<button class="btn inverse bottom block" type="button" data-act="flip">翻面</button>';
+    return;
+  }
+  const syl=String(c.jp||"").split(/\s+/);let k=0;
+  const chars=[...c.w].map(ch=>({ch,jp:HAN.test(ch)?syl[k++]||"":""}));
+  const src=STUDY.firstSource(c,songs);
+  let srcHTML="";
+  if(src){const text=PACK.fixText(src.song,src.song.lines[src.li].text),at=text.indexOf(c.w);
+    srcHTML=`<div class="st-src"><span class="lbl">出自 ${esc(src.song.title||"未命名")}</span>${at<0?esc(text):esc(text.slice(0,at))+`<span class="hl">${esc(c.w)}</span>`+esc(text.slice(at+c.w.length))}</div>`}
+  $("#stBody").innerHTML=`<div class="st-card st-anim">
+      <div class="st-chars">${chars.map(studyCharHTML).join("")}</div>
+      <div class="st-tags">${chars.map(x=>{const t=toneOf(x.jp);return t?`<span class="tone-tag" style="--tc:var(--t${t})">第 ${t} 声 · ${TONE_NAMES[t]}</span>`:""}).join("")}</div>
+      ${c.zh?`<div class="st-mean">${esc(c.zh)}</div>`:'<div class="st-mean none">暂无释义</div>'}
+      ${c.tip?`<div class="wc-tip">${esc(c.tip)}</div>`:""}
+      ${srcHTML}
+      <div class="st-btns"><button class="btn primary st-say" type="button" data-act="say" aria-label="听标准发音"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></button>${src?'<button class="btn soft" type="button" data-act="orig">▶ 原唱这句</button>':""}</div>
+    </div>`;
+  const now=Date.now(),g=(a,label,cls)=>`<button class="btn ${cls} st-big" type="button" data-act="${a}"><span>${label}</span><small>${STUDY.intervalLabel(c.srs,a,now)}</small></button>`;
+  $("#stFoot").innerHTML=`<div class="st-grades">${g("again","忘了","")}${g("hard","模糊","soft")}${g("good","记得","primary")}</div>`;
+}
+async function gradeCard(grade){
+  const st=study,r=st.review,w=r.queue[r.i],c=cards.get(w),now=Date.now();
+  if(c){c.srs=SRS.review(c.srs,grade,now);c.updated=now;await DB.put(c,"cards")}
+  if(!r.counted.has(w)){r.counted.add(w);const d=getDaily();await saveDaily({...d,reviewed:d.reviewed+1})}
+  if(study!==st)return;
+  r.i=STUDY.afterGrade(r.queue,r.i,grade,r.requeued);r.flipped=false;
+  if(r.i>=r.queue.length)reviewDone();else renderStudy(true);
+}
+// 复习完：接着学新句子；只复习的话到完成页
+function reviewDone(){if(study.reviewOnly){study.phase="done";renderStudy(true)}else studyNext(true)}
 function renderLine(){
   const v=computeLineFor(study.song,study.li),n=study.units.length;
   studyCells(n,n);$("#stCount").textContent="整句";$("#stCount").classList.add("whole");
@@ -1543,13 +1593,13 @@ function renderDone(){
   studyCells(1,1);$("#stCount").textContent="";$("#stCount").classList.remove("whole");
   $("#stBody").innerHTML=`<div class="st-done st-anim">
     <div class="st-check pop"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div>
-    <h2>今天的 ${d.newLines} 句学完了</h2>
+    <h2>${study.reviewOnly&&!d.newLines?"今天的复习做完了":`今天的 ${d.newLines} 句学完了`}</h2>
     <div class="note">${esc(s.title||"未命名")}${d.done.length?" · "+lineRange(d.done):""}</div>
     ${study.finished?'<div class="st-fin">这首歌全部学完了 🎉</div>':""}
     <div class="st-stats"><div class="st-stat"><b class="num">${d.reviewed}</b><span>复习的词</span></div><div class="st-stat"><b class="num">${newWords}</b><span>新学的词</span></div><div class="st-stat"><b class="num">${learned.length}</b><span>已学句子</span></div></div>
     <div class="st-preview">明天要复习 ${due} 个词${up.length?"，再学"+lineRange(up):""}。</div>
   </div>`;
-  $("#stFoot").innerHTML=(study.finished?'<button class="btn primary bottom block" type="button" data-act="pick">选下一首歌</button>':'<button class="btn primary bottom block" type="button" data-act="more">还有精神，再学 2 句</button>')
+  $("#stFoot").innerHTML=(study.finished?'<button class="btn primary bottom block" type="button" data-act="pick">选下一首歌</button>':s.pack?'<button class="btn primary bottom block" type="button" data-act="more">还有精神，再学 2 句</button>':"")
     +'<button class="btn bottom block" type="button" data-act="home">回到首页</button>';
 }
 async function lineLearned(){
@@ -1573,8 +1623,9 @@ function openPickNext(){
 // 原唱只播这一句：从这句开始，到下一句开始时停（最后一句到它的结束时间），0.8 倍速。
 // 必须在点击里直接调用（iOS 要求 play() 由点击触发）；失败时提示原因
 let playTok=0;
-function playStudyLine(loop){
-  const s=study.song,L=s.lines[study.li],next=s.lines[study.li+1];
+function playStudyLine(loop){playLineOf(study.song,study.li,loop)}
+function playLineOf(s,li,loop){
+  const L=s.lines[li],next=s.lines[li+1];
   if(!s.audio){toast("先加上音频：这首歌还没有音频文件，可以在歌曲页「⋯」→「编辑歌曲」里选",5000);return}
   try{speechSynthesis.cancel()}catch(e){}
   if(audioBlob!==s.audio)setAudio(s.audio);
@@ -1612,7 +1663,15 @@ async function learnWord(known){
 function studyAct(a){
   if(!study)return;
   // 会改数据的按钮：一次只处理一下（卡片切换动画 200ms 里旧按钮还在，连点会多算）
-  if(["got","known","lineok","more"].includes(a)){if(study.busy)return;study.busy=true}
+  if(["got","known","lineok","more","again","hard","good"].includes(a)){if(study.busy)return;study.busy=true}
+  if(study.phase==="review"){
+    const r=study.review,w=r.queue[r.i];
+    if(a==="flip"){if(!r.flipped){r.flipped=true;renderReview();try{speak(w,0.8)}catch(e){}}}
+    else if(a==="say")speak(w,0.8);
+    else if(a==="orig"){const src=STUDY.firstSource(cards.get(w)||{},songs);if(src)playLineOf(src.song,src.li,false)}
+    else if(["again","hard","good"].includes(a))gradeCard(a);
+    return;
+  }
   const u=study.units[study.i];
   if(a==="say")speak(u.w,0.8);else if(a==="slow")speak(u.w,0.6);else if(a==="orig")playStudyLine(false);
   else if(a==="got")learnWord(false);else if(a==="known")learnWord(true);
