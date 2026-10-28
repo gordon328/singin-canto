@@ -20,8 +20,11 @@ const auState = `({ paused: document.querySelector("#au").paused, rate: document
 const daily = b => b.ev(F.idbGet("meta", "daily"));
 const learnedOf = async (b, id) => (await b.ev(F.idbGet("songs", id))).progress.learned;
 async function start(b, sel = '#today [data-today="start"]') { await b.ev(RECORD); await b.ev(click(sel)); await b.sleep(900); }
-async function words(b) { for (let i = 0; i < 20 && await b.ev(has("got")); i++) { await b.ev(act("got")); await b.sleep(420); } }
-async function finishLine(b) { await words(b); await b.ev(act("lineok")); await b.sleep(500); }
+// 点了以后等画面真的换掉（保存写完、新卡片画出来）再继续，机器忙时固定等待不够
+const screen = `document.querySelector("#stCount").innerText + "|" + document.querySelector("#stBody").innerText`;
+async function waitChange(b, before) { for (let i = 0; i < 50 && (await b.ev(screen)) === before; i++) await b.sleep(100); await b.sleep(300); }
+async function words(b) { for (let i = 0; i < 20 && await b.ev(has("got")); i++) { const s0 = await b.ev(screen); await b.ev(act("got")); await waitChange(b, s0); } }
+async function finishLine(b) { await words(b); const s0 = await b.ev(screen); await b.ev(act("lineok")); await waitChange(b, s0); }
 module.exports = { name: "study2", async run(b) {
   await F.seed(b);
   await b.ev(patchSong("t1", { progress: { learned: [], current: true }, lineTexts: [[2, "我穿風褸出去"], [3, "……"]] }));
@@ -44,7 +47,7 @@ module.exports = { name: "study2", async run(b) {
   await b.ev(act("loop")); await b.sleep(200);
   b.check("line-loop-stop", (await b.ev(auState)).paused && !(await b.ev(body)).includes("循环中"));
   await b.ev(act("loop")); await b.sleep(300);
-  await b.ev(act("lineok")); await b.sleep(500);
+  await b.ev(act("lineok") + ";" + act("lineok")); await b.sleep(600); // 连点两下只算一句
   let d = await daily(b);
   b.check("line-done", (await learnedOf(b, "t1")).includes(0) && d.newLines === 1 && JSON.stringify(d.done) === "[0]" && (await b.ev(auState)).paused);
   b.check("skip-learned-words", (await b.ev(count)) === "1 / 5" && (await b.ev(bigWord)) === "第" && (await b.ev(body)).includes("今日第 2 句"));
@@ -75,7 +78,7 @@ module.exports = { name: "study2", async run(b) {
   b.check("more-from-home", (await daily(b)).extra === 2 && (await b.ev(bigWord)) === "街");
   await finishLine(b); await finishLine(b);
   b.check("done-again", (await b.ev(body)).includes("今天的 4 句学完了"));
-  await b.ev(act("more")); await b.sleep(700);
+  await b.ev(act("more") + ";" + act("more")); await b.sleep(700); // 连点两下只加 2 句
   b.check("more-2", (await daily(b)).extra === 4 && (await b.ev(body)).includes("今日第 5 句"));
   // 右滑返回（history.back）→ 首页，已学的保存了
   await b.ev("history.back()"); await b.sleep(900);
@@ -105,5 +108,11 @@ module.exports = { name: "study2", async run(b) {
   b.check("pick-next-none", (await b.ev(`document.querySelector("#sheetBody").innerText`)).includes("其他歌都学完了") && await b.ev(`!!document.querySelector("#sheetBody [data-import]")`));
   await b.ev(click("#sheetBody [data-import]")); await b.sleep(1000);
   b.check("pick-import", await b.ev(visible("#importView")));
+
+  // 一句里的词都学过了（第 0 句的字前面都建过卡）→ 直接整句，进度格全满
+  await b.ev(patchSong("t1", { progress: { learned: allBut(0), current: true } }));
+  await b.nav("/");
+  await start(b);
+  b.check("all-carded-whole", (await b.ev(count)) === "整句" && (await b.ev(cells)) === "done");
   b.check("no-errors", b.errors.length === 0);
 } };

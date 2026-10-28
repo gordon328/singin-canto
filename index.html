@@ -757,7 +757,7 @@ function renderToday(){
       ${others.length?`<div class="today-picks">${others.map(x=>`<button class="btn today-btn" type="button" data-pick="${esc(x.id)}">${esc(x.title||"未命名")}</button>`).join("")}</div>`:""}`;
   }else if(left===0){
     body=`<div class="today-cell"><span class="big">今天完成了 ✓</span></div>
-      <div class="today-sub">${title}${d.done.length?" · "+lineRange(d.done):""}</div>
+      <div class="today-sub">${title}${d.done.length&&d.songId===s.id?" · "+lineRange(d.done):""}</div>
       <button class="btn today-btn" type="button" data-today="more">再学 2 句</button>`;
   }else{
     const up=STUDY.upcoming(texts,learned,left);
@@ -767,14 +767,19 @@ function renderToday(){
   }
   box.innerHTML=`<div class="today"><div class="today-head">今天的学习</div>${body}</div>`;box.hidden=false;
 }
+let todayBusy=false;
 $("#today").addEventListener("click",async e=>{
   const pk=e.target.closest("[data-pick]");if(pk){await setCurrentSong(pk.dataset.pick);renderHome();return}
-  const b=e.target.closest("[data-today]");if(!b)return;
+  const b=e.target.closest("[data-today]");if(!b||todayBusy)return;
   const s=STUDY.currentSong(songs);
   if(b.dataset.today==="pack"){openSong(s.id);setTimeout(()=>{if(curView==="playerView"&&cur&&cur.id===s.id)openPack()},450);return}
+  todayBusy=true;setTimeout(()=>{todayBusy=false},1000);
+  unlockSpeech();
   if(b.dataset.today==="more"){const d=getDaily();await saveDaily({...d,extra:d.extra+2})}
   startStudy();
 });
+// iOS 只在手指点按的那一下允许开始朗读：先同步读一个静音的空格，之后卡片出现时的自动朗读才不会被拦
+function unlockSpeech(){try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}}
 function tapSong(id){
   if(!selectMode){openSong(id);return}
   if(selected.has(id))selected.delete(id);else selected.add(id);
@@ -1454,22 +1459,22 @@ async function startStudy(){
   go("studyView");studyNext(false);
 }
 async function studyNext(anim){
-  const s=study.song,r=STUDY.nextLine(lineTexts(s),STUDY.progressOf(s).learned);
+  const st=study,s=st.song,r=STUDY.nextLine(lineTexts(s),STUDY.progressOf(s).learned);
   // 副歌重复句、没有汉字的句子：自动标记学会，不占今天的数量
-  if(r.skip.length){let p=STUDY.progressOf(s);for(const li of r.skip)p=STUDY.withLearned({...s,progress:p},li);s.progress=p;await saveSong(s)}
+  if(r.skip.length){let p=STUDY.progressOf(s);for(const li of r.skip)p=STUDY.withLearned({...s,progress:p},li);s.progress=p;await saveSong(s);if(study!==st)return}
   if(r.li===null||STUDY.remaining(getDaily())===0){study.phase="done";study.finished=r.li===null;renderStudy(anim);return}
   study.li=r.li;study.units=STUDY.lineUnits(computeLineFor(s,r.li)).filter(u=>!cards.has(u.w));study.i=0;
   study.phase=study.units.length?"word":"line";renderStudy(anim);
 }
 function renderStudy(anim){
   if(!study)return;
-  const draw=()=>{if(!study)return;stopStudyAudio();
+  const draw=()=>{if(!study)return;study.busy=false;stopStudyAudio();
     if(study.phase==="word")renderWord();else if(study.phase==="line")renderLine();else renderDone();
     if(anim)$("#stBody .st-anim")?.classList.add("in")};
   const old=$("#stBody .st-anim");
   if(anim&&old){old.classList.add("out");setTimeout(draw,200)}else draw();
 }
-function studyCells(n,cur){$("#stCells").innerHTML=Array.from({length:Math.max(1,n)},(_,k)=>`<i class="${k<cur?"done":k===cur?"cur":""}"></i>`).join("")}
+function studyCells(n,cur){if(!n){n=1;cur=1}$("#stCells").innerHTML=Array.from({length:n},(_,k)=>`<i class="${k<cur?"done":k===cur?"cur":""}"></i>`).join("")}
 const studyCharHTML=c=>`<span class="st-ch"><span class="jp t${toneOf(c.jp)}">${esc(c.jp)}</span><span class="hz">${esc(c.ch)}</span></span>`;
 function renderWord(){
   const u=study.units[study.i],n=study.units.length,text=PACK.fixText(study.song,study.song.lines[study.li].text),at=text.indexOf(u.w);
@@ -1520,10 +1525,10 @@ function renderDone(){
 }
 async function lineLearned(){
   stopStudyAudio();
-  const s=study.song,li=study.li;
+  const st=study,s=st.song,li=st.li;
   s.progress=STUDY.withLearned(s,li);await saveSong(s);
   const d=getDaily();await saveDaily({...d,newLines:d.newLines+1,done:[...d.done,li]});
-  studyNext(true);
+  if(study===st)studyNext(true);
 }
 // 整首歌学完：选下一首（设为正在学，回首页）；没有别的歌可学就去导入
 function openPickNext(){
@@ -1546,24 +1551,27 @@ function playStudyLine(loop){
 }
 function stopStudyAudio(){if(study){study.stopAt=null;study.loop=false}if(!au.paused)au.pause()}
 async function learnWord(known){
-  const u=study.units[study.i];
+  const st=study,u=st.units[st.i];
   if(!cards.has(u.w)){
     const w=u.word||{},c=SRS.newCard({w:u.w,jp:u.jp,zh:w.zh,tip:w.tip,oral:w.oral},{songId:study.song.id,li:study.li},Date.now());
     if(known)c.known=true;
     cards.set(c.w,c);await DB.put(c,"cards");
   }
-  study.i++;if(study.i>=study.units.length)study.phase="line";
+  if(study!==st)return;
+  st.i++;if(st.i>=st.units.length)st.phase="line";
   renderStudy(true);
 }
 function studyAct(a){
   if(!study)return;
+  // 会改数据的按钮：一次只处理一下（卡片切换动画 200ms 里旧按钮还在，连点会多算）
+  if(["got","known","lineok","more"].includes(a)){if(study.busy)return;study.busy=true}
   const u=study.units[study.i];
   if(a==="say")speak(u.w,0.8);else if(a==="slow")speak(u.w,0.6);else if(a==="orig")playStudyLine(false);
   else if(a==="got")learnWord(false);else if(a==="known")learnWord(true);
   else if(a==="slowline"){stopStudyAudio();speak(PACK.fixText(study.song,study.song.lines[study.li].text),0.6);refreshLoop()}
   else if(a==="loop"){if(study.loop&&!au.paused)stopStudyAudio();else playStudyLine(true);refreshLoop()}
   else if(a==="lineok")lineLearned();
-  else if(a==="more"){const d=getDaily();saveDaily({...d,extra:d.extra+2}).then(()=>studyNext(true))}
+  else if(a==="more"){const st=study,d=getDaily();saveDaily({...d,extra:d.extra+2}).then(()=>{if(study===st)studyNext(true)})}
   else if(a==="home")goBack();else if(a==="pick")openPickNext();
 }
 $("#studyView").addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(b)studyAct(b.dataset.act)});

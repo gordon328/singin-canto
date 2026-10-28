@@ -26,7 +26,9 @@ module.exports = { name: "study", async run(b) {
     && (await b.ev(`document.querySelector("#studyView .st-line .hl").innerText`)) === "我"
     && /^[a-z]+[1-6]$/.test(await b.ev(`document.querySelector("#studyView .st-ch .jp").innerText`))
     && (await b.ev(body)).includes("声 ·") && (await b.ev(body)).includes("暂无释义") && (await b.ev(body)).includes("重新生成词汇包"));
-  b.check("speak-auto", JSON.stringify((await b.ev(said))[0]) === JSON.stringify(["我", 0.8]));
+  // iOS 只在手指点的那一下允许开始朗读：点「开始」时同步先读一个静音的空格解锁
+  b.check("speech-unlocked-in-tap", (await b.ev(said))[0][0] === " ");
+  b.check("speak-auto", JSON.stringify((await b.ev(said)).find(x => x[0] !== " ")) === JSON.stringify(["我", 0.8]));
   await b.ev(act("say")); await b.ev(act("slow"));
   b.check("speak-buttons", JSON.stringify((await b.ev(said)).slice(-2)) === JSON.stringify([["我", 0.8], ["我", 0.6]]));
   b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#studyView button")].filter(e => e.getClientRects().length).every(e => e.getBoundingClientRect().height >= 44)`));
@@ -39,13 +41,20 @@ module.exports = { name: "study", async run(b) {
   const a2 = await b.ev(au);
   b.check("orig-stops-at-end", a2.paused && a2.t < 4.5);
 
-  await next(b); await next(b);
+  // 快速连点两下「会读了」：只算一次，第 2 张「穿」不会被跳过
+  await b.ev(act("got") + ";" + act("got")); await b.sleep(600);
+  b.check("double-tap-got", (await b.ev(bigWord)) === "穿" && !(await b.ev(F.idbGet("cards", "穿"))));
+  await next(b);
   b.check("word-card-3", (await b.ev(bigWord)) === "風褸" && (await b.ev(count)) === "3 / 5" && (await b.ev(cells)) === "done,done,cur,," && (await b.ev(body)).includes("风衣"));
   await next(b, "known");
   const kw = await b.ev(F.idbGet("cards", "風褸")), w0 = await b.ev(F.idbGet("cards", "我"));
   b.check("known", kw && kw.known === true && w0 && w0.known === false && w0.srs.interval === 1 && w0.sources[0].songId === "t1" && w0.sources[0].li === 0);
   b.check("word-card-4", (await b.ev(bigWord)) === "出");
 
+  // 点了「会读了」马上右滑返回：不报错，这张卡已经存了
+  await b.ev(act("got") + ";history.back()"); await b.sleep(900);
+  b.check("swipe-during-save", await b.ev(visible("#home")) && !!(await b.ev(F.idbGet("cards", "出"))) && b.errors.length === 0);
+  await start(b);
   await b.ev(click("#studyView [data-back]")); await b.sleep(900);
   b.check("close", await b.ev(visible("#home")) && await b.ev(`document.querySelector("#au").paused`));
 

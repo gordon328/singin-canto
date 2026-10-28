@@ -66,6 +66,12 @@ module.exports = { name: "today", async run(b) {
   await reload(b);
   t = await b.ev(todayText);
   b.check("done-today", t.includes("今天完成了 ✓") && (await b.ev(`document.querySelector("#today [data-today]").innerText.trim()`)) === "再学 2 句");
+  // 今天在 T1 学完了，又把 T2 设为正在学：卡片不能把 T1 的句子范围写在 T2 后面
+  await b.ev(patchSong("t1", { progress: { learned: [0, 1], current: false } }));
+  await b.ev(patchSong("t2", { progress: { learned: [], current: true } }));
+  await reload(b);
+  t = await b.ev(todayText);
+  b.check("done-other-song", t.includes("今天完成了 ✓") && !t.includes("第 1–2 句"));
   b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#today button")].every(e => e.getBoundingClientRect().height >= 44)`));
   b.check("no-errors", b.errors.length === 0);
 } };
