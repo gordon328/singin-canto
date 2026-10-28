@@ -154,6 +154,21 @@ svg{display:block}
 .st-src .hl{background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 2px}
 .st-grades{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .st-grades .st-big{min-height:64px;border-radius:18px}
+/* 我的生词（规格 6.3） */
+.words-list{display:flex;flex-direction:column;gap:10px;padding:4px 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.btn.wrow{display:flex;align-items:center;justify-content:flex-start;gap:14px;width:100%;min-height:64px;padding:12px 16px;border-radius:22px;text-align:left;font-weight:400}
+.btn.wrow.is-pressed{transform:scale(.98)}
+.wrow .ww{flex:none;min-width:44px;font-size:22px;font-weight:700}
+.wrow .wm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.wrow .wm .jp{font-size:13px;font-weight:600}
+.wrow .wm .zh{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrow .wd{flex:none;font-size:12px;color:var(--muted)}
+.wrow .wd.on{color:var(--accent);font-weight:600}
+.wsheet{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding-top:6px}
+.wsheet .st-ch .hz{font-size:56px}
+.wsheet .st-ch .jp{font-size:18px;font-weight:700}
+.wsheet .row{display:flex;gap:10px;align-self:stretch}
+.wsheet .row .btn{flex:1}
 .st-anim.out{animation:stOut var(--dur) var(--ease) both}
 .st-anim.in{animation:stIn var(--dur) var(--ease) both}
 @keyframes stOut{to{transform:translateX(-30%);opacity:0}}
@@ -547,8 +562,18 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
       <div class="stepper" id="goalStep" hidden><button class="btn soft icon" id="goalMinus" type="button" aria-label="少一句">−</button><span id="goalNum" class="num"></span><span class="note">句</span><button class="btn soft icon" id="goalPlus" type="button" aria-label="多一句">+</button></div>
       <div class="note">每天按歌词顺序新学几句，复习的词不算在里面。</div>
     </div>
+    <div class="card field" id="wordsCard"></div>
     <div class="card field" id="backupCard"></div>
   </div>
+</section>
+
+<!-- WORDS：我的生词（设置页进入） -->
+<section id="wordsView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>我的生词</b><span id="wordsSub"></span></div>
+  </div></div>
+  <div class="wrap"><div class="words-list" id="wordsList"></div></div>
 </section>
 
 <!-- STUDY：每日学习（学词、整句、完成） -->
@@ -614,8 +639,8 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView","proofView","settingsView","studyView"];
-const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,proofView:2};
+const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,proofView:2,wordsView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
@@ -682,6 +707,7 @@ window.addEventListener("popstate",e=>{
   if(curView==="proofView"){au.pause();if(proof)proof.stopAt=null}
   if(curView==="studyView"){stopStudyAudio();try{speechSynthesis.cancel()}catch(e){}study=null}
   if(st.view==="settingsView"){renderSettings();show("settingsView",anim);return}
+  if(st.view==="wordsView"){renderWords();show("wordsView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
   // 回到首页：停掉播放，放开音频文件占的内存
@@ -1451,7 +1477,42 @@ function renderGoal(){
   $("#goalStep").hidden=!goalCustom;$("#goalNum").textContent=g;
   $("#goalMinus").disabled=g<=STUDY.GOAL_MIN;$("#goalPlus").disabled=g>=STUDY.GOAL_MAX;
 }
+/* ---------- 我的生词（规格 6.3） ---------- */
+function renderWordsCard(){$("#wordsCard").innerHTML=`<div class="label">生词</div><button class="btn soft block" type="button" data-words>我的生词（${cards.size}）</button><div class="note">学过和加入的词都在这里：能听发音、标记已认识、删除。</div>`}
+$("#wordsCard").addEventListener("click",e=>{if(e.target.closest("[data-words]")){renderWords();go("wordsView")}});
+// 排序：要复习的按下次复习时间，已认识的放最后
+function renderWords(){
+  const now=Date.now(),list=[...cards.values()].sort((a,b)=>(a.known-b.known)||(a.known?a.w.localeCompare(b.w):a.srs.due-b.srs.due));
+  $("#wordsSub").textContent=cards.size?`${cards.size} 个`:"";
+  $("#wordsList").innerHTML=list.length?list.map(c=>{
+    const syl=String(c.jp||"").split(/\s+/);
+    return `<button class="btn wrow" type="button" data-w="${esc(c.w)}"><span class="ww">${esc(c.w)}</span><span class="wm"><span class="jp">${syl.map(x=>`<span class="t${toneOf(x)}">${esc(x)}</span>`).join(" ")}</span><span class="zh">${esc(c.zh||"暂无释义")}</span></span><span class="wd${c.known?" on":""}">${c.known?"已认识":esc(SRS.dueLabel(c.srs.due,now))+"复习"}</span></button>`}).join("")
+    :'<div class="empty"><b>还没有生词</b><p class="note" style="margin:8px 0 0">每天学习时点「会读了」，或者在歌词里点字「＋ 加入生词」，词就会出现在这里。</p></div>';
+}
+$("#wordsList").addEventListener("click",e=>{const r=e.target.closest("[data-w]");if(r)openWordCard(r.dataset.w)});
+function openWordCard(w){
+  const c=cards.get(w);if(!c)return;
+  const syl=String(c.jp||"").split(/\s+/);let k=0;
+  const chars=[...c.w].map(ch=>({ch,jp:HAN.test(ch)?syl[k++]||"":""}));
+  openSheet(`<div class="wsheet">
+    <div class="st-chars">${chars.map(studyCharHTML).join("")}</div>
+    <div class="st-mean${c.zh?"":" none"}">${esc(c.zh||"暂无释义")}</div>
+    ${c.tip?`<div class="wc-tip">${esc(c.tip)}</div>`:""}
+    <div class="note">${c.known?"已认识，不进入复习":esc(SRS.dueLabel(c.srs.due,Date.now()))+"复习"}</div>
+    <div class="row"><button class="btn primary" type="button" data-say>🔊 听发音</button><button class="btn soft" type="button" data-known>${c.known?"取消已认识":"标记为已认识"}</button></div>
+    <button class="btn text block danger" type="button" data-del>删除</button>
+  </div>`);
+  $("#sheetBody").onclick=async e=>{
+    if(e.target.closest("[data-say]")){speak(c.w,0.8);return}
+    if(e.target.closest("[data-known]")){c.known=!c.known;c.updated=Date.now();await DB.put(c,"cards");renderWords();openWordCard(w);return}
+    if(e.target.closest("[data-del]")){
+      if(!await confirmSheet({title:`删除「${c.w}」？`,body:"这个词和它的复习进度会一起删掉，以后学到它会重新出现。"}))return;
+      cards.delete(c.w);await DB.del(c.w,"cards");renderWords();toast("已删除");
+    }
+  };
+}
 function renderSettings(){
+  renderWordsCard();
   goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
   const data=JSON.stringify({app:"yuechang",v:2,exported:new Date().toISOString(),songs:songs.map(s=>{const o={...s};delete o.audio;return o}),cards:[...cards.values()],meta:[...metaRecs.values()]});
   $("#backupCard").innerHTML=`
