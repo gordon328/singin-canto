@@ -45,7 +45,7 @@ module.exports = { name: "feedback", async run(b) {
   await b.sleep(300);
   const m1 = await b.ev(menu);
   b.check("menu-dropdown " + JSON.stringify(m1), m1.op === 1 && m1.pos === "absolute" && m1.inBar && m1.below && m1.right && m1.radius === "16px" && m1.minH >= 44
-    && JSON.stringify(m1.items) === JSON.stringify(["编辑歌曲", "词汇包 ✓", "删除"]));
+    && JSON.stringify(m1.items) === JSON.stringify(["设为正在学", "编辑歌曲", "词汇包 ✓", "删除"]));
   const surface = await b.ev(`(() => { const d = document.createElement("div"); d.style.background = "var(--surface)"; document.body.append(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
   const dangerC = await b.ev(`(() => { const d = document.createElement("div"); d.style.color = "var(--danger)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`);
   b.check("menu-style", (await b.ev(cs("#songMenu", "backgroundColor"))) === surface && (await b.ev(cs("#songMenu", "boxShadow"))) !== "none"

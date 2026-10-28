@@ -21,7 +21,7 @@
 :root{
   --bg:#F7F6FB; --surface:#FFFFFF; --surface-press:#F1EFFA; --ink:#221F33; --ink-2:#45405C; --muted:#6E6A82; --rule:#E2DFEE;
   --accent:#5B4BDB; --accent-press:#4536B8; --accent-soft:#ECE9FD; --on-accent:#FFFFFF;
-  --inverse:#221F33; --on-inverse:#FFFFFF; --seg-current:#B7AEF2; --danger:#C2413A;
+  --inverse:#221F33; --on-inverse:#FFFFFF; --seg-current:#B7AEF2; --danger:#C2413A; --on-accent-veil:rgba(255,255,255,.14);
   --t1:#D9443B; --t2:#C67312; --t3:#2B8A56; --t4:#2F6BD6; --t5:#8A4FD8; --t6:#0F7F8E;
   --sq1-bg:#ECE9FD; --sq1-ink:#5B4BDB; --sq2-bg:#FDEDE3; --sq2-ink:#C2581A; --sq3-bg:#E3F4EA; --sq3-ink:#2B8A56; --sq4-bg:#E5EEFC; --sq4-ink:#2F6BD6;
   --shadow-1:0 2px 10px rgba(34,31,51,.05); --shadow-2:0 10px 30px rgba(34,31,51,.08); --shadow-3:0 12px 34px rgba(34,31,51,.12); --cur-glow:0 8px 24px rgba(91,75,219,.14);
@@ -34,7 +34,7 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#15131F; --surface:#1F1C2C; --surface-press:#2A2640; --ink:#F1EFF8; --ink-2:#CFCBE0; --muted:#9C97B3; --rule:#2E2A42;
   --accent:#8E80FF; --accent-press:#A79CFF; --accent-soft:#2B2550; --on-accent:#14112A;
-  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80;
+  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80; --on-accent-veil:rgba(20,17,42,.12);
   --t1:#FF7A70; --t2:#FFB547; --t3:#5FD38D; --t4:#6FA8FF; --t5:#B794FF; --t6:#4CC9DB;
   --sq1-bg:#2B2550; --sq1-ink:#A79CFF; --sq2-bg:#3A2618; --sq2-ink:#FFB27A; --sq3-bg:#17311F; --sq3-ink:#5FD38D; --sq4-bg:#182640; --sq4-ink:#6FA8FF;
   --shadow-1:none; --shadow-2:none; --shadow-3:none; --cur-glow:0 0 0 transparent; --shadow-sheet:0 -8px 40px rgba(0,0,0,.5),0 0 0 1px var(--rule);
@@ -44,7 +44,7 @@
 :root[data-theme="dark"]{
   --bg:#15131F; --surface:#1F1C2C; --surface-press:#2A2640; --ink:#F1EFF8; --ink-2:#CFCBE0; --muted:#9C97B3; --rule:#2E2A42;
   --accent:#8E80FF; --accent-press:#A79CFF; --accent-soft:#2B2550; --on-accent:#14112A;
-  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80;
+  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80; --on-accent-veil:rgba(20,17,42,.12);
   --t1:#FF7A70; --t2:#FFB547; --t3:#5FD38D; --t4:#6FA8FF; --t5:#B794FF; --t6:#4CC9DB;
   --sq1-bg:#2B2550; --sq1-ink:#A79CFF; --sq2-bg:#3A2618; --sq2-ink:#FFB27A; --sq3-bg:#17311F; --sq3-ink:#5FD38D; --sq4-bg:#182640; --sq4-ink:#6FA8FF;
   --shadow-1:none; --shadow-2:none; --shadow-3:none; --cur-glow:0 0 0 transparent; --shadow-sheet:0 -8px 40px rgba(0,0,0,.5),0 0 0 1px var(--rule);
@@ -103,6 +103,17 @@ svg{display:block}
 .wrap.home{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
 .home-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:calc(env(safe-area-inset-top,0px) + 28px);padding-bottom:22px}
 .brand{font-weight:700;font-size:30px;margin:0;line-height:1.1}
+/* 首页「今天的学习」卡片（设计规范 5.4） */
+.today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:20px;margin-bottom:22px;box-shadow:var(--shadow-2)}
+.today-head{font-size:17px;font-weight:700;margin-bottom:14px}
+.today-cell{background:var(--on-accent-veil);border-radius:20px;padding:12px 16px}
+.today-cell .lbl{display:block;font-size:13px;font-weight:600;opacity:.85}
+.today .big{font-size:28px;font-weight:700;margin-right:4px}
+.today-sub{font-size:13px;line-height:1.6;margin:12px 0 14px;opacity:.85}
+.today .today-btn{width:100%;min-height:50px;background:var(--surface);color:var(--accent);font-size:16px}
+.today .today-btn.is-pressed{background:var(--surface-press)}
+.today-picks{display:flex;flex-direction:column;gap:8px}
+.today-picks .today-btn{justify-content:flex-start;min-height:48px;font-size:15px;color:var(--ink)}
 .sec-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:15px;font-weight:600}
 .sec-title .jp{font-weight:600}
 .tones{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:22px}
@@ -339,6 +350,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
       <button class="btn soft small" id="btnDone" type="button" hidden>完成</button>
       <button class="btn soft icon" id="btnSettings" type="button" aria-label="设置"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </header>
+    <div id="today" hidden></div>
     <div class="sec-title"><span>六个声调 · <span class="jp" id="toneSyl">si</span></span><button class="btn soft small" id="btnToneNext" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>换一组</button></div>
     <div class="tones" id="tones"></div>
     <div class="sec-title"><span>我的歌</span><button class="btn text small" id="btnSelect" type="button" hidden>选择</button></div>
@@ -408,6 +420,7 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar{opacity
     <button class="btn soft small" id="togJp" type="button" aria-pressed="true">粤拼 开</button>
     <button class="btn icon" id="btnMenu" type="button" aria-label="更多" aria-haspopup="menu" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
     <div class="menu" id="songMenu" role="menu" hidden>
+      <button class="btn" type="button" role="menuitem" data-menu="current">设为正在学</button>
       <button class="btn" type="button" role="menuitem" data-menu="proof">编辑歌曲</button>
       <button class="btn" type="button" role="menuitem" data-menu="pack">词汇包</button>
       <button class="btn danger" type="button" role="menuitem" data-menu="del">删除</button>
@@ -645,7 +658,7 @@ function renderHome(){
   renderTones(false);
   const box=$("#songs");
   if(!songs.length)selectMode=false;
-  renderSelectBar();
+  renderSelectBar();renderToday();
   if(!songs.length){
     box.innerHTML=`<div class="empty"><b>还没有歌</b><ol>
       <li>点「导入新歌」，选一首你手机里的 mp3</li>
@@ -657,7 +670,8 @@ function renderHome(){
   }
   const list=[...songs].sort((a,b)=>(b.updated||0)-(a.updated||0));
   box.innerHTML=list.map((s,i)=>{
-    const sub=[s.artist,s.lines.length+" 句",s.pack?"":"未导入词汇包",s.audio?"":"缺少音频"].filter(Boolean).join(" · ");
+    const n=STUDY.progressOf(s).learned.length;
+    const sub=[s.artist,n?`已学 ${n} / ${s.lines.length} 句`:"未开始",s.pack?"":"未导入词汇包",s.audio?"":"缺少音频"].filter(Boolean).join(" · ");
     const q=i%4+1;
     const on=selected.has(s.id);
     return `<div class="song${on?" selected":""}" data-id="${s.id}" role="button" tabindex="0"${selectMode?` aria-pressed="${on}"`:""}>
@@ -665,6 +679,43 @@ function renderHome(){
     <span class="sq" style="--sq-bg:var(--sq${q}-bg);--sq-ink:var(--sq${q}-ink)" aria-hidden="true">${esc([...(s.title||"未")][0])}</span>
     <span class="meta"><div class="ttl">${esc(s.title||"未命名")}</div><div class="sub">${esc(sub)}</div></span></div>`}).join("");
 }
+/* ---------- 今天的学习（规格 5.1） ---------- */
+// 每句应用 fix 后的文字（判断副歌重复用）
+function lineTexts(song){return song.lines.map(l=>PACK.fixText(song,l.text))}
+// 存一首歌：songs 里同 id 的对象原地更新（播放页的 cur 指向它）
+function saveSong(s){const ex=songs.find(x=>x.id===s.id);if(ex&&ex!==s)Object.assign(ex,s);return DB.put(ex||s)}
+async function setCurrentSong(id){for(const s of STUDY.setCurrent(songs,id))await saveSong(s)}
+const lineRange=lis=>lis.length?(lis.length===1?`第 ${lis[0]+1} 句`:`第 ${Math.min(...lis)+1}–${Math.max(...lis)+1} 句`):"";
+function renderToday(){
+  const box=$("#today");
+  if(!songs.length){box.hidden=true;box.innerHTML="";return}
+  const s=STUDY.currentSong(songs),d=getDaily(),texts=lineTexts(s),learned=STUDY.progressOf(s).learned,left=STUDY.remaining(d);
+  const title=esc(s.title||"未命名");
+  let body;
+  if(STUDY.nextLine(texts,learned).li===null){
+    const others=songs.filter(x=>x.id!==s.id&&STUDY.nextLine(lineTexts(x),STUDY.progressOf(x).learned).li!==null);
+    body=`<div class="today-sub">${title} · 这首学完了 🎉 ${others.length?"选下一首：":"导入一首新歌接着学吧"}</div>
+      ${others.length?`<div class="today-picks">${others.map(x=>`<button class="btn today-btn" type="button" data-pick="${esc(x.id)}">${esc(x.title||"未命名")}</button>`).join("")}</div>`:""}`;
+  }else if(left===0){
+    body=`<div class="today-cell"><span class="big">今天完成了 ✓</span></div>
+      <div class="today-sub">${title}${d.done.length?" · "+lineRange(d.done):""}</div>
+      <button class="btn today-btn" type="button" data-today="more">再学 2 句</button>`;
+  }else{
+    const up=STUDY.upcoming(texts,learned,left);
+    body=`<div class="today-cell"><span class="lbl">新学</span><b class="big num">${up.length}</b>句</div>
+      <div class="today-sub">${title} · ${lineRange(up)}</div>
+      ${s.pack?'<button class="btn today-btn" type="button" data-today="start">开始今天的学习</button>':'<button class="btn today-btn" type="button" data-today="pack">先导入词汇包</button>'}`;
+  }
+  box.innerHTML=`<div class="today"><div class="today-head">今天的学习</div>${body}</div>`;box.hidden=false;
+}
+$("#today").addEventListener("click",async e=>{
+  const pk=e.target.closest("[data-pick]");if(pk){await setCurrentSong(pk.dataset.pick);renderHome();return}
+  const b=e.target.closest("[data-today]");if(!b)return;
+  const s=STUDY.currentSong(songs);
+  if(b.dataset.today==="pack"){openSong(s.id);setTimeout(()=>{if(curView==="playerView"&&cur&&cur.id===s.id)openPack()},450);return}
+  if(b.dataset.today==="more"){const d=getDaily();await saveDaily({...d,extra:d.extra+2})}
+  startStudy();
+});
 function tapSong(id){
   if(!selectMode){openSong(id);return}
   if(selected.has(id))selected.delete(id);else selected.add(id);
@@ -1117,6 +1168,7 @@ const menuOpen=()=>songMenu.classList.contains("open");
 function openMenu(){
   const b=$("#btnMenu");clearTimeout(menuTimer);
   songMenu.querySelector('[data-menu="pack"]').textContent=cur.pack?"词汇包 ✓":"词汇包";
+  songMenu.querySelector('[data-menu="current"]').hidden=STUDY.progressOf(cur).current;
   // 右边和「⋯」按钮对齐，在按钮正下方
   songMenu.style.top=b.offsetTop+b.offsetHeight+6+"px";songMenu.style.right=b.offsetParent.clientWidth-b.offsetLeft-b.offsetWidth+"px";
   songMenu.hidden=false;void songMenu.offsetHeight;songMenu.classList.add("open");b.setAttribute("aria-expanded","true");
@@ -1131,6 +1183,7 @@ songMenu.addEventListener("click",async e=>{
   closeMenu();
   if(m.dataset.menu==="proof"){openProof();return}
   if(m.dataset.menu==="pack"){openPack();return}
+  if(m.dataset.menu==="current"){await setCurrentSong(cur.id);toast("已设为正在学");return}
   const id=cur.id;
   if(!await confirmSheet({title:"删除这首歌？",body:SONG_DEL_NOTE}))return;
   // 回到首页再显示「已删除 1 首歌 · 撤销」
@@ -1328,6 +1381,9 @@ function renderSettings(){
     renderHome();$("#bkMsg").innerHTML=`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`;
   });
 }
+
+/* ---------- 每日学习 ---------- */
+function startStudy(){toast("学习页马上就好")}
 
 /* ---------- boot ---------- */
 history.replaceState({view:"home"},"");
