@@ -88,3 +88,6 @@ test("mergeCards：坏卡片跳过或补齐", () => {
   assert.equal(out.length, 1);
   assert.deepEqual(out[0].srs, SRS.newSrs(77)); assert.deepEqual(out[0].sources, []);
 });
+test("dayDue：导出", () => {
+  assert.equal(SRS.dayDue(at(2026, 10, 28, 10), 1), at(2026, 10, 29, 4));
+});

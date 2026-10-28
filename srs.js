@@ -65,7 +65,7 @@
     return [...byW.values()];
   }
 
-  const SRS = { newSrs, review, newCard, dueLabel, mergeCards, today };
+  const SRS = { newSrs, review, newCard, dueLabel, mergeCards, today, dayDue };
   root.SRS = SRS;
   if (typeof module !== "undefined" && module.exports) module.exports = SRS;
 })(typeof self !== "undefined" ? self : globalThis);
