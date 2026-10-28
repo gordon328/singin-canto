@@ -20,7 +20,6 @@ module.exports = { name: "study", async run(b) {
   await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const st = db.transaction("songs", "readwrite").objectStore("songs");
     st.get("t1").onsuccess = e => { const s = e.target.result; s.lines[0].end = 2.5; st.put(s).onsuccess = () => { db.close(); res(); }; }; }; })`);
   await b.nav("/");
-  b.check("fab-anim", await b.ev(`document.querySelector("#btnAdd").classList.contains("bar-in")`));
   await start(b);
   b.check("enter", await b.ev(visible("#studyView")) && (await b.ev("history.state.view")) === "studyView");
   b.check("foot-anim", await b.ev(`document.querySelector("#stFoot").classList.contains("bar-in")`));

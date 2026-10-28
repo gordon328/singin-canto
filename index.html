@@ -96,7 +96,7 @@ svg{display:block}
   *,*::before,*::after{transition-property:opacity!important;animation:none!important;scroll-behavior:auto!important}
   .is-pressed{transform:none!important}
   /* 减弱动态效果：播放条只淡入淡出 */
-  .player.bar-in,.fab.bar-in,.study-foot.bar-in{animation:barFade var(--dur) var(--ease) both!important}
+  .player.bar-in,.study-foot.bar-in{animation:barFade var(--dur) var(--ease) both!important}
 }
 
 /* Home（首页左右边距 20px） */
@@ -224,9 +224,10 @@ body > section{position:relative;background:var(--bg);min-height:100dvh}
 @keyframes dimIn{from{opacity:0}to{opacity:1}}
 @keyframes dimOut{from{opacity:1}to{opacity:0}}
 @keyframes leaveBack{from{transform:none;opacity:1}to{transform:translateX(30%);opacity:0}}
-body.navigating .player,body.navigating .fab,body.navigating .bottom-bar,body.navigating .study-foot{opacity:0;transition:none}
-/* 浮动播放条、首页「＋ 导入新歌」、学习页底部按钮：页面滑入后从下方滑入并淡入（带一点回弹）；离开时没有动画，跟着切页直接隐藏 */
-.player.bar-in,.fab.bar-in,.study-foot.bar-in{animation:barIn var(--dur-slow) var(--ease) both}
+body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.navigating .study-foot{opacity:0;transition:none}
+/* 浮动播放条、学习页底部按钮：页面滑入后从下方滑入并淡入（带一点回弹）；离开时没有动画，跟着切页直接隐藏。
+   「＋ 导入新歌」和导入页「保存」是常驻按钮（[data-page]），没有动画 */
+.player.bar-in,.study-foot.bar-in{animation:barIn var(--dur-slow) var(--ease) both}
 @keyframes barIn{0%{transform:translateY(120%);opacity:0}70%{transform:translateY(-6px);opacity:1}100%{transform:none;opacity:1}}
 @keyframes barFade{from{opacity:0}to{opacity:1}}
 .fab,.bottom-bar{transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease),opacity var(--dur) var(--ease)}
@@ -409,7 +410,6 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar,body.na
     <div class="sec-title"><span>我的歌</span><button class="btn text small" id="btnSelect" type="button" hidden>选择</button></div>
     <div class="songs" id="songs"></div>
   </div>
-  <button class="btn inverse fab" id="btnAdd" type="button">＋ 导入新歌</button>
   <button class="btn danger-fill bottom bottom-bar" id="btnDelSel" type="button" hidden>删除（0）</button>
   <div class="snack" id="snack" hidden role="status"><span id="snackMsg"></span><button class="btn text small" id="snackUndo" type="button">撤销</button></div>
 </section>
@@ -444,7 +444,6 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar,body.na
       <textarea id="fLyrics" placeholder="或者直接粘贴歌词。&#10;带时间轴的 LRC 格式，例如：[00:21.71] 第一句歌词&#10;没有时间轴的纯文本也可以，保存后边听边点来对齐。"></textarea>
       <div id="lyricsInfo" class="note"></div>
     </div>
-    <button class="btn primary bottom bottom-bar" id="btnSave" type="button">保存</button>
   </div>
 </section>
 
@@ -552,6 +551,10 @@ body.navigating .player,body.navigating .fab,body.navigating .bottom-bar,body.na
   <div class="study-foot" id="stFoot"></div>
 </section>
 
+<!-- 常驻按钮：不放在页面里（切页时页面会滑动），到了对应页面直接显示，离开直接隐藏，没有动画 -->
+<button class="btn inverse fab" id="btnAdd" type="button" data-page="home">＋ 导入新歌</button>
+<button class="btn primary bottom bottom-bar" id="btnSave" type="button" data-page="importView" hidden>保存</button>
+
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
 
@@ -606,13 +609,16 @@ const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyVie
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
 const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+// 常驻按钮：只在自己那一页显示（「＋ 导入新歌」多选模式下也隐藏）
+function pageButtons(){document.querySelectorAll("[data-page]").forEach(e=>e.hidden=e.dataset.page!==curView||(e.id==="btnAdd"&&selectMode))}
 function show(id,dir){
   const from=$("#"+curView),to=$("#"+id),y=scrollY;
   clearTimeout(navTimer);document.body.classList.remove("navigating");views.forEach(v=>{const el=$("#"+v);el.classList.remove("nav-layer","enter-fwd","leave-fwd","enter-back","leave-back");el.style.cssText=""});
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
   clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
-  const BARS=".player,.fab,.study-foot";
+  pageButtons();
+  const BARS=".player,.study-foot";
   document.querySelectorAll(BARS).forEach(p=>p.classList.remove("bar-in"));
   const bars=to.querySelectorAll(BARS),barIn=()=>bars.forEach(x=>x.classList.add("bar-in"));
   if(!dir||from===to||reduceMotion()){barIn();return}
@@ -803,7 +809,7 @@ const selected=new Set();
 function renderSelectBar(){
   $("#btnSelect").hidden=selectMode||!songs.length;
   $("#btnDone").hidden=!selectMode;$("#btnSettings").hidden=selectMode;
-  $("#btnAdd").hidden=selectMode;$("#btnDelSel").hidden=!selectMode;
+  pageButtons();$("#btnDelSel").hidden=!selectMode;
   $("#btnDelSel").textContent=`删除（${selected.size}）`;
 }
 function setSelectMode(on){selectMode=on;selected.clear();renderHome()}
@@ -1613,7 +1619,7 @@ history.replaceState({view:"home"},"");
   // 「每天新学几句」以前存在 prefs.goal，搬到 meta daily
   if(!metaRecs.has("daily"))await saveDaily({...getDaily(),goal:STUDY.goalOf({goal:prefs.goal})});
   if("goal" in prefs){delete prefs.goal;savePrefs()}
-  renderHome();$("#btnAdd").classList.add("bar-in");
+  renderHome();
 })();
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
