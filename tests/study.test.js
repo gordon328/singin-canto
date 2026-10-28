@@ -81,6 +81,52 @@ test("dailyFor: 没有记录", () => {
   assert.deepEqual(S.dailyFor(undefined, "2026-10-28"), { key: "daily", goal: 4, date: "2026-10-28", newLines: 0, extra: 0, reviewed: 0, songId: null, done: [] });
 });
 
+// ---------- M5：复习规则 ----------
+const NOW = new Date(2026, 9, 29, 10).getTime();
+const card = (w, due, known = false, sources = []) => ({ w, known, sources, srs: { due, interval: 1, ease: 2.5, reps: 1, lapses: 0 } });
+
+test("reviewQueue: 按到期先后、跳过 known 和没到期", () => {
+  const cs = [card("b", NOW - 10), card("a", NOW - 100), card("k", NOW - 50, true), card("later", NOW + 1000)];
+  assert.deepEqual(S.reviewQueue(cs, NOW), ["a", "b"]);
+});
+
+test("reviewQueue: 最多 50", () => {
+  const cs = Array.from({ length: 60 }, (_, i) => card("w" + i, NOW - i));
+  assert.equal(S.reviewQueue(cs, NOW).length, 50);
+});
+
+test("afterGrade: 忘了的卡放到最后", () => {
+  const q = ["a", "b"], re = new Set();
+  assert.equal(S.afterGrade(q, 0, "again", re), 1);
+  assert.deepEqual(q, ["a", "b", "a"]);
+});
+
+test("afterGrade: 只再出现一次", () => {
+  const q = ["a", "b", "a"], re = new Set(["a"]);
+  assert.equal(S.afterGrade(q, 2, "again", re), 3);
+  assert.deepEqual(q, ["a", "b", "a"]);
+});
+
+test("afterGrade: 记得、模糊不加", () => {
+  const q = ["a", "b"], re = new Set();
+  S.afterGrade(q, 0, "good", re); S.afterGrade(q, 1, "hard", re);
+  assert.deepEqual(q, ["a", "b"]);
+});
+
+test("intervalLabel", () => {
+  const s = SRS.newSrs(NOW);
+  assert.equal(S.intervalLabel(s, "again", NOW), "10 分钟");
+  assert.equal(S.intervalLabel(s, "hard", NOW), "1 天");
+  assert.equal(S.intervalLabel(s, "good", NOW), "3 天");
+});
+
+test("firstSource", () => {
+  const songs = [{ id: "s1", lines: [{}, {}] }];
+  assert.deepEqual(S.firstSource({ sources: [{ songId: "gone", li: 0 }, { songId: "s1", li: 1 }] }, songs), { song: songs[0], li: 1 });
+  assert.equal(S.firstSource({ sources: [{ songId: "s1", li: 5 }] }, songs), null);
+  assert.equal(S.firstSource({ sources: [] }, songs), null);
+});
+
 // ---------- M4b：学习规则 ----------
 const P = require("../pack.js");
 const auto = t => [...t].map(c => [c, c === "𪚥" ? null : "x1"]);

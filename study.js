@@ -123,7 +123,39 @@
     return { ...base, goal: goalOf({ goal: g }) === g ? g : goalOf(local) };
   }
 
-  const STUDY = { GOALS, GOAL_MIN, GOAL_MAX, DEFAULT_GOAL, progressOf, withLearned, mergeProgress, currentSong, setCurrent, goalOf, dailyFor, mergeDaily, remaining, dueCount, hasHan, lineUnits, nextLine, upcoming };
+  // ---------- 复习（规格第 6 节） ----------
+  // 浏览器里 srs.js 先加载（全局 SRS）；Node 测试里 require
+  const srs = () => root.SRS || require("./srs.js");
+
+  // 今天要复习的卡（w），到期早的先，最多 cap 张
+  function reviewQueue(cards, now, cap = 50) {
+    return [...cards].filter(c => !c.known && c.srs && c.srs.due <= now).sort((a, b) => a.srs.due - b.srs.due).slice(0, cap).map(c => c.w);
+  }
+
+  // 评完第 i 张：选「忘了」的卡放到这一轮最后再出现一次（只一次）。queue、requeued 原地改，返回下一张的下标
+  function afterGrade(queue, i, grade, requeued) {
+    const w = queue[i];
+    if (grade === "again" && !requeued.has(w)) { requeued.add(w); queue.push(w); }
+    return i + 1;
+  }
+
+  // 按钮下面的预估间隔
+  function intervalLabel(s, grade, now) {
+    if (grade === "again") return "10 分钟";
+    return srs().review(s, grade, now).interval + " 天";
+  }
+
+  // 卡片的出处：第一个歌还在、那一句也还在的
+  function firstSource(card, songs) {
+    for (const x of card.sources || []) {
+      const song = songs.find(s => s.id === x.songId);
+      if (song && Number.isInteger(x.li) && x.li >= 0 && x.li < song.lines.length) return { song, li: x.li };
+    }
+    return null;
+  }
+
+  const STUDY = { GOALS, GOAL_MIN, GOAL_MAX, DEFAULT_GOAL, progressOf, withLearned, mergeProgress, currentSong, setCurrent, goalOf, dailyFor, mergeDaily, remaining, dueCount, hasHan, lineUnits, nextLine, upcoming,
+    reviewQueue, afterGrade, intervalLabel, firstSource };
   root.STUDY = STUDY;
   if (typeof module !== "undefined" && module.exports) module.exports = STUDY;
 })(typeof self !== "undefined" ? self : globalThis);
