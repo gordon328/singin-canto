@@ -11,6 +11,9 @@
 - 一次只做一小步，做完让开发者在手机上试，确认没问题再继续
 - 遇到需要开发者做决定的地方，给出推荐选项，而不是开放式提问
 
+## 固定规则
+- **完成后直接合并到 main 并 push 上线，不开 PR，不需要 gh 命令行工具**（开发者一个人的项目，2026-10-28 开发者决定）。做法：在功能分支上提交并跑完测试 → `git merge` 到 main（能快进就快进）→ `git push origin main`。推送后 GitHub Pages 1–2 分钟内更新，告诉开发者可以在 iPhone 上测了
+
 ## 技术约定
 - **`index.html` + 少量普通 .js 文件**（`<script src>` 引入），原生 HTML/CSS/JavaScript，不用框架，不用构建工具（没有 npm build）。保持简单，开发者能直接打开
   - `srs.js`：间隔复习算法和卡片纯函数（全局 `SRS`：`newSrs`、`review`、`newCard`、`dueLabel`、`mergeCards`、`today`）。"今天"按本地凌晨 4 点换日
