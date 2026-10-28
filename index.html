@@ -155,6 +155,8 @@ svg{display:block}
 .today-head{font-size:17px;font-weight:700;margin-bottom:14px}
 .today-cell{background:var(--on-accent-veil);border-radius:20px;padding:12px 16px}
 .today-cells{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.today-cells .lbl{margin-bottom:2px}
+.today .today-link{width:100%;margin-top:4px;color:var(--on-accent);opacity:.85;text-decoration:underline;text-underline-offset:3px}
 /* 只有一格（新学）时不用大方块：紧凑的一行「新学 4 句 · 歌名 第 1–4 句」 */
 .today-line{margin:0 0 16px;font-size:15px;font-weight:600;line-height:1.5}
 .today-line .big{font-size:30px;margin:0 2px}
@@ -762,9 +764,21 @@ function renderToday(){
   const box=$("#today");
   if(!songs.length){box.hidden=true;box.innerHTML="";return}
   const s=STUDY.currentSong(songs),d=getDaily(),texts=lineTexts(s),learned=STUDY.progressOf(s).learned,left=STUDY.remaining(d);
-  const title=esc(s.title||"未命名");
+  const title=esc(s.title||"未命名"),due=STUDY.dueCount(cards.values(),Date.now()),finished=STUDY.nextLine(texts,learned).li===null;
   let body;
-  if(STUDY.nextLine(texts,learned).li===null){
+  if(due&&!finished&&left>0&&s.pack){
+    // 复习和新学都有：两格左右并排（设计规范 5.4）
+    const up=STUDY.upcoming(texts,learned,left);
+    body=`<div class="today-cells"><div class="today-cell"><span class="lbl">① 复习</span><b class="big num">${due}</b>个词</div><div class="today-cell"><span class="lbl">② 新学</span><b class="big num">${up.length}</b>句</div></div>
+      <div class="today-sub">${title} · ${lineRange(up)}</div>
+      <button class="btn today-btn" type="button" data-today="start">开始今天的学习</button>`;
+  }else if(due){
+    // 只有复习（新句子学完了 / 没有词汇包 / 整首学完）：紧凑一行
+    const why=finished?"这首学完了 🎉":left===0?"今天的新句子学完了 ✓":"新句子要先导入词汇包";
+    body=`<div class="today-line">复习 <b class="big num">${due}</b> 个词 <span class="today-src">· ${why}</span></div>
+      <button class="btn today-btn" type="button" data-today="review">开始复习</button>
+      ${!finished&&left>0&&!s.pack?'<button class="btn text today-link" type="button" data-today="pack">先导入词汇包</button>':""}`;
+  }else if(finished){
     const others=songs.filter(x=>x.id!==s.id&&STUDY.nextLine(lineTexts(x),STUDY.progressOf(x).learned).li!==null);
     body=`<div class="today-sub">${title} · 这首学完了 🎉 ${others.length?"选下一首：":"导入一首新歌接着学吧"}</div>
       ${others.length?`<div class="today-picks">${others.map(x=>`<button class="btn today-btn" type="button" data-pick="${esc(x.id)}">${esc(x.title||"未命名")}</button>`).join("")}</div>`:""}`;
@@ -787,7 +801,7 @@ $("#today").addEventListener("click",async e=>{
   todayBusy=true;setTimeout(()=>{todayBusy=false},1000);
   unlockSpeech();
   if(b.dataset.today==="more"){const d=getDaily();await saveDaily({...d,extra:d.extra+2})}
-  startStudy();
+  startStudy({reviewOnly:b.dataset.today==="review"});
 });
 // iOS 只在手指点按的那一下允许开始朗读：先同步读一个静音的空格，之后卡片出现时的自动朗读才不会被拦
 function unlockSpeech(){try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}}

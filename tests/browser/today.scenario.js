@@ -76,6 +76,30 @@ module.exports = { name: "today", async run(b) {
   await reload(b);
   t = await b.ev(todayText);
   b.check("done-other-song", t.includes("今天完成了 ✓") && !t.includes("第 1–2 句"));
+  // ---- M5：复习 ----
+  const putCards = cs => `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const tx = db.transaction("cards", "readwrite"); const st = tx.objectStore("cards");
+    ${JSON.stringify(cs)}.forEach(c => st.put(c)); tx.oncomplete = () => { db.close(); res(); }; }; })`;
+  const mk = (w, due, known = false) => ({ w, jp: "x1", zh: "", tip: "", oral: false, sources: [], known, created: 1, updated: 1, srs: { due, interval: 1, ease: 2.5, reps: 1, lapses: 0 } });
+  const now = Date.now();
+  await b.ev(patchSong("t1", { progress: { learned: [], current: true } }));
+  await b.ev(patchSong("t2", { progress: { learned: [], current: false } }));
+  await b.ev(putMeta({ key: "daily", goal: 4, date: today(), newLines: 0, extra: 0, reviewed: 0, songId: null, done: [] }));
+  await b.ev(putCards([mk("甲", now - 1000), mk("乙", now - 2000), mk("丙", now - 3000), mk("丁", now - 1000, true), mk("戊", now + 86400e3)]));
+  await reload(b);
+  t = await b.ev(todayText);
+  b.check("review-two-cells", (await b.ev(`document.querySelectorAll("#today .today-cells .today-cell").length`)) === 2
+    && (await b.ev(`[...document.querySelectorAll("#today .today-cell .big")].map(e => e.innerText.trim()).join()`)) === "3,4"
+    && t.includes("复习") && t.includes("新学") && t.includes("測試歌 · 第 1–4 句")
+    && (await b.ev(`document.querySelector("#today [data-today]").innerText.trim()`)) === "开始今天的学习");
+  await b.shot("today-review-light");
+  await b.ev(putMeta({ key: "daily", goal: 4, date: today(), newLines: 4, extra: 0, reviewed: 0, songId: "t1", done: [0, 1, 2, 3] }));
+  await reload(b);
+  t = await b.ev(todayText);
+  b.check("review-only-line", /复习\s*3\s*个词/.test(t) && !(await b.ev(`!!document.querySelector("#today .today-cells")`))
+    && (await b.ev(`document.querySelector('#today [data-today="review"]').innerText.trim()`)) === "开始复习");
+  await b.ev(putCards(Array.from({ length: 60 }, (_, i) => mk("多" + i, now - 5000 - i))));
+  await reload(b);
+  b.check("review-cap", (await b.ev(`document.querySelector("#today .big").innerText.trim()`)) === "50");
   b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#today button")].every(e => e.getBoundingClientRect().height >= 44)`));
   b.check("no-errors", b.errors.length === 0);
 } };
