@@ -198,6 +198,31 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 /* 首页「今天的学习」卡片（设计规范 5.4） */
 .today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:16px;margin-bottom:24px;box-shadow:var(--shadow-2)}
 .today-head{font-size:17px;font-weight:700;margin-bottom:12px}
+/* 打卡（开发规格 7.9.5）：首页标题下面一行。按钮 44px 高，用负 margin 让文字离标题还是 24px */
+.streak{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:-12px 0 12px;padding:0;border:0;background:none;font:inherit;font-size:15px;color:var(--ink-2);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.streak b{font-weight:700;color:var(--ink)}
+.streak .flame{flex:none;color:var(--muted)}
+.streak.on .flame{color:var(--accent)}
+.streak.is-pressed{opacity:.6}
+#restNote .banner{margin:0 0 16px}
+/* 日历格子：首页日历页和完成页的本周共用。颜色深浅 = 当天新学的词 + 复习的词 */
+.cal-day{aspect-ratio:1;max-width:100%;border-radius:12px;background:var(--rule);display:grid;place-items:center;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cal-day[data-lv="1"]{background:color-mix(in srgb,var(--accent) 25%,transparent)}
+.cal-day[data-lv="2"]{background:color-mix(in srgb,var(--accent) 55%,transparent)}
+.cal-day[data-lv="3"]{background:var(--accent);color:var(--on-accent)}
+.cal-day.rest{background:transparent;border:1.5px dashed var(--muted);color:var(--muted)}
+.cal-day.today{outline:2px solid var(--accent);outline-offset:2px}
+.cal-day.fill{animation:calFill var(--dur-spring) var(--spring) both}
+@keyframes calFill{from{transform:scale(.6)}to{transform:scale(1)}}
+.st-week{align-self:stretch;display:flex;flex-direction:column;gap:8px;margin-top:24px}
+.st-week .wk{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.st-week .wk-h{font-size:12px;color:var(--muted);text-align:center}
+.st-streak{margin-top:4px;font-size:15px;color:var(--ink-2)}
+.st-streak b{font-weight:700;color:var(--ink)}
+/* 数字向上翻：两行叠在一起，整列往上移一行 */
+.flip{display:inline-block;height:1.5em;line-height:1.5em;overflow:hidden;vertical-align:bottom}
+.flip>span{display:flex;flex-direction:column;transition:transform var(--dur) var(--ease)}
+.flip.go>span{transform:translateY(-1.5em)}
 .today-cell{background:var(--on-accent-veil);border-radius:20px;padding:12px 16px}
 .today-cells{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .today-cells .lbl{margin-bottom:4px}
@@ -501,6 +526,8 @@ label.btn{overflow:hidden}
       <button class="btn soft small" id="btnDone" type="button" hidden>完成</button>
       <button class="btn soft icon" id="btnSettings" type="button" aria-label="设置"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </header>
+    <button class="streak" id="streak" type="button"></button>
+    <div id="restNote"></div>
     <div id="today" hidden></div>
     <div class="sec-title"><span>六个声调 · <span class="jp" id="toneSyl">si</span></span><button class="btn soft small" id="btnToneNext" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>换一组</button></div>
     <div class="tones" id="tones"></div>
@@ -727,7 +754,7 @@ const DB={db:null,mem:{songs:new Map(),cards:new Map(),meta:new Map()},ok:false,
 };
 
 let songs=[];
-let cards=new Map(), metaRecs=new Map();
+let cards=new Map(), metaRecs=new Map(), booted=false;
 let cur=null, view=[], curIdx=-1, loopIdx=null, raf=0, rate=1, objURL=null, audioBlob=null, userScrollAt=0;
 const prefs={jp:true,zh:true};
 try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(prefs,p)}catch(e){}
@@ -763,7 +790,7 @@ function show(id,dir){
   navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating");barIn()},340);
 }
 // 按下效果用 JS 控制（不用 CSS :active，iPhone 上切页回来 :active 会卡住）：手指按下加 .is-pressed，抬起、取消、移出、滚动时立刻去掉
-const PRESSABLE=".btn,.tones .key,.song,.ib,.res";
+const PRESSABLE=".btn,.tones .key,.song,.ib,.res,.streak";
 let pressedEl=null;
 function clearPressed(){document.querySelectorAll(".is-pressed").forEach(e=>e.classList.remove("is-pressed"));pressedEl=null}
 document.addEventListener("pointerdown",e=>{
@@ -789,7 +816,7 @@ const afterPaint=fn=>requestAnimationFrame(()=>requestAnimationFrame(fn));
 const afterRelease=fn=>{clearPressed();afterPaint(()=>setTimeout(fn,reduceMotion()?0:RELEASE_MS))};
 function go(view,data={}){
   if(navPending)return;
-  if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear()}
+  if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear();restNote="";$("#restNote").innerHTML=""}
   navPending=true;
   afterRelease(()=>{
     navPending=false;dbgNote("跳转→"+view);
@@ -846,8 +873,8 @@ function setSimDays(n){
   try{if(simDays)localStorage.setItem("yc-simdays",String(simDays));else localStorage.removeItem("yc-simdays")}catch(e){}
   renderSim();onDayChange();
 }
-// 日期变了（模拟日期、第二天切回 App）：刷新首页
-function onDayChange(){renderHome()}
+// 日期变了（模拟日期、第二天切回 App）：处理休息卡，刷新首页
+function onDayChange(){processCheckin();if(curView==="home")renderHome()}
 const dayNum=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/86400000;
 function renderSim(){
   const box=$("#dbgSim");box.hidden=!dbg.on;if(box.hidden){box.innerHTML="";return}
@@ -992,6 +1019,31 @@ const TONE_NAMES=["","高平","高升","中平","低降","低升","低平"];
 function saveTones(rec){metaRecs.set("tones",rec);DB.put(rec,"meta")}
 // 今天的学习计数和每天新学几句（meta daily，凌晨 4 点换日）
 function getDaily(){return STUDY.dailyFor(metaRecs.get("daily"),SRS.today(appNow()))}
+// 打卡记录（meta checkin，开发规格 7.9.4）；规则在 checkin.js
+function getCheckin(){return CHECKIN.normalize(metaRecs.get("checkin"),SRS.today(appNow()))}
+function saveCheckin(rec){metaRecs.set("checkin",rec);return DB.put(rec,"meta")}
+// 启动、第二天切回、改模拟日期时：发休息卡、补上漏打卡的日子。用了休息卡就在首页提示一次（离开首页就消失）
+let restNote="";
+function processCheckin(){
+  const r=CHECKIN.process(getCheckin(),SRS.today(appNow()));
+  if(r.used)restNote=(r.used===1?"昨天没学，用了 1 张休息卡":`有 ${r.used} 天没学，用了 ${r.used} 张休息卡`)+`，连续天数保住了 · 还剩 ${r.rec.restTokens} 张`;
+  saveCheckin(r.rec);
+}
+const FLAME='<svg class="flame" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.6 3.2 4.8 5.6 4.8 10.4a4.8 4.8 0 0 1-9.6 0c0-2.4 1.3-4 2.4-5.4.2 1.5.9 2.6 1.9 3.1.6-2.6.9-4.9.5-8.1z"/></svg>';
+function renderStreak(){
+  const rec=getCheckin(),day=SRS.today(appNow()),n=CHECKIN.streak(rec,day),tot=CHECKIN.total(rec),el=$("#streak");
+  el.classList.toggle("on",rec.days[day]?.type==="done");
+  el.innerHTML=FLAME+"<span>"+(!tot?"今天开始第一天":n?`连续 <b class="num">${n}</b> 天 · 累计 <b class="num">${tot}</b> 天`:`今天重新开始 · 累计 <b class="num">${tot}</b> 天`)+"</span>";
+  $("#restNote").innerHTML=restNote?`<div class="banner">${esc(restNote)}</div>`:"";
+}
+// 完成页出现时打卡：达到条件就记下今天（同一天再进只更新数字）。返回打卡前后的连续天数，没达到条件返回 null
+function checkinToday(stats){
+  const d=getDaily(),day=SRS.today(appNow()),rec=getCheckin();
+  if(!CHECKIN.qualifies({due:STUDY.dueCount(cards.values(),appNow()),newLines:d.newLines,goal:d.goal,finished:!!study.finished}))return null;
+  const before=CHECKIN.streak(rec,day),r=CHECKIN.markDone(rec,day,stats);
+  saveCheckin(r.rec);
+  return {first:r.first,before:r.first?before:CHECKIN.streak(r.rec,day),after:CHECKIN.streak(r.rec,day),rec:r.rec};
+}
 function saveDaily(rec){metaRecs.set("daily",rec);return DB.put(rec,"meta")}
 function renderTones(animate){
   const set=LESSONS.TONE_SETS[metaRecs.get("tones").setIndex];
@@ -1018,7 +1070,7 @@ $("#tones").addEventListener("click",e=>{const b=e.target.closest("[data-say]");
 function renderHome(){
   const tr=LESSONS.toneSetFor(metaRecs.get("tones"),SRS.today(appNow())),old=metaRecs.get("tones");
   if(!old||old.setIndex!==tr.setIndex||old.date!==tr.date)saveTones(tr);
-  renderTones(false);
+  renderTones(false);renderStreak();
   const box=$("#songs");
   if(!songs.length)selectMode=false;
   renderSelectBar();renderToday();
@@ -1069,7 +1121,7 @@ function renderToday(){
     const why=finished?"这首学完了 🎉":left===0?"今天的新句子学完了 ✓":"新句子要先导入词汇包";
     body=`<div class="today-line">复习 <b class="big num">${due}</b> 个词 <span class="today-src">· ${why}</span></div>
       <button class="btn today-btn" type="button" data-today="review">开始复习</button>
-      ${!finished&&left>0&&!s.pack?'<button class="btn text today-link" type="button" data-today="pack">先导入词汇包</button>':""}`;
+      ${!finished&&left>0&&!s.pack?'<div class="today-sub">先导入词汇包，才能学新句子和打卡</div><button class="btn text today-link" type="button" data-today="pack">先导入词汇包</button>':""}`;
   }else if(finished){
     const others=songs.filter(x=>x.id!==s.id&&STUDY.nextLine(lineTexts(x),STUDY.progressOf(x).learned).li!==null);
     body=`<div class="today-sub">${title} · 这首学完了 🎉 ${others.length?"选下一首：":"导入一首新歌接着学吧"}</div>
@@ -1080,7 +1132,7 @@ function renderToday(){
   }else{
     const up=STUDY.upcoming(texts,learned,left);
     body=`<div class="today-line">新学 <b class="big num">${up.length}</b> 句 <span class="today-src">· ${title} ${lineRange(up)}</span></div>
-      ${s.pack?'<button class="btn today-btn" type="button" data-today="start">开始今天的学习</button>':'<button class="btn today-btn" type="button" data-today="pack">先导入词汇包</button>'}`;
+      ${s.pack?'<button class="btn today-btn" type="button" data-today="start">开始今天的学习</button>':'<div class="today-sub">先导入词汇包，才能学新句子和打卡</div><button class="btn today-btn" type="button" data-today="pack">先导入词汇包</button>'}`;
   }
   box.innerHTML=`<div class="today"><div class="today-head">今天的学习</div>${body}</div>`;box.hidden=false;
 }
@@ -1345,7 +1397,7 @@ async function checkAudio(){
   if(ok)try{await audioBlob.slice(0,16).arrayBuffer();const r=await fetch(objURL);ok=r.ok;try{r.body&&r.body.cancel()}catch(e){}}catch(e){ok=false}
   if(!ok)await reloadAudio();
 }
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")checkAudio()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkAudio();if(booted)onDayChange()}});
 window.addEventListener("pageshow",()=>checkAudio());
 function applyRate(){const r=study&&curView==="studyView"?0.8:rate;au.defaultPlaybackRate=r;au.playbackRate=r;au.preservesPitch=true;au.webkitPreservesPitch=true}
 au.addEventListener("loadedmetadata",()=>{applyRate();["#pSeek","#sSeek","#prSeek"].forEach(s=>$(s).max=au.duration||1);$("#pDur").textContent=$("#sDur").textContent=$("#prDur").textContent=fmt(au.duration)});
@@ -1987,6 +2039,8 @@ async function restoreBackup(obj){
   // meta：daily 用备份里的每天几句（今天的计数留本机的）；其他只恢复本机还没有的记录
   if(Array.isArray(obj.meta))for(const m of obj.meta){if(!m||typeof m.key!=="string")continue;
     if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(appNow())));
+    // 打卡：这台设备还没打过卡（新设备、清空过）就直接用备份里的，不然新记录送的 1 张休息卡会被算进去
+    else if(m.key==="checkin"){const loc=getCheckin();await saveCheckin(CHECKIN.normalize(Object.keys(loc.days).length?CHECKIN.merge(loc,m):m,SRS.today(appNow())))}
     else if(m.key!=="backup"&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
   // 新设备从备份恢复：这份备份就是"上次备份"
   const ex=Date.parse(obj.exported);
@@ -2103,6 +2157,10 @@ function refreshLoop(){const b=$("#stLoop");if(b)b.innerHTML=`<span>原唱 ↻</
 function renderDone(){
   const s=study.song,d=getDaily(),now=appNow(),day=SRS.today(now),learned=STUDY.progressOf(s).learned;
   const newWords=[...cards.values()].filter(c=>SRS.today(c.created)===day).length;
+  const ck=checkinToday({reviewed:d.reviewed,newLines:d.newLines,newWords}),rec=ck?ck.rec:getCheckin(),anim=!!(ck&&ck.first)&&!reduceMotion();
+  const week=CHECKIN.weekOf(day).map(x=>{const e=rec.days[x],hold=anim&&x===day;
+    return `<span class="cal-day${e&&e.type==="rest"?" rest":""}${x===day?" today":""}"${hold?"":` data-lv="${CHECKIN.level(e)}"`}>${e&&e.type==="rest"?"休":""}</span>`}).join("");
+  const streakLine=!ck?"今天还没打卡":anim&&ck.before!==ck.after?`连续 <b class="num flip"><span><span>${ck.before}</span><span>${ck.after}</span></span></b> 天`:`连续 <b class="num">${ck.after}</b> 天`;
   const due=STUDY.dueCount(cards.values(),SRS.dayDue(now,1),Infinity),up=STUDY.upcoming(lineTexts(s),learned,d.goal);
   studyCells(1,1);$("#stCount").textContent="";$("#stCount").classList.remove("whole");
   $("#stBody").innerHTML=`<div class="st-done st-anim">
@@ -2110,11 +2168,15 @@ function renderDone(){
     <h2>${study.reviewOnly&&!d.newLines?"今天的复习做完了":`今天的 ${d.newLines} 句学完了`}</h2>
     <div class="note">${esc(s.title||"未命名")}${d.done.length?" · "+lineRange(d.done):""}</div>
     ${study.finished?'<div class="st-fin">这首歌全部学完了 🎉</div>':""}
+    <div class="st-week"><div class="wk">${"一二三四五六日".split("").map(x=>`<span class="wk-h">${x}</span>`).join("")}</div><div class="wk">${week}</div><div class="st-streak">${streakLine}</div></div>
     <div class="st-stats"><div class="st-stat"><b class="num">${d.reviewed}</b><span>复习的词</span></div><div class="st-stat"><b class="num">${newWords}</b><span>新学的词</span></div><div class="st-stat"><b class="num">${learned.length}</b><span>已学句子</span></div></div>
     <div class="st-preview">明天要复习 ${due} 个词${up.length?"，再学"+lineRange(up):""}。</div>
   </div>`;
   $("#stFoot").innerHTML=(study.finished?'<button class="btn primary bottom block" type="button" data-act="pick">选下一首歌</button>':s.pack?'<button class="btn primary bottom block" type="button" data-act="more">还有精神，再学 2 句</button>':"")
     +'<button class="btn bottom block" type="button" data-act="home">回到首页</button>';
+  // 第一次打卡：0.3 秒后今天的格子弹簧放大填色，再把连续天数往上翻
+  if(anim){const st=study;setTimeout(()=>{if(study!==st)return;const t=$("#stBody .st-week .cal-day.today");if(t){t.dataset.lv=CHECKIN.level(rec.days[day]);t.classList.add("fill")}
+    setTimeout(()=>$("#stBody .st-streak .flip")?.classList.add("go"),300)},300)}
 }
 async function lineLearned(){
   stopStudyAudio();
@@ -2194,6 +2256,7 @@ history.replaceState({view:"home"},"");
   // 「每天新学几句」以前存在 prefs.goal，搬到 meta daily
   if(!metaRecs.has("daily"))await saveDaily({...getDaily(),goal:STUDY.goalOf({goal:prefs.goal})});
   if("goal" in prefs){delete prefs.goal;savePrefs()}
+  processCheckin();booted=true;
   renderHome();renderDbg();renderSim();
   setTimeout(()=>prefetchVoice([...LESSONS.TONE_SETS.flatMap(t=>[1,2,3,4,5,6].map(k=>t.syl+k)),...[...cards.values()].map(c=>c.jp)]),3000);
 })();
