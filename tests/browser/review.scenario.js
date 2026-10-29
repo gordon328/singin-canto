@@ -19,7 +19,7 @@ module.exports = { name: "review", async run(b) {
   // 弹层拖到一半被系统打断（touchcancel）→ 弹回原位
   const g = await b.ev(`(() => { const r = document.querySelector("#sheet .grab").getBoundingClientRect(); return [r.left + r.width / 2, r.top + 2]; })()`);
   await b.touch("touchStart", g[0], g[1]); await b.touch("touchMove", g[0], g[1] + 30); await b.touch("touchMove", g[0], g[1] + 60);
-  await b.touch("touchCancel"); await b.sleep(400);
+  await b.touch("touchCancel"); await b.sleep(900); // 弹簧弹回要 0.4 秒多
   b.check("sheet-touchcancel", await b.ev(`(() => { const s = document.querySelector("#sheet"); return !s.hidden && !s.classList.contains("dragging") && s.style.transform === ""; })()`));
   await F.closeSheet(b);
   await b.viewport(430, 932);

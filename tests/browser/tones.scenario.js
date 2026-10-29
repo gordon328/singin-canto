@@ -28,7 +28,7 @@ module.exports = { name: "tones", async run(b) {
   const dn = await b.ev(geo);
   b.check("key-press-face-only " + JSON.stringify(dn), !!dn && dn.pressed && dn.kTf === "none" && JSON.stringify(dn.k) === JSON.stringify(up.k) && JSON.stringify(dn.base) === JSON.stringify(up.base)
     && dn.face[0] === up.face[0] + 4 && dn.face[1] === up.k[1] && dn.faceBg !== up.faceBg);
-  await b.ev(`document.querySelectorAll("#tones .key")[2].dispatchEvent(new PointerEvent("pointerup", { bubbles: true }))`); await b.sleep(200);
+  await b.ev(`document.querySelectorAll("#tones .key")[2].dispatchEvent(new PointerEvent("pointerup", { bubbles: true }))`); await b.sleep(600); // 松手用弹簧弹回，0.4 秒
   b.check("key-springs-back", JSON.stringify((await b.ev(geo)).face) === JSON.stringify(up.face));
   b.check("button-44px", (await b.ev(`document.querySelector("#btnToneNext").getBoundingClientRect().height`)) >= 44);
   await b.shot("tones-light");

@@ -28,7 +28,9 @@
   --shadow-sheet:0 -8px 40px rgba(34,31,51,.18),0 0 0 1px var(--rule); --shadow-menu:var(--shadow-3);
   --font-cjk:-apple-system,"PingFang HK","PingFang SC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif;
   --font-latin:"Outfit",var(--font-cjk);
-  --dur-fast:120ms; --dur:220ms; --dur-slow:320ms; --ease:cubic-bezier(.2,.8,.2,1); --nav-dim:rgba(0,0,0,.10);
+  --dur-fast:120ms; --dur:220ms; --dur-slow:320ms; --ease:cubic-bezier(.2,.8,.2,1);
+  /* 统一的弹簧（设计规范 6.1）：由 gesture.js 的 GESTURE.springLinear() 算出来，改了要一起改（有测试核对） */
+  --dur-spring:400ms; --spring:linear(0, 0.043, 0.149, 0.289, 0.441, 0.589, 0.723, 0.836, 0.926, 0.993, 1.039, 1.067, 1.081, 1.083, 1.079, 1.069, 1.057, 1.044, 1.032, 1.021, 1.012, 1.005, 1, 0.996, 0.994, 0.993, 0.993, 0.994, 0.994, 0.995, 0.996, 0.997, 1); --nav-dim:rgba(0,0,0,.10);
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -97,6 +99,8 @@ svg{display:block}
   .is-pressed{transform:none!important}
   /* 减弱动态效果：播放条只淡入淡出 */
   .player.bar-in,.study-foot.bar-in{animation:barFade var(--dur) var(--ease) both!important}
+  /* 弹簧动画都换成简单淡入（学词新卡片、完成页的勾） */
+  .st-anim.in,.st-check.pop{animation:barFade var(--dur) var(--ease) both!important}
 }
 
 /* Home（首页左右边距 20px） */
@@ -136,7 +140,7 @@ svg{display:block}
 .st-big small{font-size:12px;font-weight:500;opacity:.85}
 .st-done{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:28px}
 .st-check{width:96px;height:96px;border-radius:30px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
-.st-check.pop{animation:pop 480ms cubic-bezier(.34,1.56,.64,1) both}
+.st-check.pop{animation:pop var(--dur-spring) var(--spring) both}
 @keyframes pop{from{transform:scale(.6);opacity:0}}
 .st-done h2{margin:22px 0 6px;font-size:26px;font-weight:700}
 .st-fin{margin-top:6px;font-weight:600;color:var(--accent)}
@@ -183,7 +187,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .wsheet .row{display:flex;gap:10px;align-self:stretch}
 .wsheet .row .btn{flex:1}
 .st-anim.out{animation:stOut var(--dur) var(--ease) both}
-.st-anim.in{animation:stIn var(--dur) var(--ease) both}
+.st-anim.in{animation:stIn var(--dur-spring) var(--spring) both}
 @keyframes stOut{to{transform:translateX(-30%);opacity:0}}
 @keyframes stIn{from{transform:translateX(30%);opacity:0}}
 @media (prefers-reduced-motion: reduce){@keyframes stOut{to{opacity:0}}@keyframes stIn{from{opacity:0}}@keyframes pop{from{opacity:0}}}
@@ -215,17 +219,20 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .tones .key-base{position:absolute;left:0;right:0;top:4px;bottom:0;border-radius:18px;background:var(--tone)}
 .tones .key-face{position:absolute;left:0;right:0;top:0;bottom:4px;border-radius:18px;background:var(--surface);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  transition:transform 100ms var(--ease),background-color 100ms var(--ease)}
-.tones .key.is-pressed .key-face{transform:translateY(4px);background:var(--surface-press)}
+  transition:transform var(--dur-spring) var(--spring),background-color 100ms var(--ease)}
+.tones .key.is-pressed .key-face{transform:translateY(4px);background:var(--surface-press);transition:transform 100ms var(--ease),background-color 100ms var(--ease)}
 .tones .key .hz{font-size:22px;font-weight:600;line-height:1.1}
 .tones .key .jp{font-size:12px;font-weight:600;color:var(--tone)}
 .tones .key .hz,.tones .key .jp{transition:opacity var(--dur) var(--ease)}
 .tones .key.fade .hz,.tones .key.fade .jp{opacity:0}
 #btnToneNext.spin svg{animation:spin 400ms var(--ease)}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* 设置齿轮：点了带弹簧转 90 度，同时开始跳转（减弱动态效果时全局去掉动画，不转） */
+#btnSettings.turn svg{animation:gearTurn var(--dur-spring) var(--spring) both}
+@keyframes gearTurn{to{transform:rotate(90deg)}}
 .songs{display:flex;flex-direction:column;gap:10px}
 /* 首页底部版本号（连点 3 下开关调试面板），下面留出「＋ 导入新歌」的位置 */
-.ver{text-align:center;font-size:12px;color:var(--muted);padding:20px 0 calc(110px + env(safe-area-inset-bottom,0px));-webkit-user-select:none;user-select:none}
+.ver{text-align:center;font-size:12px;color:var(--muted);padding:20px 0 calc(24px + 56px + 24px + env(safe-area-inset-bottom,0px));-webkit-user-select:none;user-select:none}
 /* 调试面板：浮在「＋ 导入新歌」上面，不挡手指（点击穿透到下面的按钮）；不放在屏幕顶部（会染状态栏） */
 .dbg{position:fixed;left:8px;right:8px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:50;max-height:64vh;overflow:hidden;pointer-events:none;
   padding:8px 10px;border-radius:12px;background:var(--inverse);color:var(--on-inverse);opacity:.92;
@@ -251,6 +258,17 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .chip{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-right:4px}
 .empty{padding:22px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1)}
 .empty ol{margin:10px 0 16px;padding-left:20px;display:grid;gap:6px;color:var(--ink-2);font-size:14px;line-height:1.6}
+/* 「我的歌」底部渐进模糊：越往下越模糊。几层 backdrop-filter，每层用 mask-image 只露出一段。
+   不能有背景色（iOS 26 Safari 用屏幕边缘 fixed 元素的颜色染浏览器界面，见 7.4），不能点，在「＋ 导入新歌」下面 */
+.edge-blur{position:fixed;left:0;right:0;bottom:0;height:calc(140px + env(safe-area-inset-bottom,0px));z-index:19;pointer-events:none}
+.edge-blur>i{position:absolute;inset:0;pointer-events:none;-webkit-backdrop-filter:blur(var(--b));backdrop-filter:blur(var(--b));
+  -webkit-mask-image:linear-gradient(to bottom,transparent var(--m0),#000 var(--m1),#000 var(--m2),transparent var(--m3));
+  mask-image:linear-gradient(to bottom,transparent var(--m0),#000 var(--m1),#000 var(--m2),transparent var(--m3))}
+.edge-blur>i:nth-child(1){--b:1px;--m0:0%;--m1:16%;--m2:32%;--m3:48%}
+.edge-blur>i:nth-child(2){--b:2px;--m0:16%;--m1:32%;--m2:48%;--m3:64%}
+.edge-blur>i:nth-child(3){--b:4px;--m0:32%;--m1:48%;--m2:64%;--m3:80%}
+.edge-blur>i:nth-child(4){--b:8px;--m0:48%;--m1:64%;--m2:80%;--m3:100%}
+.edge-blur>i:nth-child(5){--b:16px;--m0:64%;--m1:80%;--m2:100%;--m3:101%}
 .fab{position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:20;
   min-height:56px;padding:0 24px;border-radius:999px;box-shadow:var(--shadow-3)}
 
@@ -409,7 +427,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 .menu{position:absolute;z-index:30;min-width:200px;padding:6px;border-radius:16px;background:var(--surface);box-shadow:var(--shadow-menu);
   display:flex;flex-direction:column;transform-origin:top right;transform:scale(.92);opacity:0;
   transition:transform 180ms var(--ease),opacity 180ms var(--ease)}
-.menu.open{transform:none;opacity:1}
+.menu.open{transform:none;opacity:1;transition:transform var(--dur-spring) var(--spring),opacity 180ms var(--ease)}
 .menu .btn{justify-content:flex-start;min-height:48px;border-radius:12px;background:none;box-shadow:none;font-weight:500}
 .menu .btn.is-pressed{transform:none;background:var(--surface-press)}
 .wc-top{display:flex;gap:16px;align-items:center}
@@ -627,6 +645,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 </section>
 
 <!-- 常驻按钮：不放在页面里（切页时页面会滑动），到了对应页面直接显示，离开直接隐藏，没有动画 -->
+<div class="edge-blur" data-page="home" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <button class="btn inverse fab" id="btnAdd" type="button" data-page="home">＋ 导入新歌</button>
 <button class="btn primary bottom bottom-bar" id="btnSave" type="button" data-page="importView" hidden>保存</button>
 
@@ -769,12 +788,12 @@ function onClick(id,fn){document.addEventListener("click",e=>{if(e.target.closes
 const HOME_BTNS=["btnDone","btnSettings","btnToneNext","btnSelect","btnDelSel","snackUndo","btnAdd"];
 function freshHome(){
   if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
-  HOME_BTNS.forEach(id=>{const o=$("#"+id),n=o.cloneNode(true);n.classList.remove("is-pressed","spin");o.replaceWith(n)});
+  HOME_BTNS.forEach(id=>{const o=$("#"+id),n=o.cloneNode(true);n.classList.remove("is-pressed","spin","turn");o.replaceWith(n)});
 }
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v20";
+const APP_VERSION="v21";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 function descEl(el){
@@ -1520,15 +1539,15 @@ const sheetOpen=()=>$("#sheet").classList.contains("open");
 function openSheet(html,{modal=false}={}){
   const sh=$("#sheet");clearTimeout(sheetTimer);sheetModal=modal;
   $("#sheetBody").innerHTML=(modal?"":`<div class="grab"></div>`)+html;
-  if(sh.hidden||!sh.classList.contains("open")){sh.hidden=false;sh.scrollTop=0;sh.style.transform="";void sh.offsetHeight;sh.classList.add("open")}
+  if(sh.hidden||!sh.classList.contains("open")){stopSpring();sh.hidden=false;sh.scrollTop=0;sh.style.transform="";sh.style.transitionDuration="";void sh.offsetHeight;sh.classList.add("open")}
 }
 function closeSheet(){
   if(confirmDone)confirmDone(false);
   const sh=$("#sheet");
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   if(sh.hidden)return;
-  sh.classList.remove("open","dragging");sh.style.transform="";
-  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true},320);
+  stopSpring();sh.classList.remove("open","dragging");sh.style.transform="";
+  clearTimeout(sheetTimer);sheetTimer=setTimeout(()=>{sh.hidden=true;sh.style.transitionDuration=""},320);
 }
 // 点外面关闭下拉菜单或弹层。用 pointerdown/up 判断（iPhone 上点普通文字不一定有 click），手指移动超过 10px 算滚动，不关。
 // 这一下只用来关闭，后面跟着的 click 吞掉，不会顺便点到下面的按钮或字
@@ -1542,25 +1561,45 @@ document.addEventListener("pointerup",e=>{
   if(menuOpen())closeMenu();else if(!sheetModal)closeSheet();
 },{passive:true,capture:true});
 document.addEventListener("click",e=>{if(eatClickAt>=0&&e.timeStamp-eatClickAt<600){eatClickAt=-1;e.stopPropagation();e.preventDefault()}},true);
-// 往下拖关闭：只从拖动条和弹层顶部 48px 开始
-let drag=null;
+// 往下拖关闭：只从拖动条和弹层顶部 48px 开始。弹窗跟着手指走，往上拖有橡皮筋阻力；
+// 松手时拖过 1/3 高度或往下甩得够快就顺势滑下关闭，否则用弹簧（GESTURE.springOffset，带松手时的速度）弹回原位
+let drag=null,springRaf=0;
+const sheetY=y=>{$("#sheet").style.transform=y?`translateY(${y}px)`:""};
+function stopSpring(){cancelAnimationFrame(springRaf);springRaf=0}
+function springBack(x0,v0){
+  const sh=$("#sheet");stopSpring();
+  if(reduceMotion()||Math.abs(x0)<0.5){sh.classList.remove("dragging");sheetY(0);return}
+  const t0=performance.now();
+  const step=now=>{
+    const t=now-t0,x=GESTURE.springOffset(x0,v0,t);
+    if(t>=GESTURE.SPRING.DUR*2||(t>GESTURE.SPRING.DUR&&Math.abs(x)<0.5)){springRaf=0;sh.classList.remove("dragging");sheetY(0);return}
+    sheetY(x);springRaf=requestAnimationFrame(step);
+  };
+  springRaf=requestAnimationFrame(step);
+}
 $("#sheet").addEventListener("touchstart",e=>{
   const sh=$("#sheet"),y=e.touches[0].clientY;
   if(sheetModal||y-sh.getBoundingClientRect().top>48||sh.scrollTop>0){drag=null;return}
-  drag={y0:y,y,t:e.timeStamp,vy:0};sh.classList.add("dragging");
+  // 弹回途中又按住：从现在的位置接着拖
+  const m=/translateY\((-?[\d.]+)px\)/.exec(sh.style.transform||""),at=m?+m[1]:0;stopSpring();
+  drag={y0:y-Math.max(0,at),y,t:e.timeStamp,vy:0};sh.classList.add("dragging");
 },{passive:true});
 $("#sheet").addEventListener("touchmove",e=>{
   if(!drag)return;const y=e.touches[0].clientY,dt=e.timeStamp-drag.t;
   if(dt>0)drag.vy=(y-drag.y)/dt;drag.y=y;drag.t=e.timeStamp;
-  const dy=Math.max(0,y-drag.y0);$("#sheet").style.transform=`translateY(${dy}px)`;
-  if(dy>0)e.preventDefault();
+  const d=y-drag.y0;sheetY(d>=0?d:-GESTURE.rubberBand(-d,$("#sheet").offsetHeight));
+  if(d!==0)e.preventDefault();
 },{passive:false});
 $("#sheet").addEventListener("touchend",()=>{
-  if(!drag)return;const sh=$("#sheet"),dy=Math.max(0,drag.y-drag.y0);sh.classList.remove("dragging");
-  if(GESTURE.dragDismissDecision(dy,sh.offsetHeight,drag.vy))closeSheet();else sh.style.transform="";
-  drag=null;
+  if(!drag)return;const sh=$("#sheet"),d=drag.y-drag.y0,dy=Math.max(0,d),vy=drag.vy;drag=null;
+  if(GESTURE.dragDismissDecision(dy,sh.offsetHeight,vy)){
+    // 顺势滑下：按松手时的速度算剩下这段要多久（120–320ms）
+    const left=sh.offsetHeight-dy,ms=Math.round(Math.min(320,Math.max(120,left/Math.max(vy,1.2))));
+    sh.style.transitionDuration=ms+"ms";sh.classList.remove("dragging");closeSheet();return;
+  }
+  springBack(d>=0?dy:-GESTURE.rubberBand(-d,sh.offsetHeight),d>=0?vy:0);
 });
-$("#sheet").addEventListener("touchcancel",()=>{if(!drag)return;const sh=$("#sheet");sh.classList.remove("dragging");sh.style.transform="";drag=null});
+$("#sheet").addEventListener("touchcancel",()=>{if(!drag)return;const d=drag.y-drag.y0;drag=null;springBack(d>=0?d:-GESTURE.rubberBand(-d,$("#sheet").offsetHeight),0)});
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(menuOpen())closeMenu();else if(sheetOpen()&&!sheetModal)closeSheet()});
 
 /* ---------- word card ---------- */
@@ -1656,7 +1695,8 @@ function openPack(){
 }
 
 /* ---------- settings：每天新学几句（M4 接上功能）+ 备份与恢复 ---------- */
-onClick("btnSettings",()=>{renderSettings();go("settingsView")});
+// 齿轮带弹簧转 90 度，同时开始跳转（go() 本来就会先等按钮弹回再切页）；减弱动态效果时 CSS 不播动画
+onClick("btnSettings",()=>{if(navPending)return;const b=$("#btnSettings");b.classList.remove("turn");void b.offsetWidth;b.classList.add("turn");renderSettings();go("settingsView")});
 // 2 / 4 / 6 / 自定义（1–20）；goalCustom 只在这次打开设置页时有效
 let goalCustom=false;
 function setGoal(g){saveDaily({...getDaily(),goal:Math.min(STUDY.GOAL_MAX,Math.max(STUDY.GOAL_MIN,g))});renderGoal()}
