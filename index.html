@@ -332,6 +332,8 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 .note{font-size:13px;color:var(--muted);line-height:1.6}
 .ok{color:var(--t3);font-weight:600}
 .err{color:var(--t1);font-weight:600}
+.stale{color:var(--danger);font-weight:600}
+.home-note{margin:0 0 12px}
 .results{display:flex;flex-direction:column;gap:8px}
 .res{display:flex;justify-content:space-between;gap:8px;min-height:56px;padding:12px 14px;border-radius:18px;background:var(--bg);text-align:left;width:100%;
   transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
@@ -434,6 +436,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
     <div class="sec-title"><span>六个声调 · <span class="jp" id="toneSyl">si</span></span><button class="btn soft small" id="btnToneNext" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>换一组</button></div>
     <div class="tones" id="tones"></div>
     <div class="sec-title"><span>我的歌</span><button class="btn text small" id="btnSelect" type="button" hidden>选择</button></div>
+    <div id="homeNote"></div>
     <div class="songs" id="songs"></div>
   </div>
   <button class="btn danger-fill bottom bottom-bar" id="btnDelSel" type="button" hidden>删除（0）</button>
@@ -601,6 +604,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 <script src="lessons.js"></script>
 <script src="proof.js"></script>
 <script src="gesture.js"></script>
+<script src="backup.js"></script>
 <script>
 (function(){
 "use strict";
@@ -769,6 +773,9 @@ function renderHome(){
   const box=$("#songs");
   if(!songs.length)selectMode=false;
   renderSelectBar();renderToday();
+  // 从备份恢复的歌没有音频（备份不含音频）
+  const noAudio=songs.filter(s=>!s.audio).length;
+  $("#homeNote").innerHTML=noAudio?`<div class="banner home-note">${noAudio} 首歌没有音频，请在「编辑歌曲」里重新选择音频（打开歌曲 →「⋯」→ 编辑歌曲）。</div>`:"";
   if(!songs.length){
     box.innerHTML=`<div class="empty"><b>还没有歌</b><ol>
       <li>点「导入新歌」，选一首你手机里的 mp3</li>
@@ -1172,8 +1179,8 @@ async function openSong(id,opts={}){
   $("#pTitle").textContent=cur.title;$("#pArtist").textContent=cur.artist||"";
   setAudio(cur.audio);
   buildLyrics();applyToggles();$("#bRate").textContent=rate+"×";
-  $("#pBanner").innerHTML=(cur.audio?"":`<div class="banner">这首歌没有音频（从备份恢复的）。<label class="btn soft small" for="reAudio">选择音频<input id="reAudio" type="file" accept="audio/*,.mp3,.m4a" style="position:absolute;opacity:0;width:1px;height:1px"></label></div>`)+(TJ?"":`<div class="banner">粤拼工具没有加载成功，请检查网络后刷新页面。</div>`);
-  const re=$("#reAudio");if(re)re.addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;cur.audio=f;cur.audioName=f.name;cur.updated=Date.now();await DB.put(cur);setAudio(f);$("#pBanner").innerHTML="";toast("音频已加上")});
+  $("#pBanner").innerHTML=(cur.audio?"":`<div class="banner" id="noAudio">这首歌没有音频，请在「编辑歌曲」里重新选择音频。<button class="btn soft small" type="button" data-proof>编辑歌曲</button></div>`)+(TJ?"":`<div class="banner">粤拼工具没有加载成功，请检查网络后刷新页面。</div>`);
+  const pf=$("#pBanner [data-proof]");if(pf)pf.addEventListener("click",openProof);
   setProg(0);$("#pCur").textContent="0:00";
   if(opts.restore)show("playerView",opts.anim);else go("playerView",{songId:id});
 }
@@ -1340,12 +1347,12 @@ function dirtyPrompt(){
 /* ---------- 删除前确认（样式和"有改动还没保存"一样） ---------- */
 // 返回 Promise：点「删除」→ true；点「取消」→ false。确认类弹窗点外面不关，必须点按钮（系统返回时也算取消）
 let confirmDone=null;
-function confirmSheet({title,body,ok="删除"}){
+function confirmSheet({title,body,ok="删除",danger=true}){
   if(confirmDone)confirmDone(false);
   return new Promise(res=>{
     confirmDone=v=>{confirmDone=null;res(v)};
     openSheet(`<h3>${esc(title)}</h3>${body?`<p class="note" style="margin:0">${esc(body)}</p>`:""}
-      <button class="btn danger-fill block" type="button" data-confirm="ok">${esc(ok)}</button>
+      <button class="btn ${danger?"danger-fill":"primary"} block" type="button" data-confirm="ok">${esc(ok)}</button>
       <button class="btn block" type="button" data-confirm="cancel">取消</button>`,{modal:true});
     $("#sheetBody").onclick=e=>{
       const b=e.target.closest("[data-confirm]");if(!b)return;
@@ -1578,36 +1585,73 @@ function openWordCard(w){
 function renderSettings(){
   renderWordsCard();
   goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
-  const data=JSON.stringify({app:"yuechang",v:2,exported:new Date().toISOString(),songs:songs.map(s=>{const o={...s};delete o.audio;return o}),cards:[...cards.values()],meta:[...metaRecs.values()]});
+  renderBackupCard();
+}
+/* ---------- 备份文件（规格 3.5）：导出用分享面板（存到「文件」），恢复用文件选择器 ---------- */
+// meta "backup"：这台设备上次导出备份的时间（不放进备份文件）
+function renderBackupCard(){
+  const age=BACKUP.ageLabel(metaRecs.get("backup")?.at,Date.now());
   $("#backupCard").innerHTML=`
     <div class="label">备份与恢复</div>
-    <p class="note" style="margin:0">备份包含歌词、时间轴、词汇包、改过的读音和生词卡片，不含音频。把备份文本存到备忘录里就行。</p>
-    <div class="row"><button class="btn primary" type="button" id="cpBk">复制备份文本</button><span class="note">${songs.length} 首歌 · ${cards.size} 个生词 · ${Math.round(data.length/1024)} KB</span></div>
-    <textarea id="bkOut" readonly hidden>${esc(data)}</textarea>
-    <div class="label">恢复</div>
-    <textarea id="bkIn" placeholder="粘贴之前复制的备份文本"></textarea>
-    <div class="row"><button class="btn soft" type="button" id="doRestore">恢复</button><span id="bkMsg" class="note"></span></div>
+    <p class="note" style="margin:0">备份文件包含歌词、时间轴、词汇包、改过的读音和生词卡片，不含音频。可以存到「文件」App 或隔空投送到别的设备。</p>
+    <div class="row"><button class="btn primary" type="button" id="bkExport">导出备份文件</button><span class="note">${songs.length} 首歌 · ${cards.size} 个生词</span></div>
+    <div class="note${age.stale&&songs.length?" stale":""}" id="bkAge">${age.text}</div>
+    <div class="row"><label class="btn soft" for="bkFile">从文件恢复<input id="bkFile" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><span id="bkMsg" class="note"></span></div>
   `;
-  $("#cpBk").addEventListener("click",()=>{const box=$("#bkOut");const fb=()=>{box.hidden=false;box.focus();box.select();toast("已选中备份文本，请手动复制")};try{navigator.clipboard.writeText(data).then(()=>toast("已复制备份"),fb)}catch(e){fb()}});
-  $("#doRestore").addEventListener("click",async()=>{
-    await commitDelete(); // 先把还能撤销的删除真正做完，免得稍后把刚恢复的歌又删掉
-    let obj;try{obj=JSON.parse($("#bkIn").value)}catch(e){$("#bkMsg").innerHTML='<span class="err">备份文本不完整或格式不对</span>';return}
-    if(!obj||obj.app!=="yuechang"||!Array.isArray(obj.songs)){$("#bkMsg").innerHTML='<span class="err">这不是唱学粤语的备份</span>';return}
-    let n=0;
-    // 同一时间只有一首"正在学"：本机已经有的话，备份里新加的歌不标正在学
-    const hasCurrent=songs.some(x=>STUDY.progressOf(x).current);
-    for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};
-      if(ex)merged.progress=STUDY.mergeProgress(ex.progress,s.progress,merged.lines.length);else if(hasCurrent)merged.progress={...STUDY.progressOf(merged),current:false};
-      await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
-    const merged=SRS.mergeCards([...cards.values()],obj.cards,Date.now());
-    for(const c of merged)await DB.put(c,"cards");
-    cards=new Map(merged.map(c=>[c.w,c]));
-    // meta：daily 用备份里的每天几句（今天的计数留本机的）；其他只恢复本机还没有的记录
-    if(Array.isArray(obj.meta))for(const m of obj.meta){if(!m||typeof m.key!=="string")continue;
-      if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(Date.now())));
-      else if(!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
-    renderHome();$("#bkMsg").innerHTML=`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`;
-  });
+  $("#bkExport").addEventListener("click",exportBackup);
+  $("#bkFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)restoreFromFile(f)});
+}
+function markBackup(at){const r={key:"backup",at};metaRecs.set("backup",r);return DB.put(r,"meta")}
+// 分享面板要在点按钮的同一时刻调出来，所以前面不能 await
+async function exportBackup(){
+  const now=Date.now();
+  const text=JSON.stringify(BACKUP.build({songs,cards:cards.values(),meta:metaRecs.values(),now}));
+  const file=new File([text],BACKUP.fileName(now),{type:"application/json"});
+  let shared=false;
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file]});shared=true}
+    catch(e){if(e&&e.name==="AbortError")return} // 用户关掉了分享面板：不算备份过
+  }
+  if(!shared)downloadFile(file);
+  await markBackup(now);renderBackupCard();toast(shared?"备份文件已导出":"备份文件已下载");
+}
+function downloadFile(file){
+  const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=file.name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+}
+async function restoreFromFile(f){
+  const msg=t=>{const m=$("#bkMsg");if(m)m.innerHTML=t};
+  msg("");
+  if(f.size>50*1024*1024){msg('<span class="err">文件太大，不像唱学粤语的备份文件</span>');return}
+  let text;try{text=await f.text()}catch(e){msg('<span class="err">读不出这个文件，请再选一次</span>');return}
+  const r=BACKUP.parse(text);
+  if(!r.ok){msg(`<span class="err">${esc(r.err)}</span>`);return}
+  const sm=BACKUP.summary(r.obj);
+  if(!await confirmSheet({title:"从这个备份恢复？",ok:"恢复",danger:false,
+    body:`备份日期：${sm.date||"未知"} · ${sm.songs} 首歌 · ${sm.cards} 张卡片。会和本机的数据合并，不会删掉本机已有的歌和生词。备份里没有音频。`}))return;
+  const n=await restoreBackup(r.obj);
+  renderBackupCard();msg(`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`);
+}
+async function restoreBackup(obj){
+  await commitDelete(); // 先把还能撤销的删除真正做完，免得稍后把刚恢复的歌又删掉
+  let n=0;
+  // 同一时间只有一首"正在学"：本机已经有的话，备份里新加的歌不标正在学
+  const hasCurrent=songs.some(x=>STUDY.progressOf(x).current);
+  for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};
+    if(ex)merged.progress=STUDY.mergeProgress(ex.progress,s.progress,merged.lines.length);else if(hasCurrent)merged.progress={...STUDY.progressOf(merged),current:false};
+    await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
+  const merged=SRS.mergeCards([...cards.values()],obj.cards,Date.now());
+  for(const c of merged)await DB.put(c,"cards");
+  cards=new Map(merged.map(c=>[c.w,c]));
+  // meta：daily 用备份里的每天几句（今天的计数留本机的）；其他只恢复本机还没有的记录
+  if(Array.isArray(obj.meta))for(const m of obj.meta){if(!m||typeof m.key!=="string")continue;
+    if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(Date.now())));
+    else if(m.key!=="backup"&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
+  // 新设备从备份恢复：这份备份就是"上次备份"
+  const ex=Date.parse(obj.exported);
+  if(!metaRecs.get("backup")&&isFinite(ex))await markBackup(ex);
+  renderHome();
+  return n;
 }
 
 /* ---------- 每日学习 ---------- */

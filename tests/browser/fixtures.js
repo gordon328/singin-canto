@@ -55,4 +55,14 @@ async function tapAt(b, x, y) { await b.touch("touchStart", x, y); await b.touch
 // 关掉弹层并等它真正消失：点弹层外面（屏幕上方，顶栏标题的位置）
 async function closeSheet(b) { await tapAt(b, 215, 90); await b.sleep(450); }
 
-module.exports = { silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, tapAt, closeSheet };
+// 备份文件（设置页要已经打开）。exportText：把分享面板换成假的，点「导出备份文件」，返回文件里的文字
+const exportText = `(async () => { let got = null; navigator.canShare = () => true; navigator.share = async d => { got = d.files[0]; };
+  document.querySelector("#bkExport").click(); await new Promise(r => setTimeout(r, 300)); window.__bkFile = got; return got ? await got.text() : null; })()`;
+// restoreText：把文字当成选中的 .json 文件交给「从文件恢复」，confirm 为真时点「恢复」；返回提示文字
+const restoreText = (text, confirm = true) => `(async () => { if (document.querySelector("#settingsView").hidden) { document.querySelector("#btnSettings").click(); await new Promise(r => setTimeout(r, 800)); }
+  const inp = document.querySelector("#bkFile"), dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(text)}], "备份.json", { type: "application/json" }));
+  inp.files = dt.files; inp.dispatchEvent(new Event("change")); await new Promise(r => setTimeout(r, 500));
+  const ok = document.querySelector('#sheetBody [data-confirm="${confirm ? "ok" : "cancel"}"]'); if (ok) { ok.click(); await new Promise(r => setTimeout(r, 900)); }
+  return document.querySelector("#bkMsg").innerText; })()`;
+
+module.exports = { exportText, restoreText, silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, tapAt, closeSheet };

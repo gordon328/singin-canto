@@ -91,8 +91,7 @@ module.exports = { name: "delete", async run(b) {
   const t3 = await b.ev(`(async () => { const s = await (${F.idbGet("songs", "t3")}); delete s.audio; return s; })()`);
   await selectAndDelete(b, ["t3"]);
   await b.ev(click("#btnSettings")); await b.sleep(500);
-  await b.ev(`(() => { const t = document.querySelector("#bkIn"); t.value = ${JSON.stringify(JSON.stringify({ app: "yuechang", v: 2, songs: [t3], cards: [], meta: [] }))}; })()`);
-  await b.ev(click("#doRestore")); await b.sleep(5800);
+  await b.ev(F.restoreText(JSON.stringify({ app: "yuechang", v: 2, songs: [t3], cards: [], meta: [] }))); await b.sleep(4400);
   b.check("restore-during-undo-keeps-song", !!(await b.ev(F.idbGet("songs", "t3"))));
   b.check("delete: 页面没有报错", b.errors.length === 0);
 } };

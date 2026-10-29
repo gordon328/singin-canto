@@ -33,7 +33,7 @@ module.exports = { name: "forms", async run(b) {
   await b.shot("pack-light");
   await F.closeSheet(b); await b.nav("/");
   await b.ev(`document.querySelector("#btnSettings").click()`); await b.sleep(800);
-  b.check("backup-sheet", await b.ev(`document.querySelector("#cpBk").classList.contains("primary") && parseFloat(getComputedStyle(document.querySelector("#bkIn")).fontSize) >= 16`) && !(await b.ev(OLD_ACCENT)));
+  b.check("backup-sheet", await b.ev(`document.querySelector("#bkExport").classList.contains("primary") && !document.querySelector("#settingsView textarea")`) && !(await b.ev(OLD_ACCENT)));
   await collect("backup");
   b.check("buttons-44px (全页面) " + small.join(" "), small.length === 0);
   b.check("forms: 页面没有报错", b.errors.length === 0);

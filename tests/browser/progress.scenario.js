@@ -15,13 +15,12 @@ module.exports = { name: "progress", async run(b) {
 
   await b.ev(click("#btnSettings")); await b.sleep(800);
   b.check("goal-shows-6", (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "6");
-  const bk = JSON.parse(await b.ev(`document.querySelector("#bkOut").value`));
+  const bk = JSON.parse(await b.ev(F.exportText));
   bk.songs.find(s => s.id === "t1").progress = { learned: [1, 3] };
   // 备份里多一首本机没有的歌，也标了"正在学"；备份里每天学 7 句
   bk.songs.push({ ...bk.songs.find(s => s.id === "t2"), id: "t3", progress: { learned: [], current: true } });
   bk.meta = bk.meta.filter(m => m.key !== "daily").concat({ key: "daily", goal: 7, date: "2026-01-01", newLines: 0, extra: 0, reviewed: 0 });
-  await b.ev(`document.querySelector("#bkIn").value = ${JSON.stringify(JSON.stringify(bk))}`);
-  await b.ev(click("#doRestore")); await b.sleep(900);
+  await b.ev(F.restoreText(JSON.stringify(bk)));
   const t1 = await b.ev(F.idbGet("songs", "t1"));
   b.check("restore-merges-learned", JSON.stringify(t1.progress.learned) === "[0,1,3]" && t1.progress.current === true);
   b.check("restore-one-current", (await b.ev(F.idbGet("songs", "t3")))?.progress?.current === false);
