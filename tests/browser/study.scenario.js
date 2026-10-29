@@ -5,7 +5,7 @@ const click = sel => `document.querySelector(${JSON.stringify(sel)}).click()`;
 const visible = sel => `(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && !e.hidden && e.getBoundingClientRect().height > 0; })()`;
 const patchSong = (id, patch) => `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const st = db.transaction("songs", "readwrite").objectStore("songs");
   st.get(${JSON.stringify(id)}).onsuccess = e => { st.put(Object.assign(e.target.result, ${JSON.stringify(patch)})).onsuccess = () => { db.close(); res(); }; }; }; })`;
-const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};`;
+const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};` + F.VOICE_REC;
 const said = `window.__said`;
 const body = `document.querySelector("#studyView").innerText`;
 const count = `document.querySelector("#stCount").innerText.trim()`;
@@ -31,9 +31,11 @@ module.exports = { name: "study", async run(b) {
     && (await b.ev(body)).includes("声 ·") && (await b.ev(body)).includes("暂无释义") && (await b.ev(body)).includes("重新生成词汇包"));
   // iOS 只在手指点的那一下允许开始朗读：点「开始」时同步先读一个静音的空格解锁
   b.check("speech-unlocked-in-tap", (await b.ev(said))[0][0] === " ");
-  b.check("speak-auto", JSON.stringify((await b.ev(said)).find(x => x[0] !== " ")) === JSON.stringify(["我", 0.8]));
-  await b.ev(act("say")); await b.ev(act("slow"));
-  b.check("speak-buttons", JSON.stringify((await b.ev(said)).slice(-2)) === JSON.stringify([["我", 0.8], ["我", 0.6]]));
+  // 标准发音用录音（我 ngo5），不用系统朗读
+  b.check("speak-auto", JSON.stringify(await b.ev(F.voiced)) === JSON.stringify(["ngo5"]) && (await b.ev(F.spoken)).length === 0);
+  await b.ev(act("say")); await b.sleep(300); await b.ev(act("slow")); await b.sleep(300);
+  b.check("speak-buttons", JSON.stringify(await b.ev(F.voiced)) === JSON.stringify(["ngo5", "ngo5", "ngo5"]) && (await b.ev(F.spoken)).length === 0
+    && (await b.ev(`document.querySelector('#studyView [data-act="slow"]').innerText`)) === "逐字听");
   b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#studyView button")].filter(e => e.getClientRects().length).every(e => e.getBoundingClientRect().height >= 44)`));
   await b.shot("study-word-light");
   // 原唱只播这一句：从这句开始（1s），到下一句开始（4s）停，0.8 倍速。第 0 句的 end 是 2.5，不能停在 end

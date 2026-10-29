@@ -5,7 +5,7 @@ const visible = sel => `(() => { const e = document.querySelector(${JSON.stringi
 const putCards = cs => `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const tx = db.transaction("cards", "readwrite"); const st = tx.objectStore("cards");
   ${JSON.stringify(cs)}.forEach(c => st.put(c)); tx.oncomplete = () => { db.close(); res(); }; }; })`;
 const mk = (w, jp, zh, due, known = false) => ({ w, jp, zh, tip: "", oral: false, sources: [], known, created: 1, updated: 1, srs: { due, interval: 1, ease: 2.5, reps: 1, lapses: 0 } });
-const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};`;
+const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};` + F.VOICE_REC;
 const rows = `[...document.querySelectorAll("#wordsList .wrow")].map(e => e.innerText.replace(/\\s+/g, " ").trim())`;
 const sheet = `document.querySelector("#sheet").hidden ? "" : document.querySelector("#sheetBody").innerText`;
 module.exports = { name: "words", async run(b) {
@@ -28,8 +28,8 @@ module.exports = { name: "words", async run(b) {
   await b.ev(click('#wordsList [data-w="知"]')); await b.sleep(500);
   let s = await b.ev(sheet);
   b.check("sheet", s.includes("知") && s.includes("zi1") && s.includes("知道") && s.includes("标记为已认识") && s.includes("删除"));
-  await b.ev(click('#sheetBody [data-say]')); await b.sleep(100);
-  b.check("say", JSON.stringify((await b.ev("window.__said")).slice(-1)) === JSON.stringify([["知", 0.8]]));
+  await b.ev(click('#sheetBody [data-say]')); await b.sleep(400);
+  b.check("say", JSON.stringify((await b.ev(F.voiced)).slice(-1)) === JSON.stringify(["zi1"]) && (await b.ev(F.spoken)).length === 0);
   await b.ev(click('#sheetBody [data-known]')); await b.sleep(400);
   b.check("mark-known", (await b.ev(F.idbGet("cards", "知"))).known === true && (await b.ev(sheet)).includes("取消已认识")
     && (await b.ev(rows)).find(x => x.includes("知")).includes("已认识"));

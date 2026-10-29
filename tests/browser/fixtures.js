@@ -65,4 +65,18 @@ const restoreText = (text, confirm = true) => `(async () => { if (document.query
   const ok = document.querySelector('#sheetBody [data-confirm="${confirm ? "ok" : "cancel"}"]'); if (ok) { ok.click(); await new Promise(r => setTimeout(r, 900)); }
   return document.querySelector("#bkMsg").innerText; })()`;
 
-module.exports = { exportText, restoreText, silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, tapAt, closeSheet };
+// VOICE_REC：录下标准发音录音播了哪些音节。fetch → 解码 → 播放一路带着文件名，每播一个音节往 window.__said 里放 ["♪音节", 开始时间, 长度]
+// （和系统朗读的 [文字, 语速] 放在一起，按先后顺序）。voiced：取出播过的音节
+const VOICE_REC = `window.__said = window.__said || []; (() => { if (window.__voiceRec) return; window.__voiceRec = 1;
+  const tag = new WeakMap(), bt = new WeakMap(), of = window.fetch;
+  window.fetch = async (...a) => { const r = await of(...a), m = String(a[0].url || a[0]).match(/audio\\/hiujin\\/([a-z]+\\d)\\.mp3/); if (!m) return r;
+    const ab = r.arrayBuffer.bind(r); r.arrayBuffer = async () => { const x = await ab(); tag.set(x, m[1]); return x; }; return r; };
+  const od = BaseAudioContext.prototype.decodeAudioData;
+  BaseAudioContext.prototype.decodeAudioData = function (a, ok, no) { const n = tag.get(a); return od.call(this, a, b => { bt.set(b, n); ok && ok(b); }, no); };
+  const os = AudioBufferSourceNode.prototype.start;
+  AudioBufferSourceNode.prototype.start = function (w, off, dur) { if (bt.has(this.buffer)) window.__said.push(["♪" + bt.get(this.buffer), w, dur]); return os.call(this, w, off, dur); };
+})();`;
+const voiced = `window.__said.filter(x => x[0][0] === "♪").map(x => x[0].slice(1))`;
+const spoken = `window.__said.filter(x => x[0][0] !== "♪" && x[0] !== " ")`;
+
+module.exports = { VOICE_REC, voiced, spoken, exportText, restoreText, silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, tapAt, closeSheet };

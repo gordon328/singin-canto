@@ -11,7 +11,7 @@ const putCards = cs => `new Promise(res => { const r = indexedDB.open("yuechang"
   ${JSON.stringify(cs)}.forEach(c => st.put(c)); tx.oncomplete = () => { db.close(); res(); }; }; })`;
 const today = () => { const d = new Date(Date.now() - 4 * 3600e3); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 const mk = (w, jp, zh, due, sources) => ({ w, jp, zh, tip: "", oral: false, sources, known: false, created: 1, updated: 1, srs: { due, interval: 1, ease: 2.5, reps: 1, lapses: 0 } });
-const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};`;
+const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};` + F.VOICE_REC;
 const body = `document.querySelector("#studyView").innerText`;
 const count = `document.querySelector("#stCount").innerText.trim()`;
 const act = a => click(`#studyView [data-act="${a}"]`);
@@ -39,7 +39,7 @@ module.exports = { name: "srs-review", async run(b) {
   await step(b, "flip");
   const back = await b.ev(body);
   b.check("flip", (await b.ev(jpShown)) === "ngo5" && back.includes("出自 測試歌") && back.includes("我穿風褸出去") && await b.ev(has("orig"))
-    && JSON.stringify((await b.ev("window.__said")).slice(-1)) === JSON.stringify([["我", 0.8]]));
+    && JSON.stringify((await b.ev(F.voiced)).slice(-1)) === JSON.stringify(["ngo5"]));
   b.check("grade-labels", ["忘了", "模糊", "记得", "10 分钟", "1 天", "3 天"].every(x => back.includes(x)));
   b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#studyView button")].filter(e => e.getClientRects().length).every(e => e.getBoundingClientRect().height >= 44)`));
   await b.shot("review-back-light"); await b.dark(true); await b.sleep(300); await b.shot("review-back-dark"); await b.dark(false);
@@ -108,7 +108,7 @@ module.exports = { name: "srs-review", async run(b) {
   // 评分后切换动画里点 🔊：不能读下一张的词
   await b.ev(act("good") + ";" + act("say"));
   await b.sleep(700);
-  b.check("say-during-switch", JSON.stringify((await b.ev("window.__said")).slice(-1)) === JSON.stringify([["我", 0.8]]) && (await b.ev(bigWord)) === "子");
+  b.check("say-during-switch", JSON.stringify((await b.ev(F.voiced)).slice(-1)) === JSON.stringify(["ngo5"]) && (await b.ev(bigWord)) === "子");
   b.check("no-recount", (await daily(b)).reviewed === r0);
   await step(b, "flip");
   b.check("no-orig-without-audio", (await b.ev(body)).includes("出自") && !(await b.ev(has("orig"))));

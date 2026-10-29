@@ -9,6 +9,8 @@
 *.txt
 !samples/*.txt
 !fonts/OFL.txt
+# 标准发音的单音节录音（Cantone 数据集，MIT 授权，不是歌曲）可以进仓库
+!audio/hiujin/*.mp3
 
 # 备份文件（可能含歌词和音频）
 *.json

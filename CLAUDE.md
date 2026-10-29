@@ -14,7 +14,7 @@
 ## 固定规则（每次都要遵守）
 - **始终用简体中文回复**，包括计划、总结、提问和 git 提交说明。读英文文档或技能后也用中文回复
 - **自动上线**：每完成一个修复或里程碑，电脑上的自动测试通过后，直接合并到 main 并 push 上线，不用问我。上线后告诉我版本号和在 iPhone 上怎么测
-- 上线前确认没有提交任何 mp3、lrc 或歌词文本
+- 上线前确认没有提交任何 mp3、lrc 或歌词文本（唯一例外：`audio/hiujin/` 里 MIT 授权的单音节发音录音，见下面「标准发音」）
 - **每次改界面都要按设计规范 4.4「视觉对齐规则」检查**：间距只用 4/8/12/16/20/24/32px；左右边距和左边缘对齐；同类按钮一致；状态切换时其他元素不动。改完跑 `node tests/browser/run.js visual`（440×956，浅色 + 深色截图，检查没有横向溢出），自己看过截图、量过状态切换前后的位置，发现问题先修好再给开发者测
 - **完成后直接合并到 main 并 push 上线，不开 PR，不需要 gh 命令行工具**（开发者一个人的项目，2026-10-28 开发者决定）。做法：在功能分支上提交并跑完测试 → `git merge` 到 main（能快进就快进）→ `git push origin main`。推送后 GitHub Pages 1–2 分钟内更新，告诉开发者可以在 iPhone 上测了
 
@@ -24,6 +24,7 @@
   - `lessons.js`：课程内容（全局 `LESSONS`：`TONE_SETS` 8 组声调字、`toneSetFor(rec, today)` 首页今天用哪组；M6 的入门课也放这里）
   - `proof.js`：编辑歌曲（原「校对歌词」）的时间计算和行操作（全局 `PROOF`：`shiftAll`、`setStart`、`fmtT`、`fmtOffset`；行操作 `toEdit`、`insertAfter`、`split`、`mergeUp`、`remove`、`toSong`，保存时 `toSong` 返回新的 lines/overrides/learned 和原行号→新行号的 map，用来更新卡片出处）
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
+  - `voice.js`：标准发音的音节清单和纯函数（全局 `VOICE`：`HAS`、`plan(jp)`、`url`、`trimRange`、`GAP`）
   - `pack.js`：词汇包纯函数（全局 `PACK`：`buildPrompt`、`parsePack(raw, lines)`、`computeLineFor(song, li, autoJp)`、`fixText`、`HAN`）。词汇包 v3（`v:3`）覆盖整首歌的词，只有 `key:true` 的显示下划线；导入时整包里有一个词带 `key` 字段就按 v3 处理，整包都没有 `key` 是旧格式、全部当重点词。页面里 `computeLineFor(song, li)` / `computeLine(li)` 是它的包装
   - `study.js`：每日学习规则（全局 `STUDY`：`progressOf`、`withLearned`、`mergeProgress`、`currentSong`、`setCurrent`、`goalOf`、`dailyFor`，`GOALS` 2/4/6、`GOAL_MIN` 1、`GOAL_MAX` 20）。页面里 `getDaily()` / `saveDaily(rec)` 读写 meta `daily`。M4b 的学习流程也写在这里
   - 测试：`node --test`（纯函数）；`node tests/browser/run.js [过滤]`（页面测试，用本机 Chrome 无界面跑 `tests/browser/*.scenario.js`，截图在 `tests/browser/out/` 不进仓库）。开发者不用跑
@@ -44,7 +45,7 @@
   - `getJyutpingCandidates(text)` 返回多音字候选
   - 注意：`getJyutping()` 返回的是「行(haang4)街(gaai1)」这种格式，不是空格分隔
 - 数据存在浏览器 IndexedDB（数据库 `yuechang`，版本 2：表 `songs`（keyPath `id`）、`cards`（`w`）、`meta`（`key`）；升级只能加表，不能动 `songs`），音频以 Blob 形式存储；偏好设置存 localStorage（`yc-prefs`）
-- 标准发音：浏览器 `speechSynthesis`，语言 `zh-HK`
+- 标准发音（v24，规格 7.8）：用 `audio/hiujin/音节.mp3` 单音节录音（Cantone 数据集的 Amazon Hiujin，MIT，授权在 `audio/LICENSE`），`say(text, jp, mode, rate)` 用 Web Audio 拼接：正常字间 0.05 秒，「逐字听」0.3 秒。有音节没录音时整个词退回浏览器 `speechSynthesis`（`speak()`，zh-HK）。`sw.js` 把 `audio/` 存在单独缓存 `voice-hiujin-1`（先用缓存，换版本不删）；启动后和打开歌曲时提前下载要用的音节。`.gitignore` 只放行 `audio/hiujin/*.mp3`
 - 歌词来源：LRCLIB 公开接口 `https://lrclib.net/api/search`（免费、无需 key，连续请求要间隔几百毫秒，偶尔返回 503 需要重试）
 - 主要目标设备：**iPhone Safari**。所有功能都要在 iPhone 上能用，按钮至少 44px 高，注意安全区（刘海、底部横条）
 - 支持浅色和深色模式（CSS 变量 + `prefers-color-scheme`）
@@ -90,7 +91,8 @@
 - **我的生词：筛选和多选**（v20，待 iPhone 验收）：全部 / 学习中 / 已认识 / 今天到期（带数量）、搜索汉字/粤拼/意思、「选择」多选 +「全选」（只选当前筛选结果）、底部「标为认识 / 取消认识 / 删除」（删除 5 秒撤销）。取消认识 = 明天凌晨 4 点开始复习。见规格 6.3
 - **M4b 完成**（2026-10-29 iPhone 验收通过，含验收反馈：底部按钮动画、首页紧凑一行、原唱只播这一句、「＋ 导入新歌」和「保存」常驻）：首页「今天的学习」（M5 前不显示复习格）、学词卡片、整句（原唱 0.8× 循环）、完成页、再学 2 句、中途退出继续、副歌和没汉字的句子自动跳过、「设为正在学」、整首学完「选下一首歌」。细节见规格 9 M4b
 - **v22**：首页底部渐进模糊上边缘对齐「＋ 导入新歌」（`fitEdgeBlur()` 按按钮位置算），最强 4px
-- **v23（2026-10-30，待 iPhone 验收）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。下一步：开发者测好后做发音改进（cantone 音节录音，先做试听页）
+- **v23（2026-10-30，待 iPhone 验收）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
+- **v24（2026-10-30，待 iPhone 验收）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒（等开发者听过决定要不要换回系统朗读）；有录音时不再显示「系统朗读可能读错」。下一步：测好后做第四部分（打卡与皮肤，先合并规格、规划前半「打卡」）
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）
