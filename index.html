@@ -694,14 +694,17 @@ document.addEventListener("pointermove",e=>{
 },{passive:true});
 window.addEventListener("scroll",()=>{if(pressedEl)clearPressed()},{passive:true,capture:true});
 window.addEventListener("pageshow",clearPressed);
-// 跳转前先松开按钮，等页面画出"松开"的样子再切页（Safari 右滑返回时用的快照也是松开的）
+// 所有跳转都走这里：先松开按钮，等两帧（确认"松开"已经画到屏幕上）再等弹回动画（--dur-fast 120ms）播完，才 pushState 切页。
+// 原因：系统右滑返回显示的是离开这一页时拍的快照，抬手后马上跳转的话快照里按钮还是按下的（2026-10-30 调试面板 v18 实测）
+const RELEASE_MS=120;
 const afterPaint=fn=>requestAnimationFrame(()=>requestAnimationFrame(fn));
+const afterRelease=fn=>{clearPressed();afterPaint(()=>setTimeout(fn,reduceMotion()?0:RELEASE_MS))};
 function go(view,data={}){
   if(navPending)return;
   if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear()}
-  clearPressed();navPending=true;
-  afterPaint(()=>{
-    navPending=false;
+  navPending=true;
+  afterRelease(()=>{
+    navPending=false;dbgNote("跳转→"+view);
     const st={view,...data};
     if(DEPTH[view]>DEPTH[curView])history.pushState(st,"");else history.replaceState(st,"");
     show(view,"fwd");
@@ -709,8 +712,8 @@ function go(view,data={}){
 }
 function goBack(){
   if(navAnim||navPending||curView==="home")return;if(curView==="proofView"&&proof&&proof.dirty){dirtyPrompt();return}
-  navAnim=true;clearPressed();setTimeout(()=>{navAnim=false},1200);
-  afterPaint(()=>history.back());
+  navAnim=true;setTimeout(()=>{navAnim=false},1200);
+  afterRelease(()=>{dbgNote("返回按钮");history.back()});
 }
 window.addEventListener("popstate",e=>{
   clearPressed();
@@ -742,7 +745,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v18";
+const APP_VERSION="v19";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 function descEl(el){
@@ -790,12 +793,18 @@ document.addEventListener("pointerdown",e=>{
   const t=e.target.closest&&e.target.closest(PRESSABLE);
   if(t)dbg.last={el:t,key:keyOf(t),desc:descEl(t)};
 },{passive:true,capture:true});
-["pointerdown","pointerup","pointercancel","touchend","click"].forEach(type=>document.addEventListener(type,e=>{
-  if(!dbg.on)return;
-  const d=new Date(),p=e.target.closest&&e.target.closest(PRESSABLE);
-  dbg.log.push({type,view:curView,desc:p&&p!==e.target?`${e.target.tagName.toLowerCase()} ∈ ${descEl(p)}`:descEl(e.target),t:`${String(d.getSeconds()).padStart(2,"0")}.${String(d.getMilliseconds()).padStart(3,"0")}`});
+function dbgPush(type,desc){
+  const d=new Date();
+  dbg.log.push({type,view:curView,desc,t:`${String(d.getSeconds()).padStart(2,"0")}.${String(d.getMilliseconds()).padStart(3,"0")}`});
   if(dbg.log.length>10)dbg.log.shift();
   if(curView==="home")renderDbg();
+}
+// 记下真正切页（pushState / history.back）的时间，和上面的 pointerup 对比，看隔了多久
+function dbgNote(type){if(dbg.on)dbgPush(type,"")}
+["pointerdown","pointerup","pointercancel","touchend","click"].forEach(type=>document.addEventListener(type,e=>{
+  if(!dbg.on)return;
+  const p=e.target.closest&&e.target.closest(PRESSABLE);
+  dbgPush(type,p&&p!==e.target?`${e.target.tagName.toLowerCase()} ∈ ${descEl(p)}`:descEl(e.target));
 },{passive:true,capture:true}));
 $("#appVer").textContent="版本 "+APP_VERSION;
 $("#appVer").addEventListener("click",e=>{

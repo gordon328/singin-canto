@@ -5,7 +5,7 @@ const anim = sel => `[...document.querySelector(${JSON.stringify(sel)}).getAnima
 const op = sel => `+getComputedStyle(document.querySelector(${JSON.stringify(sel)})).opacity`;
 module.exports = { name: "playerbar", async run(b) {
   await F.seed(b);
-  await b.ev(click('.song[data-id="t1"]')); await b.sleep(150);
+  await b.ev(click('.song[data-id="t1"]')); await b.sleep(350);
   b.check("hidden-while-sliding", (await b.ev(op("#playerView .player"))) === 0);
   await b.sleep(330);
   b.check("bar-in " + (await b.ev(anim("#playerView .player"))), (await b.ev(anim("#playerView .player"))) === "barIn");
@@ -15,10 +15,10 @@ module.exports = { name: "playerbar", async run(b) {
   await b.ev(click("#btnMenu")); await b.sleep(500); await b.ev(click('[data-menu="proof"]')); await b.sleep(480);
   b.check("edit-bar-in " + (await b.ev(anim("#proofView .player"))), (await b.ev(anim("#proofView .player"))) === "barIn");
   await b.sleep(500);
-  await b.ev(click("#proofView [data-back]")); await b.sleep(60);
+  await b.ev(click("#proofView [data-back]")); await b.sleep(260);
   b.check("edit-no-bar-out " + (await b.ev(anim("#proofView .player"))), (await b.ev(anim("#proofView .player"))) === "" && (await b.ev(op("#proofView .player"))) === 0);
   await b.sleep(1200);
-  await b.ev(click("#playerView [data-back]")); await b.sleep(60);
+  await b.ev(click("#playerView [data-back]")); await b.sleep(260);
   b.check("no-bar-out " + (await b.ev(anim("#playerView .player"))), (await b.ev(anim("#playerView .player"))) === "" && (await b.ev(op("#playerView .player"))) === 0);
   await b.sleep(900);
   b.check("back-home", await b.ev(`!document.querySelector("#home").hidden`));

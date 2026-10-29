@@ -8,7 +8,7 @@ module.exports = { name: "settings", async run(b) {
   b.check("gear-button", await b.ev(visible("#btnSettings")) && (await b.ev(`document.querySelector("#btnSettings").getAttribute("aria-label")`)) === "设置");
 
   const h0 = await b.ev("history.length");
-  await b.ev(click("#btnSettings")); await b.sleep(100);
+  await b.ev(click("#btnSettings")); await b.sleep(300);
   b.check("slides-in", await b.ev(`document.querySelector("#settingsView").classList.contains("enter-fwd")`));
   await b.sleep(700);
   b.check("settings-page", await b.ev(visible("#settingsView")) && !(await b.ev(visible("#home"))) && (await b.ev("history.length")) === h0 + 1

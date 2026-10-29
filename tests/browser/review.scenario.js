@@ -4,7 +4,7 @@ const visible = id => `!!document.querySelector("#${id}") && !document.querySele
 module.exports = { name: "review", async run(b) {
   await F.seed(b);
   // 切页时浮动播放条不能跑到屏幕外面（要么先藏起来，要么就在屏幕里）
-  await b.ev(`document.querySelector('.song[data-id="t1"]').click()`); await b.sleep(120);
+  await b.ev(`document.querySelector('.song[data-id="t1"]').click()`); await b.sleep(280);// 跳转前先等按钮弹回（两帧 + 120ms），再取切页动画中间
   const mid = await b.ev(`(() => { const p = document.querySelector("#playerView .player"); return { op: getComputedStyle(p).opacity, top: p.getBoundingClientRect().top, h: innerHeight }; })()`);
   await b.sleep(700);
   const end = await b.ev(`(() => { const p = document.querySelector("#playerView .player"); return { op: getComputedStyle(p).opacity, top: p.getBoundingClientRect().top, h: innerHeight }; })()`);

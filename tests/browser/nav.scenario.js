@@ -41,6 +41,15 @@ module.exports = { name: "nav", async run(b) {
   await b.send("Page.reload"); await b.sleep(2500);
   b.check("reload-starts-home", await b.ev(visible("home")) && !(await b.ev(visible("playerView"))));
 
+  // 跳转要等按钮弹回画完：点击后至少 120ms 才 pushState，那时页面上没有按下的按钮（系统右滑返回的快照才是松开的）
+  await b.ev(`(() => { const o = history.pushState.bind(history); window.__push = null;
+    history.pushState = (...a) => { window.__push = { t: performance.now(), pressed: document.querySelectorAll(".is-pressed").length }; return o(...a); };
+    const el = document.querySelector('.song[data-id="t1"]'); el.classList.add("is-pressed"); window.__clickAt = performance.now(); el.click(); })()`);
+  await b.sleep(600);
+  const push = await b.ev(`window.__push && { gap: window.__push.t - window.__clickAt, pressed: window.__push.pressed }`);
+  b.check(`nav-after-release ${push && Math.round(push.gap)}ms`, !!push && push.gap >= 120 && push.pressed === 0);
+  await b.ev("history.back()"); await b.sleep(600);
+
   // 主屏幕模式：也只用系统右滑，App 从边缘拖时不接管
   await b.ev(`Object.defineProperty(navigator, "standalone", { value: true, configurable: true })`);
   await F.openSong(b, "t1");

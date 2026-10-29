@@ -9,20 +9,20 @@ const gone = sel => `(() => { const e = document.querySelector(${JSON.stringify(
 module.exports = { name: "steady", async run(b) {
   await F.seed(b);
   b.check("fab-steady-home", await b.ev(steady("#btnAdd")));
-  await b.ev(click("#btnSettings")); await b.sleep(80);
+  await b.ev(click("#btnSettings")); await b.sleep(280);
   b.check("fab-gone-when-leaving", await b.ev(gone("#btnAdd")));
   await b.sleep(800);
-  await b.ev(click("#settingsView [data-back]")); await b.sleep(120); // 返回动画进行中
+  await b.ev(click("#settingsView [data-back]")); await b.sleep(320); // 返回动画进行中
   b.check("fab-steady-during-back", await b.ev(steady("#btnAdd")));
   await b.sleep(800);
 
-  await b.ev(click("#btnAdd")); await b.sleep(120); // 进入导入页的动画进行中
+  await b.ev(click("#btnAdd")); await b.sleep(320); // 进入导入页的动画进行中
   b.check("save-steady-during-enter", await b.ev(steady("#btnSave")) && await b.ev(gone("#btnAdd")));
   await b.sleep(800);
   b.check("save-steady", await b.ev(steady("#btnSave")));
   await b.ev(`window.scrollTo(0, 99999)`); await b.sleep(200);
   b.check("save-steady-scrolled", await b.ev(steady("#btnSave")));
-  await b.ev(click("#importView [data-back]")); await b.sleep(80);
+  await b.ev(click("#importView [data-back]")); await b.sleep(280);
   b.check("save-gone-when-leaving", await b.ev(gone("#btnSave")));
   await b.sleep(800);
   b.check("fab-back-home", await b.ev(steady("#btnAdd")) && await b.ev(gone("#btnSave")));
