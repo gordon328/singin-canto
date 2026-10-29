@@ -6,7 +6,7 @@
 const VERSION = "v25";
 const CACHE = "yuechang-" + VERSION;
 const VOICE_CACHE = "voice-hiujin-1";
-const SHELL = ["./", "./pack.js", "./srs.js", "./study.js", "./lessons.js", "./proof.js", "./gesture.js", "./backup.js", "./voice.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
+const SHELL = ["./", "./pack.js", "./srs.js", "./study.js", "./checkin.js", "./lessons.js", "./proof.js", "./gesture.js", "./backup.js", "./voice.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil((async () => {
