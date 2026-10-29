@@ -91,3 +91,18 @@ test("mergeCards：坏卡片跳过或补齐", () => {
 test("dayDue：导出", () => {
   assert.equal(SRS.dayDue(at(2026, 10, 28, 10), 1), at(2026, 10, 29, 4));
 });
+test("inTab：全部 / 学习中 / 已认识 / 今天到期（凌晨 4 点换日）", () => {
+  const now = at(2026, 10, 30, 21);
+  const c = (due, known) => ({ w: "x", known, srs: st({ due }) });
+  const over = c(at(2026, 10, 29, 4)), soon = c(at(2026, 10, 31, 3)), tmr = c(at(2026, 10, 31, 4)), kn = c(0, true), noKnown = { w: "y", srs: st({ due: 0 }) };
+  assert.deepEqual([over, soon, tmr, kn, noKnown].map(x => SRS.inTab(x, "due", now)), [true, true, false, false, true]);
+  assert.deepEqual([over, kn, noKnown].map(x => SRS.inTab(x, "learning", now)), [true, false, true]);
+  assert.deepEqual([over, kn, noKnown].map(x => SRS.inTab(x, "known", now)), [false, true, false]);
+  assert.deepEqual([over, kn].map(x => SRS.inTab(x, "all", now)), [true, true]);
+});
+test("matchCard：汉字、意思、粤拼（不管空格，可以不打声调）", () => {
+  const c = { w: "風褸", jp: "fung1 lau1", zh: "风衣、外套" };
+  for (const q of ["", "  ", "風", "風褸", "风衣", "外套", "fung1", "FUNG", "lau", "funglau", "fung lau", "fung1 lau1", "g1l"]) assert.equal(SRS.matchCard(c, q), true, q);
+  for (const q of ["雨", "fung2", "lau2", "sing", "风 衣", "fung-lau"]) assert.equal(SRS.matchCard(c, q), false, q);
+  assert.equal(SRS.matchCard({ w: "我" }, "ngo"), false);
+});

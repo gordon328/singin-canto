@@ -22,7 +22,7 @@ module.exports = { name: "words", async run(b) {
   b.check("list", r.length === 3 && r[0].includes("風褸") && r[0].includes("fung1 lau1") && r[0].includes("风衣") && r[0].includes("今天复习")
     && r[1].includes("知") && r[1].includes("3 天后复习") && r[2].includes("我") && r[2].includes("已认识")
     && await b.ev(`!!document.querySelector("#wordsList .wrow .jp .t1")`));
-  b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#wordsView button")].every(e => e.getBoundingClientRect().height >= 44)`));
+  b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#wordsView button")].filter(e => e.getBoundingClientRect().height > 0).every(e => e.getBoundingClientRect().height >= 44)`));
   await b.shot("words-light"); await b.dark(true); await b.sleep(300); await b.shot("words-dark"); await b.dark(false);
 
   await b.ev(click('#wordsList [data-w="知"]')); await b.sleep(500);
@@ -34,7 +34,8 @@ module.exports = { name: "words", async run(b) {
   b.check("mark-known", (await b.ev(F.idbGet("cards", "知"))).known === true && (await b.ev(sheet)).includes("取消已认识")
     && (await b.ev(rows)).find(x => x.includes("知")).includes("已认识"));
   await b.ev(click('#sheetBody [data-known]')); await b.sleep(400);
-  b.check("unmark-known", (await b.ev(F.idbGet("cards", "知"))).known === false && (await b.ev(rows)).find(x => x.includes("知")).includes("3 天后复习"));
+  // 取消已认识：和新学的词一样，明天开始复习
+  b.check("unmark-known", (await b.ev(F.idbGet("cards", "知"))).known === false && (await b.ev(rows)).find(x => x.includes("知")).includes("明天复习"));
   // 删除 → 取消：回到这个词的弹窗，不是整个关掉
   await b.ev(click('#sheetBody [data-del]')); await b.sleep(500);
   await b.ev(click('#sheetBody [data-confirm="cancel"]')); await b.sleep(600);

@@ -65,7 +65,24 @@
     return [...byW.values()];
   }
 
-  const SRS = { newSrs, review, newCard, dueLabel, mergeCards, today, dayDue };
+  // 「我的生词」的筛选标签：all 全部 / learning 学习中 / known 已认识 / due 今天到期（没认识、下次复习在下一个凌晨 4 点之前，过期的也算）
+  function inTab(c, tab, now) {
+    if (tab === "known") return !!c.known;
+    if (tab === "learning") return !c.known;
+    if (tab === "due") return !c.known && !!c.srs && c.srs.due < dayDue(now, 1);
+    return true;
+  }
+  // 搜索：汉字和意思直接包含；粤拼不管空格，也可以不打声调数字（"funglau"、"fung1"、"lau" 都能搜到 fung1 lau1）
+  function matchCard(c, q) {
+    q = String(q || "").trim().toLowerCase();
+    if (!q) return true;
+    if (String(c.w || "").includes(q) || String(c.zh || "").includes(q)) return true;
+    const t = q.replace(/\s+/g, ""), jp = String(c.jp || "").toLowerCase().replace(/\s+/g, "");
+    if (!/^[a-z0-9]+$/.test(t)) return false;
+    return jp.includes(t) || (!/\d/.test(t) && jp.replace(/\d/g, "").includes(t));
+  }
+
+  const SRS = { newSrs, review, newCard, dueLabel, mergeCards, today, dayDue, inTab, matchCard };
   root.SRS = SRS;
   if (typeof module !== "undefined" && module.exports) module.exports = SRS;
 })(typeof self !== "undefined" ? self : globalThis);

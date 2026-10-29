@@ -85,9 +85,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .btn:disabled{opacity:.45;cursor:default;transform:none}
 .muted{color:var(--muted)}
 .label{font-size:13px;color:var(--muted);font-weight:600}
-input[type=text],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:0;border-radius:14px;
+input[type=text],input[type=search],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:0;border-radius:14px;
   padding:12px 14px;box-shadow:var(--shadow-1),inset 0 0 0 1px var(--rule)}
-input[type=text]:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
+input[type=text]:focus,input[type=search]:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
 /* 输入框固定 7 行高，超出的在框里滚动；clip-path 保证文字不会画到框外（iPhone 上见过露出半行） */
 textarea{display:block;height:calc(1.6em * 7 + 28px);padding:14px 16px;resize:none;overflow-y:auto;line-height:1.6;clip-path:inset(0 round 14px)}
 textarea:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
@@ -156,6 +156,19 @@ svg{display:block}
 .st-grades .st-big{min-height:64px;border-radius:18px}
 /* 我的生词（规格 6.3） */
 .words-list{display:flex;flex-direction:column;gap:10px;padding:4px 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.words-list.has-act{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+.wtools{display:flex;flex-direction:column;gap:10px;padding:2px 0 14px}
+input[type=search]{-webkit-appearance:none;appearance:none}
+/* 筛选标签放不下时在这一行里左右滑，不让整页横着滚 */
+.wtabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.wtabs::-webkit-scrollbar{display:none}
+.wtabs .btn{flex:none;padding:8px 12px;white-space:nowrap;gap:4px}
+.wtabs .btn .num{opacity:.75}
+#wSelect,#wSelAll{min-height:44px}
+.btn.wrow.selected{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
+/* 选择模式的底部操作栏：三个按钮放在一块不透明的底板上 */
+.wact{display:flex;gap:8px;padding:8px;border-radius:24px;background:var(--surface);box-shadow:var(--shadow-3),0 0 0 1px var(--rule)}
+.wact .btn{flex:1;min-height:52px;padding:8px 6px;border-radius:16px;font-size:15px}
 .btn.wrow{display:flex;align-items:center;justify-content:flex-start;gap:14px;width:100%;min-height:64px;padding:12px 16px;border-radius:22px;text-align:left;font-weight:400}
 .btn.wrow.is-pressed{transform:scale(.98)}
 .wrow .ww{flex:none;min-width:44px;font-size:22px;font-weight:700}
@@ -226,11 +239,11 @@ svg{display:block}
 .song .ttl{font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .song .sub{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 多选删除：勾选框、选中的卡片、撤销提示条 */
-.song .check{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 2px var(--rule);color:var(--on-accent);transition:background-color var(--dur-fast) var(--ease)}
-.song .check svg{opacity:0}
+.song .check,.wrow .check{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 2px var(--rule);color:var(--on-accent);transition:background-color var(--dur-fast) var(--ease)}
+.song .check svg,.wrow .check svg{opacity:0}
 .song.selected{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
-.song.selected .check{background:var(--accent);box-shadow:none}
-.song.selected .check svg{opacity:1}
+.song.selected .check,.wrow.selected .check{background:var(--accent);box-shadow:none}
+.song.selected .check svg,.wrow.selected .check svg{opacity:1}
 #btnSelect{min-height:44px;margin:-10px -14px -10px 0}
 .snack{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:21;max-width:520px;margin:0 auto;
   display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 6px 4px 18px;border-radius:18px;background:var(--inverse);color:var(--on-inverse);font-size:15px;box-shadow:var(--shadow-3)}
@@ -583,8 +596,23 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
   <div class="bar"><div class="wrap">
     <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
     <div class="tt"><b>我的生词</b><span id="wordsSub"></span></div>
+    <button class="btn text small" id="wSelAll" type="button" hidden>全选</button>
+    <button class="btn text small" id="wSelect" type="button" hidden>选择</button>
+    <button class="btn soft small" id="wDone" type="button" hidden>完成</button>
   </div></div>
-  <div class="wrap"><div class="words-list" id="wordsList"></div></div>
+  <div class="wrap">
+    <div class="wtools" id="wTools" hidden>
+      <input type="search" id="wQ" placeholder="搜汉字、粤拼或意思" enterkeyhint="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="搜索生词">
+      <div class="wtabs" id="wTabs" role="group" aria-label="筛选"></div>
+    </div>
+    <div class="words-list" id="wordsList"></div>
+  </div>
+  <div class="bottom-bar wact" id="wAct" hidden>
+    <button class="btn soft" type="button" data-wact="known">标为认识</button>
+    <button class="btn soft" type="button" data-wact="unknown">取消认识</button>
+    <button class="btn danger-fill" type="button" data-wact="del">删除</button>
+  </div>
+  <div class="snack" id="wSnack" hidden role="status"><span id="wSnackMsg"></span><button class="btn text small" id="wSnackUndo" type="button">撤销</button></div>
 </section>
 
 <!-- STUDY：每日学习（学词、整句、完成） -->
@@ -723,6 +751,7 @@ window.addEventListener("popstate",e=>{
   closeSheet();
   if(curView==="proofView"){au.pause();if(proof)proof.stopAt=null}
   if(curView==="studyView"){stopStudyAudio();try{speechSynthesis.cancel()}catch(e){}study=null}
+  if(curView==="wordsView"&&st.view!=="wordsView"){commitWordDel();wSelMode=false;wSel.clear()}
   if(st.view==="settingsView"){renderSettings();show("settingsView",anim);return}
   if(st.view==="wordsView"){renderWords();show("wordsView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
@@ -745,7 +774,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v19";
+const APP_VERSION="v20";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 function descEl(el){
@@ -1644,17 +1673,88 @@ function renderGoal(){
 }
 /* ---------- 我的生词（规格 6.3） ---------- */
 function renderWordsCard(){$("#wordsCard").innerHTML=`<div class="label">生词</div><button class="btn soft block" type="button" data-words>我的生词（${cards.size}）</button><div class="note">学过和加入的词都在这里：能听发音、标记已认识、删除。</div>`}
-$("#wordsCard").addEventListener("click",e=>{if(e.target.closest("[data-words]")){renderWords();go("wordsView")}});
-// 排序：要复习的按下次复习时间，已认识的放最后
+// 每次从设置页进来：筛选回到「全部」，清空搜索，不在选择模式
+$("#wordsCard").addEventListener("click",e=>{if(e.target.closest("[data-words]")){wTab="all";wQuery="";$("#wQ").value="";wSelMode=false;wSel.clear();renderWords();go("wordsView")}});
+const W_TABS=[["all","全部"],["learning","学习中"],["known","已认识"],["due","今天到期"]];
+const CHECK_SVG='<span class="check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>';
+let wTab="all",wQuery="",wSelMode=false,wPendingDel=null;
+const wSel=new Set();
+// 排序：要复习的按下次复习时间，已认识的放最后。标签后面的数量跟着搜索走
 function renderWords(){
-  const now=Date.now(),list=[...cards.values()].sort((a,b)=>(!!a.known-!!b.known)||(a.known?a.w.localeCompare(b.w):a.srs.due-b.srs.due));
-  $("#wordsSub").textContent=cards.size?`${cards.size} 个`:"";
+  const now=Date.now(),all=[...cards.values()].sort((a,b)=>(!!a.known-!!b.known)||(a.known?a.w.localeCompare(b.w):a.srs.due-b.srs.due));
+  const hit=all.filter(c=>SRS.matchCard(c,wQuery)),list=hit.filter(c=>SRS.inTab(c,wTab,now));
+  if(!all.length)wSelMode=false;
+  // 只能选当前筛选结果里的词：换标签或搜索后，看不到的词自动取消选中
+  const shown=new Set(list.map(c=>c.w));for(const w of wSel)if(!shown.has(w))wSel.delete(w);
+  $("#wordsSub").textContent=wSelMode?`已选 ${wSel.size} 个`:all.length?`${all.length} 个`:"";
+  $("#wTools").hidden=!all.length;
+  $("#wTabs").innerHTML=W_TABS.map(([k,t])=>`<button class="btn small ${k===wTab?"primary":"soft"}" type="button" data-tab="${k}" aria-pressed="${k===wTab}">${t}<span class="num">${hit.filter(c=>SRS.inTab(c,k,now)).length}</span></button>`).join("");
+  $("#wSelect").hidden=wSelMode||!all.length;$("#wDone").hidden=!wSelMode;
+  const allOn=list.length>0&&list.every(c=>wSel.has(c.w));
+  $("#wSelAll").hidden=!wSelMode||!list.length;$("#wSelAll").textContent=allOn?"全不选":"全选";
   $("#wordsList").innerHTML=list.length?list.map(c=>{
-    const syl=String(c.jp||"").split(/\s+/);
-    return `<button class="btn wrow" type="button" data-w="${esc(c.w)}"><span class="ww">${esc(c.w)}</span><span class="wm"><span class="jp">${syl.map(x=>`<span class="t${toneOf(x)}">${esc(x)}</span>`).join(" ")}</span><span class="zh">${esc(c.zh||"暂无释义")}</span></span><span class="wd${c.known?" on":""}">${c.known?"已认识":esc(SRS.dueLabel(c.srs.due,now))+"复习"}</span></button>`}).join("")
+    const syl=String(c.jp||"").split(/\s+/),on=wSel.has(c.w);
+    return `<button class="btn wrow${wSelMode&&on?" selected":""}" type="button" data-w="${esc(c.w)}"${wSelMode?` aria-pressed="${on}"`:""}>${wSelMode?CHECK_SVG:""}<span class="ww">${esc(c.w)}</span><span class="wm"><span class="jp">${syl.map(x=>`<span class="t${toneOf(x)}">${esc(x)}</span>`).join(" ")}</span><span class="zh">${esc(c.zh||"暂无释义")}</span></span><span class="wd${c.known?" on":""}">${c.known?"已认识":esc(SRS.dueLabel(c.srs.due,now))+"复习"}</span></button>`}).join("")
+    :all.length?`<div class="empty"><b>${wQuery.trim()?"没有找到":"这里还没有词"}</b>${wQuery.trim()?'<p class="note" style="margin:8px 0 0">试试别的写法：汉字、粤拼（可以不打声调数字）或意思。</p>':""}</div>`
     :'<div class="empty"><b>还没有生词</b><p class="note" style="margin:8px 0 0">每天学习时点「会读了」，或者在歌词里点字「＋ 加入生词」，词就会出现在这里。</p></div>';
+  // 底部操作栏：选中后才出现；选中的都已认识时「标为认识」变灰，都没认识时「取消认识」变灰
+  const sel=[...wSel].map(w=>cards.get(w)).filter(Boolean),bar=$("#wAct");
+  bar.hidden=!wSelMode||!sel.length;
+  bar.querySelector('[data-wact="known"]').disabled=sel.every(c=>c.known);
+  bar.querySelector('[data-wact="unknown"]').disabled=sel.every(c=>!c.known);
+  $("#wordsList").classList.toggle("has-act",!bar.hidden);
 }
-$("#wordsList").addEventListener("click",e=>{const r=e.target.closest("[data-w]");if(r)openWordCard(r.dataset.w)});
+$("#wordsList").addEventListener("click",e=>{
+  const r=e.target.closest("[data-w]");if(!r)return;
+  if(!wSelMode){openWordCard(r.dataset.w);return}
+  const w=r.dataset.w;if(wSel.has(w))wSel.delete(w);else wSel.add(w);
+  renderWords();
+});
+$("#wTabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){wTab=b.dataset.tab;renderWords()}});
+$("#wQ").addEventListener("input",e=>{wQuery=e.target.value;renderWords()});
+$("#wQ").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.blur()});// 键盘上的「搜索」键：收起键盘
+function setWordSel(on){wSelMode=on;wSel.clear();renderWords()}
+$("#wSelect").addEventListener("click",()=>setWordSel(true));
+$("#wDone").addEventListener("click",()=>setWordSel(false));
+$("#wSelAll").addEventListener("click",()=>{
+  const now=Date.now(),list=[...cards.values()].filter(c=>SRS.matchCard(c,wQuery)&&SRS.inTab(c,wTab,now));
+  if(list.every(c=>wSel.has(c.w)))wSel.clear();else list.forEach(c=>wSel.add(c.w));
+  renderWords();
+});
+$("#wAct").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-wact]");if(!b||b.disabled)return;
+  const sel=[...wSel].map(w=>cards.get(w)).filter(Boolean),now=Date.now();if(!sel.length)return;
+  if(b.dataset.wact==="del"){
+    if(!await confirmSheet({title:`删除 ${sel.length} 个词？`,body:"删除后它们不会再出现在学习和复习里。"}))return;
+    setWordSel(false);deleteWords(sel.map(c=>c.w));return;
+  }
+  // 标为认识：known=true；取消认识：known=false，复习进度和新学的词一样（明天凌晨 4 点开始复习）。状态没变的词不动
+  const known=b.dataset.wact==="known",ch=sel.filter(c=>!!c.known!==known);
+  for(const c of ch){c.known=known;if(!known)c.srs=SRS.newSrs(now);c.updated=now;await DB.put(c,"cards")}
+  setWordSel(false);
+  toast(known?`已把 ${ch.length} 个词标为认识`:`已取消认识 ${ch.length} 个词，明天开始复习`);
+});
+// 删除生词：先从列表拿掉，5 秒内可以撤销；5 秒后、离开这一页、或 App 切到后台时才真正从数据库删除
+function deleteWords(ws){
+  commitWordDel();
+  const del=ws.map(w=>cards.get(w)).filter(Boolean);if(!del.length)return;
+  del.forEach(c=>cards.delete(c.w));
+  wPendingDel={cards:del,timer:setTimeout(commitWordDel,5000)};
+  $("#wSnackMsg").textContent=`已删除 ${del.length} 个词`;$("#wSnack").hidden=false;
+  renderWords();
+}
+async function commitWordDel(){
+  const p=wPendingDel;if(!p)return;
+  wPendingDel=null;clearTimeout(p.timer);$("#wSnack").hidden=true;
+  for(const c of p.cards)if(!cards.has(c.w))await DB.del(c.w,"cards");
+}
+$("#wSnackUndo").addEventListener("click",()=>{
+  const p=wPendingDel;if(!p)return;
+  wPendingDel=null;clearTimeout(p.timer);$("#wSnack").hidden=true;
+  p.cards.forEach(c=>cards.set(c.w,c));renderWords();
+});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")commitWordDel()});
+window.addEventListener("pagehide",()=>commitWordDel());
 function openWordCard(w){
   const c=cards.get(w);if(!c)return;
   const syl=String(c.jp||"").split(/\s+/);let k=0;
@@ -1669,7 +1769,7 @@ function openWordCard(w){
   </div>`);
   $("#sheetBody").onclick=async e=>{
     if(e.target.closest("[data-say]")){speak(c.w,0.8);return}
-    if(e.target.closest("[data-known]")){c.known=!c.known;c.updated=Date.now();await DB.put(c,"cards");renderWords();openWordCard(w);return}
+    if(e.target.closest("[data-known]")){const now=Date.now();c.known=!c.known;if(!c.known)c.srs=SRS.newSrs(now);c.updated=now;await DB.put(c,"cards");renderWords();openWordCard(w);return}
     if(e.target.closest("[data-del]")){
       if(!await confirmSheet({title:`删除「${c.w}」？`,body:"这个词和它的复习进度会一起删掉，以后学到它会重新出现。"})){if(curView==="wordsView")openWordCard(w);return}
       cards.delete(c.w);await DB.del(c.w,"cards");renderWords();toast("已删除");
