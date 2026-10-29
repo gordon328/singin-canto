@@ -626,6 +626,7 @@ const DB={db:null,mem:{songs:new Map(),cards:new Map(),meta:new Map()},ok:false,
     r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>this.db.close();this.ok=true;res()};r.onerror=()=>res();
     r.onblocked=()=>toast("请先关闭其他打开着的唱学粤语页面",6000)}catch(e){res()}})},
   _st(store,m){return this.db.transaction(store,m).objectStore(store)},
+  fresh(key,store="songs"){if(!this.ok)return Promise.resolve(null);return new Promise(res=>{try{const r=this._st(store,"readonly").get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null)}catch(e){res(null)}})},
   all(store="songs"){const mem=this.mem[store];if(!this.ok)return Promise.resolve([...mem.values()]);return new Promise(res=>{try{const r=this._st(store,"readonly").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([...mem.values()])}catch(e){res([...mem.values()])}})},
   put(o,store="songs"){this.mem[store].set(o[STORES[store]],o);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st(store,"readwrite").put(o);r.onsuccess=()=>res();r.onerror=()=>{toast("保存失败：手机存储空间可能不够");res()}}catch(e){res()}})},
   del(key,store="songs"){this.mem[store].delete(key);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st(store,"readwrite").delete(key);r.onsuccess=()=>res();r.onerror=()=>res()}catch(e){res()}})}
@@ -1011,13 +1012,13 @@ $("#sTap").addEventListener("click",async()=>{
   if($("#sTap").dataset.done){
     const s=sync.song;s.lines=finishEnds(sync.texts.map((text,i)=>({t:sync.times[i],end:null,text})),s.duration);
     await DB.put(s);songs.push(s);const id=s.id;sync=null;openSong(id);toast("打轴完成");return}
-  if(au.paused){au.play().catch(()=>{});}
+  if(au.paused)playAu();
   const t=Math.max(0,au.currentTime-0.15);
   if(sync.p>0&&t<=sync.times[sync.p-1]){toast("时间要比上一句晚");return}
   sync.times[sync.p]=t;sync.p++;renderSync();
 });
 $("#sUndo").addEventListener("click",()=>{if(!sync||!sync.p)return;sync.p--;const t=sync.times[sync.p];sync.times[sync.p]=null;au.currentTime=Math.max(0,(t||0)-3);renderSync()});
-$("#sPlay").addEventListener("click",()=>{au.paused?au.play().catch(()=>{}):au.pause()});
+$("#sPlay").addEventListener("click",()=>{au.paused?playAu():au.pause()});
 $("#sSeek").addEventListener("input",e=>{au.currentTime=+e.target.value});
 
 /* ---------- audio ---------- */
@@ -1027,6 +1028,69 @@ function setAudio(blob){
   if(blob){objURL=URL.createObjectURL(blob);au.src=objURL}else au.removeAttribute("src");
   au.load();applyRate();
 }
+/* ---------- 播放和自动恢复 ----------
+   iPhone 把 App 放在后台久了会回收内存，音频的 object URL（甚至从数据库读出的 Blob）可能读不出来。
+   播放失败或 4 秒没播起来：从 IndexedDB 重新读这首歌的音频、换新地址再试一次；还失败才提示，提示里带错误代码。
+   必须在点击里直接调用 playAu（iOS 要求 play() 由点击触发）。at：重新加载后要跳回的位置；onFail：彻底失败时收拾界面 */
+let playReq=null,reloading=null;
+function playAu(opts={}){
+  const req={opts,started:false,done:false};playReq=req;
+  if(opts.retried&&opts.at!=null){if(au.readyState>=1)au.currentTime=opts.at;else au.addEventListener("loadedmetadata",()=>{if(playReq===req)au.currentTime=opts.at},{once:true})}
+  au.play().then(()=>{req.started=true;if(playReq===req)playReq=null}).catch(e=>{
+    if(playReq!==req)return;
+    if(e&&e.name==="AbortError"){playReq=null;return} // 被暂停或换音频打断，不算失败
+    audioFailed(e);
+  });
+  setTimeout(()=>{if(playReq===req&&!req.started&&!au.paused)audioFailed(null,"timeout")},4000);
+}
+au.addEventListener("playing",()=>{if(playReq){playReq.started=true;playReq=null}});
+au.addEventListener("error",()=>{if(playReq)audioFailed(null)});
+async function audioFailed(e,why){
+  const req=playReq;if(!req||req.done)return;req.done=true;playReq=null;
+  const code=audioErrCode(e,why);
+  if(!req.opts.retried&&await reloadAudio()){playAu({...req.opts,retried:true});return}
+  if(!au.paused)au.pause();
+  if(req.opts.onFail)req.opts.onFail();
+  toast(audioErrMsg(e,why,req.opts.retried)+"（错误代码 "+code+"）",8000);
+}
+// 错误代码：MediaError 的 code（1 中断 2 读取 3 解码 4 读不出来/不支持）、play() 的错误名、超时时的 readyState/networkState
+function audioErrCode(e,why){
+  const parts=[];
+  if(au.error)parts.push(String(au.error.code));
+  if(e&&e.name)parts.push(e.name);
+  if(why==="timeout")parts.push("T"+au.readyState+au.networkState);
+  return parts.join(" · ")||"未知";
+}
+function audioErrMsg(e,why,retried){
+  const c=au.error&&au.error.code,n=e&&e.name;
+  if(n==="NotAllowedError")return retried?"iPhone 拦住了播放：音频已经重新加载好了，请再点一次":"iPhone 拦住了播放，请再点一次";
+  if(why==="timeout")return "音频没有播出来，再点一次试试。一直这样的话，完全关掉 App 再打开";
+  if(c===3)return "音频解码失败。可以在「编辑歌曲」里换成 mp3 或 m4a";
+  return "音频读不出来。可以完全关掉 App 再打开；还不行就在「编辑歌曲」里重新选一次音频";
+}
+// 从数据库重新读当前音频所属的歌，换新地址（不自动播放，位置不变）。成功返回 true
+function reloadAudio(){
+  if(reloading)return reloading;
+  reloading=(async()=>{
+    const s=audioBlob&&songs.find(x=>x.audio===audioBlob);if(!s)return false;
+    const rec=await DB.fresh(s.id),blob=rec&&rec.audio;if(!blob)return false;
+    try{await blob.slice(0,16).arrayBuffer()}catch(e){return false}
+    s.audio=blob; // songs 里的对象原地更新（cur、study.song 指向它）
+    const t=au.currentTime;setAudio(blob);
+    if(t>0)au.addEventListener("loadedmetadata",()=>{au.currentTime=t},{once:true});
+    return true;
+  })().finally(()=>{reloading=null});
+  return reloading;
+}
+// 回到前台：检查音频还读不读得出来，读不出来就重新加载
+async function checkAudio(){
+  if(!objURL||!audioBlob||!au.paused)return;
+  let ok=!au.error;
+  if(ok)try{await audioBlob.slice(0,16).arrayBuffer();const r=await fetch(objURL);ok=r.ok;try{r.body&&r.body.cancel()}catch(e){}}catch(e){ok=false}
+  if(!ok)await reloadAudio();
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")checkAudio()});
+window.addEventListener("pageshow",()=>checkAudio());
 function applyRate(){const r=study&&curView==="studyView"?0.8:rate;au.defaultPlaybackRate=r;au.playbackRate=r;au.preservesPitch=true;au.webkitPreservesPitch=true}
 au.addEventListener("loadedmetadata",()=>{applyRate();["#pSeek","#sSeek","#prSeek"].forEach(s=>$(s).max=au.duration||1);$("#pDur").textContent=$("#sDur").textContent=$("#prDur").textContent=fmt(au.duration)});
 au.addEventListener("play",()=>{$("#icPlay").style.display="none";$("#icPause").style.display="";$("#sPlay").textContent="暂停";$("#prPlay").classList.add("playing");cancelAnimationFrame(raf);raf=requestAnimationFrame(tick)});
@@ -1125,7 +1189,7 @@ function playLine(li){
   try{speechSynthesis.cancel()}catch(e){}
   if(loopIdx!=null)setLoop(li);
   au.currentTime=cur.lines[li].t;setCurrent(li);userScrollAt=0;
-  au.play().catch(()=>{});
+  playAu({at:cur.lines[li].t});
 }
 function setLoop(li){
   const box=$("#lyrics");box.querySelector(".line.loop")?.classList.remove("loop");
@@ -1136,7 +1200,7 @@ $("#lyrics").addEventListener("click",e=>{
   const p=e.target.closest("[data-play]");if(p){playLine(+p.dataset.play);return}
   const c=e.target.closest(".c");if(c){const li=+c.closest(".line").dataset.li;openWord(li,+c.dataset.ci)}
 });
-$("#bPlay").addEventListener("click",()=>{if(!cur.audio){toast("先加上音频");return}au.paused?au.play().catch(()=>{}):au.pause()});
+$("#bPlay").addEventListener("click",()=>{if(!cur.audio){toast("先加上音频");return}au.paused?playAu():au.pause()});
 $("#bPrev").addEventListener("click",()=>playLine((curIdx<0?0:curIdx)-1));
 $("#bNext").addEventListener("click",()=>playLine(curIdx+1));
 $("#bLoop").addEventListener("click",()=>{if(loopIdx!=null){setLoop(null);toast("已取消单句循环")}else{const li=curIdx<0?0:curIdx;setLoop(li);toast(`循环第 ${li+1} 句，再点一次取消`);if(au.paused)playLine(li)}});
@@ -1220,7 +1284,7 @@ $("#proofList").addEventListener("click",e=>{
   if(e.target.closest("[data-audition]")){
     if(!proofHasAudio()){toast("先加上音频");return}
     // 从这句开始播，播到下一句开始时停
-    const L=proof.lines;au.currentTime=L[i].t;proof.stopAt=i<L.length-1?L[i+1].t:L[i].end;au.play().catch(()=>{});return;
+    const L=proof.lines;au.currentTime=L[i].t;proof.stopAt=i<L.length-1?L[i+1].t:L[i].end;playAu({at:L[i].t,onFail:()=>{if(proof)proof.stopAt=null}});return;
   }
   if(e.target.closest("[data-mark]")){
     if(!proofHasAudio()){toast("先加上音频");return}
@@ -1231,7 +1295,7 @@ $("#proofList").addEventListener("click",e=>{
 });
 $("#prPlay").addEventListener("click",()=>{
   if(!proofHasAudio()){toast("先加上音频");return}
-  proof.stopAt=null;au.paused?au.play().catch(()=>{}):au.pause();
+  proof.stopAt=null;au.paused?playAu():au.pause();
 });
 $("#prSeek").addEventListener("input",e=>{au.currentTime=+e.target.value;if(proof)proof.stopAt=null});
 $("#proofList").addEventListener("input",e=>{
@@ -1687,7 +1751,6 @@ function openPickNext(){
 }
 // 原唱只播这一句：从这句开始，到下一句开始时停（最后一句到它的结束时间），0.8 倍速。
 // 必须在点击里直接调用（iOS 要求 play() 由点击触发）；失败时提示原因
-let playTok=0;
 function playStudyLine(loop){playLineOf(study.song,study.li,loop)}
 function playLineOf(s,li,loop){
   const L=s.lines[li],next=s.lines[li+1];
@@ -1698,21 +1761,8 @@ function playLineOf(s,li,loop){
   au.defaultPlaybackRate=au.playbackRate=0.8;
   // iPhone 不预先加载音频，第一次点播放才加载：没加载好时先记下，加载完再跳到这句开头
   if(au.readyState>=1)au.currentTime=L.t;else au.addEventListener("loadedmetadata",()=>{if(study&&study.from===L.t)au.currentTime=L.t},{once:true});
-  const tok=++playTok;let started=false;
-  au.addEventListener("playing",()=>{started=true},{once:true});
-  au.play().then(()=>{started=true}).catch(e=>{
-    if(tok!==playTok||(e&&e.name==="AbortError"))return; // 被暂停打断，不算失败
-    stopStudyAudio();refreshLoop();toast(playErrMsg(e),6000);
-  });
-  setTimeout(()=>{if(tok===playTok&&!started&&study&&study.stopAt!=null){stopStudyAudio();refreshLoop();toast("原唱没有播出来，再点一次试试。一直这样的话，可能是音频文件读不出来，可以在「编辑歌曲」里重新选一次音频",6000)}},3000);
+  playAu({at:L.t,onFail:()=>{stopStudyAudio();refreshLoop()}});
 }
-function playErrMsg(e){
-  const n=e&&e.name;
-  if(n==="NotAllowedError")return "iPhone 拦住了播放，请再点一次原唱按钮";
-  if(n==="NotSupportedError")return "这个音频文件 iPhone 播放不了，可以在「编辑歌曲」里换成 mp3 或 m4a";
-  return "原唱播放失败（"+(n||e&&e.message||"未知原因")+"）";
-}
-au.addEventListener("error",()=>{if(curView==="studyView"&&study&&study.stopAt!=null){stopStudyAudio();refreshLoop();toast("音频文件读不出来，可以在「编辑歌曲」里重新选一次音频",6000)}});
 function stopStudyAudio(){if(study){study.stopAt=null;study.loop=false}if(!au.paused)au.pause()}
 async function learnWord(known){
   const st=study,u=st.units[st.i];
