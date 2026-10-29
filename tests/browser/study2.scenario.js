@@ -9,7 +9,7 @@ const patchSong = (id, patch) => `new Promise(res => { const r = indexedDB.open(
 const putMeta = rec => `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result;
   db.transaction("meta", "readwrite").objectStore("meta").put(${JSON.stringify(rec)}).onsuccess = () => { db.close(); res(); }; }; })`;
 const today = () => { const d = new Date(Date.now() - 4 * 3600e3); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
-const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};`;
+const RECORD = `window.__said = []; speechSynthesis.speak = u => window.__said.push([u.text, Math.round(u.rate * 100) / 100]); speechSynthesis.cancel = () => {};` + F.VOICE_REC;
 const body = `document.querySelector("#studyView").innerText`;
 const count = `document.querySelector("#stCount").innerText.trim()`;
 const cells = `[...document.querySelectorAll("#stCells i")].map(e => e.className).join(",")`;
@@ -36,8 +36,11 @@ module.exports = { name: "study2", async run(b) {
   b.check("line-view", (await b.ev(cells)) === "done,done,done,done,done" && (await b.ev(count)) === "整句" && (await b.ev(body)).includes("把这句连起来读")
     && (await b.ev(`document.querySelectorAll("#studyView .st-whole .st-ch").length`)) === 6 && (await b.ev(body)).includes("先听原唱，再跟着小声唱出来"));
   await b.shot("study-line-light");
-  await b.ev(act("slowline"));
-  b.check("line-slow", JSON.stringify((await b.ev("window.__said")).slice(-1)) === JSON.stringify([["我穿風褸出去", 0.6]]));
+  // 标准慢读：整句用录音一个字一个字读，字之间停 0.3 秒（标点不读）
+  await b.ev(act("slowline")); await b.sleep(1500);
+  const ls = (await b.ev(`window.__said.filter(x => x[0][0] === "♪")`)).slice(-6);
+  b.check("line-slow " + JSON.stringify(ls.map(x => x[0])), ls.map(x => x[0].slice(1)).join(" ") === await b.ev(`[...document.querySelectorAll("#studyView .st-whole .st-ch .jp")].map(e => e.innerText).join(" ")`)
+    && ls.slice(1).every((x, i) => Math.abs(x[1] - (ls[i][1] + ls[i][2]) - 0.3) < 0.002) && (await b.ev(F.spoken)).length === 0);
   await b.ev(act("loop")); await b.sleep(500);
   const a1 = await b.ev(auState);
   b.check("line-loop-plays", !a1.paused && Math.abs(a1.rate - 0.8) < 0.01 && (await b.ev(body)).includes("0.8× · 循环中"));

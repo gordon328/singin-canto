@@ -45,7 +45,7 @@
   - `getJyutpingCandidates(text)` 返回多音字候选
   - 注意：`getJyutping()` 返回的是「行(haang4)街(gaai1)」这种格式，不是空格分隔
 - 数据存在浏览器 IndexedDB（数据库 `yuechang`，版本 2：表 `songs`（keyPath `id`）、`cards`（`w`）、`meta`（`key`）；升级只能加表，不能动 `songs`），音频以 Blob 形式存储；偏好设置存 localStorage（`yc-prefs`）
-- 标准发音（v24，规格 7.8）：用 `audio/hiujin/音节.mp3` 单音节录音（Cantone 数据集的 Amazon Hiujin，MIT，授权在 `audio/LICENSE`），`say(text, jp, mode, rate)` 用 Web Audio 拼接：正常字间 0.05 秒，「逐字听」0.3 秒。有音节没录音时整个词退回浏览器 `speechSynthesis`（`speak()`，zh-HK）。`sw.js` 把 `audio/` 存在单独缓存 `voice-hiujin-1`（先用缓存，换版本不删）；启动后和打开歌曲时提前下载要用的音节。`.gitignore` 只放行 `audio/hiujin/*.mp3`
+- 标准发音（v24，规格 7.8）：用 `audio/hiujin/音节.mp3` 单音节录音（Cantone 数据集的 Amazon Hiujin，MIT，授权在 `audio/LICENSE`），`say(text, jp, mode, rate)` 用 Web Audio 拼接：正常字间 0.05 秒，「逐字听」和整句「标准慢读」0.3 秒。有音节没录音时整个词退回浏览器 `speechSynthesis`（`speak()`，zh-HK）。`sw.js` 把 `audio/` 存在单独缓存 `voice-hiujin-1`（先用缓存，换版本不删）；启动后和打开歌曲时提前下载要用的音节。`.gitignore` 只放行 `audio/hiujin/*.mp3`
 - 歌词来源：LRCLIB 公开接口 `https://lrclib.net/api/search`（免费、无需 key，连续请求要间隔几百毫秒，偶尔返回 503 需要重试）
 - 主要目标设备：**iPhone Safari**。所有功能都要在 iPhone 上能用，按钮至少 44px 高，注意安全区（刘海、底部横条）
 - 支持浅色和深色模式（CSS 变量 + `prefers-color-scheme`）
@@ -92,7 +92,8 @@
 - **M4b 完成**（2026-10-29 iPhone 验收通过，含验收反馈：底部按钮动画、首页紧凑一行、原唱只播这一句、「＋ 导入新歌」和「保存」常驻）：首页「今天的学习」（M5 前不显示复习格）、学词卡片、整句（原唱 0.8× 循环）、完成页、再学 2 句、中途退出继续、副歌和没汉字的句子自动跳过、「设为正在学」、整首学完「选下一首歌」。细节见规格 9 M4b
 - **v22**：首页底部渐进模糊上边缘对齐「＋ 导入新歌」（`fitEdgeBlur()` 按按钮位置算），最强 4px
 - **v23（2026-10-30，待 iPhone 验收）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
-- **v24（2026-10-30，待 iPhone 验收）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒（等开发者听过决定要不要换回系统朗读）；有录音时不再显示「系统朗读可能读错」。下一步：测好后做第四部分（打卡与皮肤，先合并规格、规划前半「打卡」）
+- **v24（2026-10-30，待 iPhone 验收）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒；有录音时不再显示「系统朗读可能读错」。
+- **v25（2026-10-30，待 iPhone 验收）**：开发者听过决定多字词保持录音连读；整句「标准慢读」也改成逐字录音（停 0.3 秒，有音节没录音时整句退回系统朗读）。下一步：测好后做第四部分（打卡与皮肤，先合并规格、规划前半「打卡」）
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）

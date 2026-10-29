@@ -828,7 +828,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v24";
+const APP_VERSION="v25";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 function descEl(el){
@@ -2144,7 +2144,7 @@ function studyAct(a){
   const u=study.units[study.i];
   if(a==="say")say(u.w,u.jp);else if(a==="slow")say(u.w,u.jp,"each");else if(a==="orig")playStudyLine(false);
   else if(a==="got")learnWord(false);else if(a==="known")learnWord(true);
-  else if(a==="slowline"){stopStudyAudio();speak(PACK.fixText(study.song,study.song.lines[study.li].text),0.6);refreshLoop()}
+  else if(a==="slowline"){stopStudyAudio();const v=computeLineFor(study.song,study.li);say(PACK.fixText(study.song,study.song.lines[study.li].text),v.items.filter(it=>!it.space&&it.jp).map(it=>it.jp).join(" "),"each");refreshLoop()}
   else if(a==="loop"){if(study.loop&&!au.paused)stopStudyAudio();else playStudyLine(true);refreshLoop()}
   else if(a==="lineok")lineLearned();
   else if(a==="more"){const st=study,d=getDaily();saveDaily({...d,extra:d.extra+2}).then(()=>{if(study===st)studyNext(true)})}
