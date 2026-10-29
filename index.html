@@ -56,6 +56,8 @@
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
+/* 保险：就算哪个元素超出屏幕，页面也不能横着滚（找到超出的元素要先修它） */
+html,body{overflow-x:clip}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font-cjk);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
 .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:720px;margin:0 auto}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
@@ -65,7 +67,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .num,.jp{font-family:var(--font-latin);font-variant-numeric:tabular-nums}
 
 /* 按钮：白色（默认）/ primary 主色 / inverse 深色 / soft 浅色 / text 文字 */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:10px 18px;border-radius:16px;
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 16px;border-radius:16px;
   background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1);font-size:16px;font-weight:600;line-height:1.2;text-align:center;
   transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
 .btn.is-pressed{transform:scale(.97);background:var(--surface-press)}
@@ -80,7 +82,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .btn.danger{color:var(--danger)}
 .btn.danger-fill{background:var(--danger);color:var(--on-accent)}
 .btn.danger-fill.is-pressed{background:var(--danger);opacity:.85}
-.btn.small{min-height:44px;padding:8px 14px;border-radius:12px;font-size:15px}
+.btn.small{min-height:44px;padding:8px 12px;border-radius:12px;font-size:15px}
 .btn.block{display:flex;width:100%}
 .btn.bottom{min-height:56px;border-radius:18px;font-size:17px}
 .btn.icon{width:44px;min-height:44px;padding:0;border-radius:16px}
@@ -88,15 +90,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .muted{color:var(--muted)}
 .label{font-size:13px;color:var(--muted);font-weight:600}
 input[type=text],input[type=search],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:0;border-radius:14px;
-  padding:12px 14px;box-shadow:var(--shadow-1),inset 0 0 0 1px var(--rule)}
+  padding:12px 16px;box-shadow:var(--shadow-1),inset 0 0 0 1px var(--rule)}
 input[type=text]:focus,input[type=search]:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
 /* 输入框固定 7 行高，超出的在框里滚动；clip-path 保证文字不会画到框外（iPhone 上见过露出半行） */
-textarea{display:block;height:calc(1.6em * 7 + 28px);padding:14px 16px;resize:none;overflow-y:auto;line-height:1.6;clip-path:inset(0 round 14px)}
+textarea{display:block;height:calc(1.6em * 7 + 24px);padding:12px 16px;resize:none;overflow-y:auto;line-height:1.6;clip-path:inset(0 round 14px)}
 textarea:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
 svg{display:block}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition-property:opacity!important;animation:none!important;scroll-behavior:auto!important}
   .is-pressed{transform:none!important}
+  #btnSettings.turn svg{transform:none}
   /* 减弱动态效果：播放条只淡入淡出 */
   .player.bar-in,.study-foot.bar-in{animation:barFade var(--dur) var(--ease) both!important}
   /* 弹簧动画都换成简单淡入（学词新卡片、完成页的勾） */
@@ -105,50 +108,50 @@ svg{display:block}
 
 /* Home（首页左右边距 20px） */
 .wrap.home{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
-.home-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:calc(env(safe-area-inset-top,0px) + 28px);padding-bottom:22px}
+.home-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:calc(env(safe-area-inset-top,0px) + 24px);padding-bottom:24px}
 .brand{font-weight:700;font-size:30px;margin:0;line-height:1.1}
 /* 学习页（规格 5.4–5.6，设计规范 5.8） */
-.cells{flex:1;display:flex;gap:6px}
+.cells{flex:1;display:flex;gap:4px}
 .cells i{flex:1;height:8px;border-radius:4px;background:var(--rule);transition:background-color var(--dur) var(--ease)}
 .cells i.done{background:var(--accent)}
 .cells i.cur{background:var(--seg-current)}
 .st-count{min-width:44px;text-align:right;font-size:14px;font-weight:600;color:var(--muted)}
 .st-count.whole{color:var(--accent)}
 .study{padding-top:4px;padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
-.st-line{background:var(--surface);border-radius:18px;padding:12px 16px;margin-bottom:14px;font-size:15px;line-height:1.6;color:var(--ink-2);box-shadow:var(--shadow-1)}
+.st-line{background:var(--surface);border-radius:18px;padding:12px 16px;margin-bottom:16px;font-size:15px;line-height:1.6;color:var(--ink-2);box-shadow:var(--shadow-1)}
 .st-line .hl{background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 2px}
-.st-card{background:var(--surface);border-radius:30px;box-shadow:var(--shadow-2);padding:28px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.st-card{background:var(--surface);border-radius:30px;box-shadow:var(--shadow-2);padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
 .st-chars{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px}
 .st-ch{display:flex;flex-direction:column;align-items:center}
 .st-ch .jp{font-size:20px;font-weight:700}
 .st-ch .hz{font-size:72px;font-weight:700;line-height:1.1}
-.st-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.st-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .st-mean{font-size:22px;font-weight:600}
 .st-mean.none{font-size:17px;color:var(--muted)}
 .st-card .wc-tip{align-self:stretch;text-align:left}
-.st-btns{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px}
+.st-btns{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px}
 .st-say{width:64px;height:64px;min-height:64px;padding:0;border-radius:50%;box-shadow:var(--shadow-3)}
-.study-foot{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:20;max-width:688px;margin:0 auto;display:flex;flex-direction:column;gap:2px}
-.st-hint{margin:6px 0 12px;text-align:center;font-size:14px;color:var(--muted)}
-.st-whole{padding:22px 16px}
+.study-foot{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:20;max-width:688px;margin:0 auto;display:flex;flex-direction:column;gap:4px}
+.st-hint{margin:8px 0 12px;text-align:center;font-size:14px;color:var(--muted)}
+.st-whole{padding:24px 16px}
 .st-wline{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 8px}
-.st-wline .grp{display:inline-flex;gap:6px}
+.st-wline .grp{display:inline-flex;gap:4px}
 .st-whole .st-ch .jp{font-size:14px}
 .st-whole .st-ch .hz{font-size:34px}
-.st-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-.st-big{flex-direction:column;gap:2px;min-height:76px;border-radius:22px}
+.st-two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.st-big{flex-direction:column;gap:4px;min-height:76px;border-radius:22px}
 .st-big small{font-size:12px;font-weight:500;opacity:.85}
-.st-done{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:28px}
+.st-done{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:32px}
 .st-check{width:96px;height:96px;border-radius:30px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
 .st-check.pop{animation:pop var(--dur-spring) var(--spring) both}
 @keyframes pop{from{transform:scale(.6);opacity:0}}
-.st-done h2{margin:22px 0 6px;font-size:26px;font-weight:700}
-.st-fin{margin-top:6px;font-weight:600;color:var(--accent)}
-.st-stats{align-self:stretch;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}
-.st-stat{display:flex;flex-direction:column;gap:2px;padding:14px 6px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1)}
+.st-done h2{margin:24px 0 8px;font-size:26px;font-weight:700}
+.st-fin{margin-top:8px;font-weight:600;color:var(--accent)}
+.st-stats{align-self:stretch;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+.st-stat{display:flex;flex-direction:column;gap:4px;padding:16px 8px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1)}
 .st-stat b{font-size:32px;font-weight:700}
 .st-stat span{font-size:13px;color:var(--muted)}
-.st-preview{align-self:stretch;margin-top:12px;padding:14px 16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;font-size:14px;line-height:1.6;color:var(--ink-2)}
+.st-preview{align-self:stretch;margin-top:12px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;font-size:14px;line-height:1.6;color:var(--ink-2)}
 /* 复习（规格 6.1）：连续进度条、翻面、三个评分按钮 */
 .st-bar{flex:1;height:8px;border-radius:4px;background:var(--rule);overflow:hidden}
 .st-bar i{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width var(--dur) var(--ease)}
@@ -159,9 +162,9 @@ svg{display:block}
 .st-grades{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .st-grades .st-big{min-height:64px;border-radius:18px}
 /* 我的生词（规格 6.3） */
-.words-list{display:flex;flex-direction:column;gap:10px;padding:4px 0 calc(24px + env(safe-area-inset-bottom,0px))}
-.words-list.has-act{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
-.wtools{display:flex;flex-direction:column;gap:10px;padding:2px 0 14px}
+/* 底部留白固定（够放下选择模式的操作栏），操作栏出现、消失时列表不变 */
+.words-list{display:flex;flex-direction:column;gap:12px;padding:4px 0 calc(112px + env(safe-area-inset-bottom,0px))}
+.wtools{display:flex;flex-direction:column;gap:12px;padding:4px 0 16px}
 input[type=search]{-webkit-appearance:none;appearance:none}
 /* 筛选标签放不下时在这一行里左右滑，不让整页横着滚 */
 .wtabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
@@ -169,22 +172,23 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .wtabs .btn{flex:none;padding:8px 12px;white-space:nowrap;gap:4px}
 .wtabs .btn .num{opacity:.75}
 #wSelect,#wSelAll{min-height:44px}
+#wSelect,#wSelAll,#wDone{width:60px;padding-inline:0}
 .btn.wrow.selected{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
 /* 选择模式的底部操作栏：三个按钮放在一块不透明的底板上 */
 .wact{display:flex;gap:8px;padding:8px;border-radius:24px;background:var(--surface);box-shadow:var(--shadow-3),0 0 0 1px var(--rule)}
-.wact .btn{flex:1;min-height:52px;padding:8px 6px;border-radius:16px;font-size:15px}
-.btn.wrow{display:flex;align-items:center;justify-content:flex-start;gap:14px;width:100%;min-height:64px;padding:12px 16px;border-radius:22px;text-align:left;font-weight:400}
+.wact .btn{flex:1;min-height:48px;padding:8px;border-radius:16px;font-size:15px}
+.btn.wrow{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;min-height:64px;padding:12px 16px;border-radius:22px;text-align:left;font-weight:400}
 .btn.wrow.is-pressed{transform:scale(.98)}
 .wrow .ww{flex:none;min-width:44px;font-size:22px;font-weight:700}
-.wrow .wm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.wrow .wm{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .wrow .wm .jp{font-size:13px;font-weight:600}
 .wrow .wm .zh{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wrow .wd{flex:none;font-size:12px;color:var(--muted)}
 .wrow .wd.on{color:var(--accent);font-weight:600}
-.wsheet{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding-top:6px}
+.wsheet{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
 .wsheet .st-ch .hz{font-size:56px}
 .wsheet .st-ch .jp{font-size:18px;font-weight:700}
-.wsheet .row{display:flex;gap:10px;align-self:stretch}
+.wsheet .row{display:flex;gap:12px;align-self:stretch}
 .wsheet .row .btn{flex:1}
 .st-anim.out{animation:stOut var(--dur) var(--ease) both}
 .st-anim.in{animation:stIn var(--dur-spring) var(--spring) both}
@@ -192,33 +196,33 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 @keyframes stIn{from{transform:translateX(30%);opacity:0}}
 @media (prefers-reduced-motion: reduce){@keyframes stOut{to{opacity:0}}@keyframes stIn{from{opacity:0}}@keyframes pop{from{opacity:0}}}
 /* 首页「今天的学习」卡片（设计规范 5.4） */
-.today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:20px;margin-bottom:22px;box-shadow:var(--shadow-2)}
-.today-head{font-size:17px;font-weight:700;margin-bottom:14px}
+.today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:16px;margin-bottom:24px;box-shadow:var(--shadow-2)}
+.today-head{font-size:17px;font-weight:700;margin-bottom:12px}
 .today-cell{background:var(--on-accent-veil);border-radius:20px;padding:12px 16px}
-.today-cells{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.today-cells .lbl{margin-bottom:2px}
+.today-cells{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.today-cells .lbl{margin-bottom:4px}
 .today .today-link{width:100%;margin-top:4px;color:var(--on-accent);opacity:.85;text-decoration:underline;text-underline-offset:3px}
 /* 只有一格（新学）时不用大方块：紧凑的一行「新学 4 句 · 歌名 第 1–4 句」 */
 .today-line{margin:0 0 16px;font-size:15px;font-weight:600;line-height:1.5}
-.today-line .big{font-size:30px;margin:0 2px}
+.today-line .big{font-size:30px;margin:0 4px}
 .today-line .today-src{font-size:14px;font-weight:500;opacity:.85}
 .today-line .done-mark{font-size:20px;font-weight:700}
 .today-cell .lbl{display:block;font-size:13px;font-weight:600;opacity:.85}
 .today .big{font-size:28px;font-weight:700;margin-right:4px}
-.today-sub{font-size:13px;line-height:1.6;margin:12px 0 14px;opacity:.85}
-.today .today-btn{width:100%;min-height:50px;background:var(--surface);color:var(--accent);font-size:16px}
+.today-sub{font-size:13px;line-height:1.6;margin:12px 0 16px;opacity:.85}
+.today .today-btn{width:100%;min-height:48px;background:var(--surface);color:var(--accent);font-size:16px}
 .today .today-btn.is-pressed{background:var(--surface-press)}
 .today-picks{display:flex;flex-direction:column;gap:8px}
 .today-picks .today-btn{justify-content:flex-start;min-height:48px;font-size:15px;color:var(--ink)}
 .sec-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:15px;font-weight:600}
 .sec-title .jp{font-weight:600}
-.tones{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:22px}
+.tones{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:24px}
 /* 声调键帽（设计规范 5.2）：像实体按键，两层。底座（声调色）固定不动，平时露出键面下方 4px；
    按下时只有键面往下移 4px 盖住底座。按钮本身不移动，也不用 box-shadow 画底边 */
 .tones .key{--tone:var(--muted);position:relative;height:66px;padding:0;border:0;background:none}
 .tones .key-base{position:absolute;left:0;right:0;top:4px;bottom:0;border-radius:18px;background:var(--tone)}
 .tones .key-face{position:absolute;left:0;right:0;top:0;bottom:4px;border-radius:18px;background:var(--surface);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   transition:transform var(--dur-spring) var(--spring),background-color 100ms var(--ease)}
 .tones .key.is-pressed .key-face{transform:translateY(4px);background:var(--surface-press);transition:transform 100ms var(--ease),background-color 100ms var(--ease)}
 .tones .key .hz{font-size:22px;font-weight:600;line-height:1.1}
@@ -227,37 +231,50 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .tones .key.fade .hz,.tones .key.fade .jp{opacity:0}
 #btnToneNext.spin svg{animation:spin 400ms var(--ease)}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* 设置齿轮：点了带弹簧转 90 度，同时开始跳转（减弱动态效果时全局去掉动画，不转） */
-#btnSettings.turn svg{animation:gearTurn var(--dur-spring) var(--spring) both}
-@keyframes gearTurn{to{transform:rotate(90deg)}}
-.songs{display:flex;flex-direction:column;gap:10px}
+/* 设置齿轮：手指按下就开始转 60 度（0.5 秒，平缓减速，不回弹），抬手后接着转完、同时跳转；
+   按下后移开取消，平滑转回原位。齿轮是对称的，转太多看起来像转了好几圈 */
+#btnSettings svg{transition:transform 500ms cubic-bezier(.33,1,.68,1)}
+#btnSettings.turn svg{transform:rotate(60deg)}
+.songs{display:flex;flex-direction:column;gap:12px}
 /* 首页底部版本号（连点 3 下开关调试面板），下面留出「＋ 导入新歌」的位置 */
 .ver{text-align:center;font-size:12px;color:var(--muted);padding:20px 0 calc(24px + 56px + 24px + env(safe-area-inset-bottom,0px));-webkit-user-select:none;user-select:none}
 /* 调试面板：浮在「＋ 导入新歌」上面，不挡手指（点击穿透到下面的按钮）；不放在屏幕顶部（会染状态栏） */
 .dbg{position:fixed;left:8px;right:8px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:50;max-height:64vh;overflow:hidden;pointer-events:none;
-  padding:8px 10px;border-radius:12px;background:var(--inverse);color:var(--on-inverse);opacity:.92;
+  padding:8px 12px;border-radius:12px;background:var(--inverse);color:var(--on-inverse);opacity:.92;
   font:10.5px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 .dbg b{font-weight:700}
-.song{display:flex;align-items:center;gap:14px;padding:14px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
+.song{display:flex;align-items:center;gap:12px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
 .song.is-pressed{transform:scale(.98);background:var(--surface-press)}
 .song .sq{flex:none;width:56px;height:56px;border-radius:18px;display:grid;place-items:center;font-size:24px;font-weight:700;background:var(--sq-bg);color:var(--sq-ink)}
 .song .meta{flex:1;min-width:0}
 .song .ttl{font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.song .sub{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* 多选删除：勾选框、选中的卡片、撤销提示条 */
+.song .sub{font-size:13px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 多选删除：勾选框、选中的卡片、撤销提示条。
+   勾选框浮在卡片右边（absolute），不推动卡片里的任何东西：首字方块、歌名、生词都不动（视觉对齐规则 4.4）。
+   歌名右边让出勾选框的位置（只是变窄，左边缘不动）；生词右边的「x 天后复习」在选择模式里藏起来，位置给勾选框 */
+.song,.btn.wrow{position:relative}
+.song .check,.wrow .check{position:absolute;right:16px;top:50%;margin-top:-13px}
+.song:has(.check) .meta{padding-right:40px}
+.wrow:has(.check) .wd{visibility:hidden}
 .song .check,.wrow .check{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 2px var(--rule);color:var(--on-accent);transition:background-color var(--dur-fast) var(--ease)}
 .song .check svg,.wrow .check svg{opacity:0}
 .song.selected{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
 .song.selected .check,.wrow.selected .check{background:var(--accent);box-shadow:none}
 .song.selected .check svg,.wrow.selected .check svg{opacity:1}
-#btnSelect{min-height:44px;margin:-10px -14px -10px 0}
+/* 「选择」「完成」宽度固定；「我的歌」这一行固定 24px 高（= 按钮 44px 减去上下 -10px），
+   进入选择模式「选择」藏起来时这一行不变矮，下面的歌曲列表和版本号不会往上移 */
+#btnSelect{min-height:44px;width:60px;padding-inline:0;margin:-10px -16px -10px 0}
+#btnDone{width:60px;padding-inline:0}
+.sec-title{min-height:24px}
 .snack{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:21;max-width:520px;margin:0 auto;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 6px 4px 18px;border-radius:18px;background:var(--inverse);color:var(--on-inverse);font-size:15px;box-shadow:var(--shadow-3)}
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 8px 4px 16px;border-radius:18px;background:var(--inverse);color:var(--on-inverse);font-size:15px;box-shadow:var(--shadow-3)}
+/* 首页左右边距是 20px，首页的删除栏和撤销提示条也对齐 20px */
+#btnDelSel,#snack{left:max(20px,env(safe-area-inset-left,0px));right:max(20px,env(safe-area-inset-right,0px))}
 .snack .btn.text{color:var(--on-inverse);font-weight:700;text-decoration:underline;text-underline-offset:3px}
-.chip{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-right:4px}
-.empty{padding:22px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1)}
-.empty ol{margin:10px 0 16px;padding-left:20px;display:grid;gap:6px;color:var(--ink-2);font-size:14px;line-height:1.6}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:4px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-right:4px}
+.empty{padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1)}
+.empty ol{margin:12px 0 16px;padding-left:20px;display:grid;gap:8px;color:var(--ink-2);font-size:14px;line-height:1.6}
 /* 「我的歌」底部渐进模糊：越往下越模糊。几层 backdrop-filter，每层用 mask-image 只露出一段。
    不能有背景色（iOS 26 Safari 用屏幕边缘 fixed 元素的颜色染浏览器界面，见 7.4），不能点，在「＋ 导入新歌」下面 */
 .edge-blur{position:fixed;left:0;right:0;bottom:0;height:calc(80px + env(safe-area-inset-bottom,0px));z-index:19;pointer-events:none}
@@ -299,22 +316,22 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 
 /* Top bar：不透明，避免 iOS 顶部模糊 */
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg)}
-.bar .wrap{display:flex;align-items:center;gap:10px;min-height:64px}
+.bar .wrap{display:flex;align-items:center;gap:12px;min-height:64px}
 .bar .tt{flex:1;min-width:0}
 .bar .tt b{display:block;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar .tt span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Lyrics：当前句白卡片 + 紫色描边，其他句 .6 透明度 */
-.banner{margin-top:8px;padding:12px 14px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.lyrics{padding-block:10px calc(230px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px}
-.line{position:relative;padding:22px 14px 12px;border-radius:22px;opacity:.6;
+.banner{margin-top:8px;padding:12px 16px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.lyrics{padding-block:12px calc(230px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
+.line{position:relative;padding:24px 16px 12px;border-radius:22px;opacity:.6;
   transition:opacity var(--dur) var(--ease),background-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
 .line.cur{opacity:1;background:var(--surface);box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
-.line .ln{position:absolute;left:6px;top:0;height:44px;min-width:44px;padding:4px 8px 0;display:flex;align-items:flex-start;
+.line .ln{position:absolute;left:8px;top:0;height:44px;min-width:44px;padding:4px 8px 0;display:flex;align-items:flex-start;
   font-family:var(--font-latin);font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
 .line.cur .ln{color:var(--accent);font-weight:600}
 .line.loop .ln::after{content:" ↻";white-space:pre;color:var(--accent)}
-.chars{position:relative;z-index:1;display:flex;flex-wrap:wrap;row-gap:6px;align-items:flex-end}
+.chars{position:relative;z-index:1;display:flex;flex-wrap:wrap;row-gap:8px;align-items:flex-end}
 .grp{display:inline-flex;flex-wrap:nowrap;align-items:flex-end}
 .c{display:inline-flex;flex-direction:column;align-items:center;padding:0 1px;border-radius:8px;min-width:1.15em}
 .c .jp{font-size:12px;font-weight:600;line-height:16px;height:16px;white-space:nowrap}
@@ -325,18 +342,18 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 .c.sel{background:var(--accent-soft)}
 .c.punct .hz{color:var(--muted)}
 .sp{width:.7em}
-.summary{margin-top:8px;padding:14px 16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);font-size:14px;line-height:1.6;color:var(--ink-2)}
+.summary{margin-top:8px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);font-size:14px;line-height:1.6;color:var(--ink-2)}
 .summary .label{display:block;margin-bottom:4px}
 .hide-jp .c .jp{display:none}
 
 /* 浮动播放条 */
-.player{position:fixed;left:max(14px,env(safe-area-inset-left,0px));right:max(14px,env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
-  z-index:25;max-width:700px;margin:0 auto;padding:12px 16px 10px;border-radius:30px;background:var(--surface);box-shadow:var(--shadow-3);
+.player{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(32px + env(safe-area-inset-bottom,0px));
+  z-index:25;max-width:700px;margin:0 auto;padding:12px 16px;border-radius:30px;background:var(--surface);box-shadow:var(--shadow-3);
   display:flex;flex-direction:column;gap:8px}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .player{box-shadow:0 0 0 1px var(--rule)}}
 :root[data-theme="dark"] .player{box-shadow:0 0 0 1px var(--rule)}
 .player .wrap{padding:0;display:flex;flex-direction:column;gap:8px;width:100%}
-.prog{display:flex;align-items:center;gap:10px;font-family:var(--font-latin);font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.prog{display:flex;align-items:center;gap:12px;font-family:var(--font-latin);font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
 .prog input{flex:1;min-width:0;height:20px;margin:0;background:transparent;-webkit-appearance:none;appearance:none}
 .prog input::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--accent) var(--p,0%),var(--accent-soft) var(--p,0%))}
 .prog input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-4px;border-radius:50%;background:var(--accent);border:0}
@@ -349,13 +366,13 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 .ib.on{color:var(--accent);background:var(--accent-soft)}
 .ib.play{width:58px;height:58px;border-radius:20px;background:var(--accent);color:var(--on-accent)}
 .ib.play.is-pressed{background:var(--accent-press)}
-.ib.rate{width:auto;min-width:56px;padding:0 10px;font-family:var(--font-latin);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.ib.rate{width:auto;min-width:56px;padding:0 12px;font-family:var(--font-latin);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 
 /* Import + sync：每一步是一张白卡片，保存按钮固定在底部 */
-.form{display:flex;flex-direction:column;gap:12px;padding-block:6px calc(110px + env(safe-area-inset-bottom,0px))}
+.form{display:flex;flex-direction:column;gap:12px;padding-block:8px calc(110px + env(safe-area-inset-bottom,0px))}
 .card{background:var(--surface);border-radius:22px;box-shadow:var(--shadow-1);padding:16px;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 76px);transition:box-shadow var(--dur) var(--ease)}
 .card.need{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
-.field{display:flex;flex-direction:column;gap:10px}
+.field{display:flex;flex-direction:column;gap:12px}
 .seg{display:flex;gap:8px}
 .seg .btn{flex:1}
 .stepper{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:4px}
@@ -366,7 +383,11 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row > *{min-width:0}
 .filebox{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;border:2px dashed var(--rule);cursor:pointer}
-.filebox input{position:absolute;opacity:0;width:1px;height:1px}
+/* 看不见的选文件框：钉在所在框的左上角。iPhone 会给选文件框一个最小宽度，不管 width:1px，
+   以前它放在「更换音频」按钮文字后面，超出了屏幕右边，把编辑歌曲页撑宽（能左右拖、弹窗右上角被切） */
+.filebox,label.btn{position:relative}
+label.btn{overflow:hidden}
+.filebox input[type=file],label.btn input[type=file]{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
 .filebox .btn{flex:none;white-space:nowrap}
 .note{font-size:13px;color:var(--muted);line-height:1.6}
 .ok{color:var(--t3);font-weight:600}
@@ -374,58 +395,63 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 .stale{color:var(--danger);font-weight:600}
 .home-note{margin:0 0 12px}
 .results{display:flex;flex-direction:column;gap:8px}
-.res{display:flex;justify-content:space-between;gap:8px;min-height:56px;padding:12px 14px;border-radius:18px;background:var(--bg);text-align:left;width:100%;
+.res{display:flex;justify-content:space-between;gap:8px;min-height:56px;padding:12px 16px;border-radius:18px;background:var(--bg);text-align:left;width:100%;
   transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
 .res.is-pressed{transform:scale(.98);background:var(--surface-press)}
 .res b{font-weight:600}
 .bottom-bar{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;max-width:688px;margin:0 auto}
-.sync-list{display:flex;flex-direction:column;gap:6px;padding-block:10px calc(240px + env(safe-area-inset-bottom,0px))}
-.sl{display:flex;gap:12px;padding:14px;border-radius:22px;font-size:18px;opacity:.6;transition:opacity var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
-.sl .tm{font-family:var(--font-latin);font-size:12px;font-weight:500;color:var(--muted);width:46px;flex:none;padding-top:5px;font-variant-numeric:tabular-nums}
+.sync-list{display:flex;flex-direction:column;gap:8px;padding-block:12px calc(240px + env(safe-area-inset-bottom,0px))}
+.sl{display:flex;gap:12px;padding:16px;border-radius:22px;font-size:18px;opacity:.6;transition:opacity var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.sl .tm{font-family:var(--font-latin);font-size:12px;font-weight:500;color:var(--muted);width:48px;flex:none;padding-top:4px;font-variant-numeric:tabular-nums}
 .sl.next{opacity:1;background:var(--surface);box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
 .sl.done{opacity:.6}
 .tapbig{flex:1;min-height:56px;font-size:17px;border-radius:18px}
 
 /* 编辑歌曲（原「校对歌词」） */
-.proof{display:flex;flex-direction:column;gap:10px;padding-block:6px calc(200px + env(safe-area-inset-bottom,0px))}
+.proof{display:flex;flex-direction:column;gap:12px;padding-block:8px calc(200px + env(safe-area-inset-bottom,0px))}
 .shift-card{display:flex;align-items:center;gap:12px}
-.sc-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sc-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .sc-txt b{font-size:15px;font-weight:700}
 .sc-ctl{display:flex;align-items:center;gap:8px}
 .sc-ctl .btn{font-size:22px;font-weight:600}
 #shiftVal{min-width:56px;text-align:center;font-weight:600}
-.pl-list{display:flex;flex-direction:column;gap:10px}
+.pl-list{display:flex;flex-direction:column;gap:12px}
 .pl{background:var(--surface);border-radius:22px;box-shadow:var(--shadow-1);transition:box-shadow var(--dur) var(--ease)}
 .pl.open{box-shadow:0 0 0 2px var(--accent),var(--cur-glow)}
-.pl-head{display:flex;gap:14px;align-items:baseline;width:100%;min-height:56px;padding:16px;text-align:left}
+.pl-head{display:flex;gap:16px;align-items:baseline;width:100%;min-height:56px;padding:16px;text-align:left}
 .pl-time{flex:none;min-width:48px;font-family:var(--font-latin);font-size:13px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
 .pl.open .pl-time{color:var(--accent);font-weight:600}
 .pl-txt{font-size:17px;min-width:0}
-.pl-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.pl-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
 .pl-nudge{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .pl-nudge .btn{padding:8px 0;font-family:var(--font-latin);font-weight:600}
-.pl-act,.pl-ops{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pl-act,.pl-ops{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .audio-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .audio-row .note{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.audio-row .btn{flex:none;position:relative}
+.audio-row .btn{flex:none}
 .ctrls.solo{justify-content:center}
 #prPlay .i-pause,#prPlay.playing .i-play{display:none}
 #prPlay.playing .i-pause{display:block}
 
 /* Sheet：从下面滑上来，可以往下拖关闭。
    弹出层不使用暗幕（设计规范 5.6）：Safari 的状态栏由它自己画，网页变暗时状态栏跟不上，会闪或者不协调。
-   所以弹层后面不变暗，靠更明显的阴影 --shadow-sheet 浮在页面上；点外面关闭（确认类弹窗必须点按钮） */
+   所以弹层后面不变暗，靠更明显的阴影 --shadow-sheet 浮在页面上；点外面关闭（确认类弹窗点外面不关，往下拖等于取消） */
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:720px;margin:0 auto;background:var(--surface);border-radius:34px 34px 0 0;
   max-height:88dvh;overflow:auto;overscroll-behavior-y:contain;box-shadow:var(--shadow-sheet);padding-bottom:env(safe-area-inset-bottom,0px);
   transform:translateY(100%);opacity:0;transition:transform var(--dur-slow) var(--ease),opacity var(--dur-slow) var(--ease)}
 .sheet.open{transform:none;opacity:1}
 .sheet.dragging{transition:none}
-.sheet .wrap{padding-block:10px 24px;display:flex;flex-direction:column;gap:14px}
-.grab{width:40px;height:5px;border-radius:3px;background:var(--rule);margin:2px auto 4px;flex:none}
+/* 弹窗统一间距（设计规范 5.6）：顶部 12px 后是拖动条，拖动条下 20px 是标题，标题和说明 8px，说明到按钮 24px，
+   按钮之间 12px，左右 20px，底部 16px + 安全区（.sheet 自己的 padding-bottom） */
+.sheet .wrap{padding:12px max(20px,env(safe-area-inset-right,0px)) 16px max(20px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--rule);margin:0 auto 8px;flex:none}
 .sheet h3{margin:0;font-size:17px;font-weight:700}
+.sheet .wrap>p{margin:0}
+.sheet .wrap>h3+.note,.sheet .wrap>h3+p{margin-top:-4px}
+.sheet .wrap>.note+.btn,.sheet .wrap>p+.btn,.sheet .wrap>h3+.btn{margin-top:12px}
 /* 下拉小菜单（设计规范 5.9）：挂在吸顶顶栏里，absolute 不是 fixed（顶部附近不能有带颜色的 fixed 元素，见 7.4），从「⋯」按钮的位置缩放淡入 */
 .bar .wrap{position:relative}
-.menu{position:absolute;z-index:30;min-width:200px;padding:6px;border-radius:16px;background:var(--surface);box-shadow:var(--shadow-menu);
+.menu{position:absolute;z-index:30;min-width:200px;padding:8px;border-radius:16px;background:var(--surface);box-shadow:var(--shadow-menu);
   display:flex;flex-direction:column;transform-origin:top right;transform:scale(.92);opacity:0;
   transition:transform 180ms var(--ease),opacity 180ms var(--ease)}
 .menu.open{transform:none;opacity:1;transition:transform var(--dur-spring) var(--spring),opacity 180ms var(--ease)}
@@ -433,30 +459,30 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 .menu .btn.is-pressed{transform:none;background:var(--surface-press)}
 .wc-top{display:flex;gap:16px;align-items:center}
 .wc-top.long{flex-direction:column;align-items:stretch}
-.wc-square{flex:none;display:flex;flex-wrap:wrap;max-width:100%;gap:6px;padding:16px 18px;border-radius:28px;background:var(--accent-soft)}
+.wc-square{flex:none;display:flex;flex-wrap:wrap;max-width:100%;gap:8px;padding:16px;border-radius:28px;background:var(--accent-soft)}
 .wc-ch{display:flex;flex-direction:column;align-items:center;cursor:pointer}
 .wc-ch .jp{font-size:20px;font-weight:700;line-height:1.2}
 .wc-ch .hz{font-size:56px;font-weight:700;line-height:1.1}
 .wc-side{display:flex;flex-direction:column;gap:8px;min-width:0}
 .wc-mean{font-size:22px;font-weight:600;line-height:1.3}
-.wc-tags{display:flex;flex-wrap:wrap;gap:6px}
-.tone-tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--tc);background:color-mix(in srgb,var(--tc) 12%,transparent)}
-.wc-tip,.tip{padding:12px 14px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:14px;line-height:1.6}
-.wc-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.btn.add-dashed{min-height:56px;border-radius:18px;background:none;box-shadow:none;color:var(--accent);border:2px dashed color-mix(in srgb,var(--accent) 40%,transparent)}
+.wc-tags{display:flex;flex-wrap:wrap;gap:8px}
+.tone-tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:600;color:var(--tc);background:color-mix(in srgb,var(--tc) 12%,transparent)}
+.wc-tip,.tip{padding:12px 16px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:14px;line-height:1.6}
+.wc-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn.add-dashed{min-height:48px;border-radius:16px;background:none;box-shadow:none;color:var(--accent);border:2px dashed color-mix(in srgb,var(--accent) 40%,transparent)}
 .btn.add-dashed.is-pressed{background:var(--accent-soft)}
-.wc-known{min-height:56px;display:flex;align-items:center;justify-content:center;border-radius:18px;background:var(--bg);color:var(--muted);font-size:15px;font-weight:600}
+.wc-known{min-height:48px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:var(--bg);color:var(--muted);font-size:15px;font-weight:600}
 .mean{font-size:17px}
-.warn{padding:12px 14px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:13px;line-height:1.6}
-.cands{display:flex;gap:6px;flex-wrap:wrap}
-.cand{font-family:var(--font-latin);font-weight:600;font-size:15px;min-height:40px;padding:6px 12px;border-radius:12px;background:var(--bg)}
+.warn{padding:12px 16px;border-radius:18px;background:var(--accent-soft);color:var(--ink-2);font-size:13px;line-height:1.6}
+.cands{display:flex;gap:8px;flex-wrap:wrap}
+.cand{font-family:var(--font-latin);font-weight:600;font-size:15px;min-height:44px;padding:8px 12px;border-radius:12px;background:var(--bg)}
 .cand[aria-pressed="true"]{background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
-.steps{display:grid;gap:10px;counter-reset:s;margin:0;padding:0;list-style:none}
-.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
-.steps li::before{counter-increment:s;content:counter(s);width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-family:var(--font-latin);display:grid;place-items:center;font-size:13px;font-weight:700;margin-top:1px}
+.steps{display:grid;gap:12px;counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:24px 1fr;gap:12px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-family:var(--font-latin);display:grid;place-items:center;font-size:13px;font-weight:700}
 .msgs{font-size:13px;display:grid;gap:4px;max-height:180px;overflow:auto}
 
-.toast{position:fixed;left:50%;bottom:calc(160px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--inverse);color:var(--on-inverse);padding:12px 18px;border-radius:18px;font-size:14px;max-width:min(90vw,420px);text-align:center;box-shadow:var(--shadow-3)}
+.toast{position:fixed;left:50%;bottom:calc(160px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--inverse);color:var(--on-inverse);padding:12px 16px;border-radius:18px;font-size:14px;max-width:min(90vw,420px);text-align:center;box-shadow:var(--shadow-3)}
 </style>
 </head>
 <body>
@@ -507,7 +533,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
       <div class="label">3 · 歌词</div>
       <div class="row">
         <button class="btn soft small" id="btnSearch" type="button">在线搜索歌词</button>
-        <label class="btn soft small" for="fLrc">选择 .lrc 文件<input id="fLrc" type="file" accept=".lrc,.txt,text/plain" style="position:absolute;opacity:0;width:1px;height:1px"></label>
+        <label class="btn soft small" for="fLrc">选择 .lrc 文件<input id="fLrc" type="file" accept=".lrc,.txt,text/plain"></label>
       </div>
       <div id="searchOut" class="results"></div>
       <textarea id="fLyrics" placeholder="或者直接粘贴歌词。&#10;带时间轴的 LRC 格式，例如：[00:21.71] 第一句歌词&#10;没有时间轴的纯文本也可以，保存后边听边点来对齐。"></textarea>
@@ -577,7 +603,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
       <input id="prTitle" type="text" placeholder="歌名" autocomplete="off">
       <input id="prArtist" type="text" placeholder="歌手" autocomplete="off">
       <div class="label">音频</div>
-      <div class="audio-row"><span id="prAudioInfo" class="note"></span><label class="btn soft small" for="prAudio">更换音频<input id="prAudio" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav" style="position:absolute;opacity:0;width:1px;height:1px"></label></div>
+      <div class="audio-row"><span id="prAudioInfo" class="note"></span><label class="btn soft small" for="prAudio">更换音频<input id="prAudio" type="file" accept="audio/*,.mp3,.m4a,.aac,.wav"></label></div>
       <div class="note">换音频时歌词、时间轴和学习进度都保留。</div>
     </div>
     <div class="card shift-card">
@@ -736,14 +762,18 @@ function clearPressed(){document.querySelectorAll(".is-pressed").forEach(e=>e.cl
 document.addEventListener("pointerdown",e=>{
   clearPressed();if(outsideLayer(e.target))return;// 点外面只是关掉菜单或弹层，下面的按钮不显示按下
   const t=e.target.closest&&e.target.closest(PRESSABLE);
-  if(t&&!t.disabled){t.classList.add("is-pressed");pressedEl=t}
+  if(t&&!t.disabled){t.classList.add("is-pressed");pressedEl=t;if(t.id==="btnSettings")t.classList.add("turn")}
 },{passive:true,capture:true});
+// 齿轮：取消点击（手指移开、滚动、系统取消）转回原位；抬手后 350ms 还没开始跳转（没有 click），也转回去
+const gearBack=()=>{const g=$("#btnSettings");if(g&&!navPending&&curView==="home")g.classList.remove("turn")};
+document.addEventListener("pointercancel",gearBack,{passive:true,capture:true});
+document.addEventListener("pointerup",()=>setTimeout(gearBack,350),{passive:true,capture:true});
 ["pointerup","pointercancel"].forEach(ev=>document.addEventListener(ev,clearPressed,{passive:true,capture:true}));
 document.addEventListener("pointermove",e=>{
   if(!pressedEl)return;const r=pressedEl.getBoundingClientRect();
-  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)clearPressed();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom){clearPressed();gearBack()}
 },{passive:true});
-window.addEventListener("scroll",()=>{if(pressedEl)clearPressed()},{passive:true,capture:true});
+window.addEventListener("scroll",()=>{if(pressedEl){clearPressed();gearBack()}},{passive:true,capture:true});
 window.addEventListener("pageshow",clearPressed);
 // 所有跳转都走这里：先松开按钮，等两帧（确认"松开"已经画到屏幕上）再等弹回动画（--dur-fast 120ms）播完，才 pushState 切页。
 // 原因：系统右滑返回显示的是离开这一页时拍的快照，抬手后马上跳转的话快照里按钮还是按下的（2026-10-30 调试面板 v18 实测）
@@ -797,7 +827,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v22";
+const APP_VERSION="v23";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 function descEl(el){
@@ -1313,7 +1343,7 @@ function lineHTML(li){
 function buildLyrics(){
   view=cur.lines.map((_,li)=>computeLine(li));
   $("#lyrics").innerHTML=view.map((_,li)=>lineHTML(li)).join("");
-  $("#pSummary").innerHTML=cur.pack&&cur.pack.summary?`<div class="summary"><span class="label">这首歌讲什么</span>${esc(cur.pack.summary)}<div class="note" style="margin-top:6px">有下划线的是重点词，点一下看意思。</div></div>`:"";
+  $("#pSummary").innerHTML=cur.pack&&cur.pack.summary?`<div class="summary"><span class="label">这首歌讲什么</span>${esc(cur.pack.summary)}<div class="note" style="margin-top:8px">有下划线的是重点词，点一下看意思。</div></div>`:"";
 }
 function rebuildLine(li){view[li]=computeLine(li);const old=$("#lyrics").children[li];const tmp=document.createElement("div");tmp.innerHTML=lineHTML(li);old.replaceWith(tmp.firstElementChild)}
 
@@ -1397,7 +1427,7 @@ function renderProof(){
       <input class="pl-text" type="text" value="${esc(l.text)}" autocomplete="off">
       <div class="pl-nudge">${["-0.5","-0.1","0.1","0.5"].map(d=>`<button class="btn soft small" type="button" data-nudge="${d}">${d[0]==="-"?"−"+d.slice(1):"+"+d}</button>`).join("")}</div>
       <div class="pl-act"><button class="btn soft" type="button" data-audition>▶ 试听这句</button><button class="btn primary" type="button" data-mark>对准现在的歌声</button></div>
-      <div class="pl-ops"><button class="btn small" type="button" data-op="insert">在下面插入一句</button><button class="btn small" type="button" data-op="split">从这里拆开</button>${i>0?'<button class="btn small" type="button" data-op="merge">合并到上一句</button>':""}<button class="btn small text danger" type="button" data-op="del">删除这句</button></div>
+      <div class="pl-ops"><button class="btn" type="button" data-op="insert">在下面插入一句</button><button class="btn" type="button" data-op="split">从这里拆开</button>${i>0?'<button class="btn" type="button" data-op="merge">合并到上一句</button>':""}<button class="btn text danger" type="button" data-op="del">删除这句</button></div>
     </div>`}</div>`).join("");
 }
 // 展开第 i 句并滚到它；focus 为真时把光标放进输入框
@@ -1491,13 +1521,13 @@ function dirtyPrompt(){
 }
 
 /* ---------- 删除前确认（样式和"有改动还没保存"一样） ---------- */
-// 返回 Promise：点「删除」→ true；点「取消」→ false。确认类弹窗点外面不关，必须点按钮（系统返回时也算取消）
+// 返回 Promise：点「删除」→ true；点「取消」或往下拖关闭 → false。确认类弹窗点外面不关（系统返回时也算取消）
 let confirmDone=null;
 function confirmSheet({title,body,ok="删除",danger=true}){
   if(confirmDone)confirmDone(false);
   return new Promise(res=>{
     confirmDone=v=>{confirmDone=null;res(v)};
-    openSheet(`<h3>${esc(title)}</h3>${body?`<p class="note" style="margin:0">${esc(body)}</p>`:""}
+    openSheet(`<h3>${esc(title)}</h3>${body?`<p class="note">${esc(body)}</p>`:""}
       <button class="btn ${danger?"danger-fill":"primary"} block" type="button" data-confirm="ok">${esc(ok)}</button>
       <button class="btn block" type="button" data-confirm="cancel">取消</button>`,{modal:true});
     $("#sheetBody").onclick=e=>{
@@ -1537,12 +1567,12 @@ songMenu.addEventListener("click",async e=>{
 });
 
 /* ---------- sheet ---------- */
-// 弹出层不使用暗幕（设计规范 5.6）。modal：确认类弹窗，点外面、往下拖都不关，必须点按钮
+// 弹出层不使用暗幕（设计规范 5.6）。所有弹窗都有拖动条；modal：确认类弹窗，点外面不关，往下拖关闭等于取消
 let sheetTimer=0,sheetModal=false;
 const sheetOpen=()=>$("#sheet").classList.contains("open");
 function openSheet(html,{modal=false}={}){
   const sh=$("#sheet");clearTimeout(sheetTimer);sheetModal=modal;
-  $("#sheetBody").innerHTML=(modal?"":`<div class="grab"></div>`)+html;
+  $("#sheetBody").innerHTML=`<div class="grab"></div>`+html;
   if(sh.hidden||!sh.classList.contains("open")){stopSpring();sh.hidden=false;sh.scrollTop=0;sh.style.transform="";sh.style.transitionDuration="";void sh.offsetHeight;sh.classList.add("open")}
 }
 function closeSheet(){
@@ -1583,7 +1613,7 @@ function springBack(x0,v0){
 }
 $("#sheet").addEventListener("touchstart",e=>{
   const sh=$("#sheet"),y=e.touches[0].clientY;
-  if(sheetModal||y-sh.getBoundingClientRect().top>48||sh.scrollTop>0){drag=null;return}
+  if(y-sh.getBoundingClientRect().top>48||sh.scrollTop>0){drag=null;return}
   // 弹回途中又按住：从现在的位置接着拖
   const m=/translateY\((-?[\d.]+)px\)/.exec(sh.style.transform||""),at=m?+m[1]:0;stopSpring();
   drag={y0:y-Math.max(0,at),y,t:e.timeStamp,vy:0};sh.classList.add("dragging");
@@ -1669,9 +1699,9 @@ function openPack(){
   const prompt=PACK.buildPrompt(cur);
   openSheet(`
     <h3>词汇包${cur.pack?' <span class="chip">已导入</span>':""}</h3>
-    <p class="note" style="margin:0">词汇包让 Claude 帮你整理这首歌的每个词：正确读音、普通话意思；其中的重点词还有记忆提示，在歌词里显示下划线。再加上整首歌的大意。</p>
+    <p class="note">词汇包让 Claude 帮你整理这首歌的每个词：正确读音、普通话意思；其中的重点词还有记忆提示，在歌词里显示下划线。再加上整首歌的大意。</p>
     <ol class="steps">
-      <li><div><button class="btn primary" type="button" id="cpPrompt">复制提示词</button><div class="note" style="margin-top:6px">提示词里已经放好了这首歌的歌词。</div></div></li>
+      <li><div><button class="btn primary" type="button" id="cpPrompt">复制提示词</button><div class="note" style="margin-top:8px">提示词里已经放好了这首歌的歌词。</div></div></li>
       <li><div>在 Claude 里新开一个对话，粘贴发送。等它回复完。</div></li>
       <li><div>复制它回复的整段 JSON，粘贴到下面：</div></li>
     </ol>
@@ -1700,7 +1730,7 @@ function openPack(){
 
 /* ---------- settings：每天新学几句（M4 接上功能）+ 备份与恢复 ---------- */
 // 齿轮带弹簧转 90 度，同时开始跳转（go() 本来就会先等按钮弹回再切页）；减弱动态效果时 CSS 不播动画
-onClick("btnSettings",()=>{if(navPending)return;const b=$("#btnSettings");b.classList.remove("turn");void b.offsetWidth;b.classList.add("turn");renderSettings();go("settingsView")});
+onClick("btnSettings",()=>{if(navPending)return;$("#btnSettings").classList.add("turn");renderSettings();go("settingsView")});
 // 2 / 4 / 6 / 自定义（1–20）；goalCustom 只在这次打开设置页时有效
 let goalCustom=false;
 function setGoal(g){saveDaily({...getDaily(),goal:Math.min(STUDY.GOAL_MAX,Math.max(STUDY.GOAL_MIN,g))});renderGoal()}
@@ -1746,7 +1776,6 @@ function renderWords(){
   bar.hidden=!wSelMode||!sel.length;
   bar.querySelector('[data-wact="known"]').disabled=sel.every(c=>c.known);
   bar.querySelector('[data-wact="unknown"]').disabled=sel.every(c=>!c.known);
-  $("#wordsList").classList.toggle("has-act",!bar.hidden);
 }
 $("#wordsList").addEventListener("click",e=>{
   const r=e.target.closest("[data-w]");if(!r)return;
@@ -1834,7 +1863,7 @@ function renderBackupCard(){
     <p class="note" style="margin:0">备份文件包含歌词、时间轴、词汇包、改过的读音和生词卡片，不含音频。可以存到「文件」App 或隔空投送到别的设备。</p>
     <div class="row"><button class="btn primary" type="button" id="bkExport">导出备份文件</button><span class="note">${songs.length} 首歌 · ${cards.size} 个生词</span></div>
     <div class="note${age.stale&&songs.length?" stale":""}" id="bkAge">${age.text}</div>
-    <div class="row"><label class="btn soft" for="bkFile">从文件恢复<input id="bkFile" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px"></label><span id="bkMsg" class="note"></span></div>
+    <div class="row"><label class="btn soft" for="bkFile">从文件恢复<input id="bkFile" type="file" accept=".json,application/json"></label><span id="bkMsg" class="note"></span></div>
   `;
   $("#bkExport").addEventListener("click",exportBackup);
   $("#bkFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)restoreFromFile(f)});

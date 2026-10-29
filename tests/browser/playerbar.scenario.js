@@ -25,7 +25,7 @@ module.exports = { name: "playerbar", async run(b) {
   await b.reducedMotion(true);
   await b.ev(click('.song[data-id="t1"]')); await b.sleep(120);
   b.check("reduced-motion-fade " + (await b.ev(anim("#playerView .player"))), (await b.ev(anim("#playerView .player"))) === "barFade");
-  await b.ev(click("#playerView [data-back]")); await b.sleep(60);
+  await b.ev(click("#playerView [data-back]")); await b.sleep(200);// 跳转前要等按钮弹回（两帧）才切页，等够了再看
   b.check("reduced-motion-no-fade-out " + (await b.ev(anim("#playerView .player"))), (await b.ev(anim("#playerView .player"))) === "");
   await b.sleep(900);
   b.check("playerbar: 页面没有报错", b.errors.length === 0);

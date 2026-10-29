@@ -11,7 +11,11 @@
 - 一次只做一小步，做完让开发者在手机上试，确认没问题再继续
 - 遇到需要开发者做决定的地方，给出推荐选项，而不是开放式提问
 
-## 固定规则
+## 固定规则（每次都要遵守）
+- **始终用简体中文回复**，包括计划、总结、提问和 git 提交说明。读英文文档或技能后也用中文回复
+- **自动上线**：每完成一个修复或里程碑，电脑上的自动测试通过后，直接合并到 main 并 push 上线，不用问我。上线后告诉我版本号和在 iPhone 上怎么测
+- 上线前确认没有提交任何 mp3、lrc 或歌词文本
+- **每次改界面都要按设计规范 4.4「视觉对齐规则」检查**：间距只用 4/8/12/16/20/24/32px；左右边距和左边缘对齐；同类按钮一致；状态切换时其他元素不动。改完跑 `node tests/browser/run.js visual`（440×956，浅色 + 深色截图，检查没有横向溢出），自己看过截图、量过状态切换前后的位置，发现问题先修好再给开发者测
 - **完成后直接合并到 main 并 push 上线，不开 PR，不需要 gh 命令行工具**（开发者一个人的项目，2026-10-28 开发者决定）。做法：在功能分支上提交并跑完测试 → `git merge` 到 main（能快进就快进）→ `git push origin main`。推送后 GitHub Pages 1–2 分钟内更新，告诉开发者可以在 iPhone 上测了
 
 ## 技术约定
@@ -29,7 +33,7 @@
   - 删除类操作都用 `confirmSheet({title, body})`（返回 Promise<boolean>）先确认；删除歌曲走 `deleteSongs(ids)`：先从列表拿掉，5 秒内可撤销，`commitDelete()` 才真正删数据库（5 秒后、离开首页、切后台），卡片保留只去掉出处
   - 按下效果：**不用 CSS `:active`**，JS 在 pointerdown 时给 `.btn,.tones .key,.song,.ib,.res` 加 `.is-pressed`，抬起/取消/移出/滚动时去掉；`go()`/`goBack()` 先 `clearPressed()` 再等一帧才切页；popstate、pageshow 也清掉。`:hover` 只能写在 `@media (hover: hover)` 里
   - 浮动播放条 `.player`、学习页 `.study-foot`：`show()` 在切页动画结束后加 `bar-in`（从下方滑入 + 淡入）；离开时没有动画，切页时 `body.navigating` 直接隐藏。**常驻按钮**「＋ 导入新歌」`#btnAdd`、导入页「保存」`#btnSave`：放在 section 外面（`data-page="home"` / `"importView"`），`pageButtons()` 按当前页面直接显示/隐藏，没有动画。学习页原唱 `playStudyLine` 只播这一句（到下一句开始停）、固定 0.8×（`applyRate` 在学习页用 0.8），所有播放都走 `playAu({at, onFail})`（必须在点击里直接调用）：失败或 4 秒没播起来 → `reloadAudio()` 从 IndexedDB（`DB.fresh`，绕过内存缓存）重新读这首歌的音频、换新 object URL 再试一次，还失败才 toast，提示带「错误代码」（MediaError code · play() 错误名 · 超时 T+readyState+networkState）。App 回到前台（visibilitychange / pageshow）时 `checkAudio()` 检查音频还读不读得出来，不行就重新加载。测试 `audio-recover`、累积检查 `stress2`（学习页、自由听、编辑歌曲进出 33 次）
-  - 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以**顶部附近不能有带颜色的 fixed 元素**（`#topTint` 已去掉）。**弹出层不使用暗幕**（M3.12，设计规范 5.6）：底部弹窗 `openSheet(html, {modal})` 只靠 `--shadow-sheet` 阴影；点外面关闭（document 上的 pointerdown/pointerup 判断，移动超过 10px 算滚动，紧跟的 click 吞掉）；`modal: true` 的确认类弹窗（`confirmSheet`、未保存提示）没有拖动条，点外面、往下拖都不关
+  - 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以**顶部附近不能有带颜色的 fixed 元素**（`#topTint` 已去掉）。**弹出层不使用暗幕**（M3.12，设计规范 5.6）：底部弹窗 `openSheet(html, {modal})` 只靠 `--shadow-sheet` 阴影；点外面关闭（document 上的 pointerdown/pointerup 判断，移动超过 10px 算滚动，紧跟的 click 吞掉）；所有弹窗都有拖动条、统一间距（设计规范 5.6）；`modal: true` 的确认类弹窗（`confirmSheet`、未保存提示）点外面不关，往下拖关闭等于取消
   - 歌曲页「⋯」是下拉小菜单 `#songMenu`（设计规范 5.9）：放在吸顶顶栏 `.bar .wrap` 里，absolute，`openMenu()`/`closeMenu(now)`，切页时 `show()` 直接收起
   - 每日学习：首页 `#today` 卡片（`renderToday()`）→ 学习页 `studyView`（DEPTH 1，`startStudy()`/`studyNext()`/`renderStudy()`，学词 `renderWord`、整句 `renderLine`、完成 `renderDone`）。**进度每一步立刻存**（「会读了」建卡、「这句会了」标 learned + `daily.newLines/done`），不另存"学到哪"，下次进来用 `STUDY.nextLine` + 排除已有卡片算出断开的地方。原唱用 `playStudyLine(loop)` / `playLineOf(song, li, loop)`（0.8×，`tick()` 里按 `study.stopAt` 停或循环）。**复习**（M5）是学习页的第一段 `phase: "review"`（`renderReview`、`gradeCard`）：`STUDY.reviewQueue` 到期早的先、最多 50 张，「忘了」的卡这一轮最后再出一次（`STUDY.afterGrade`），每张卡评完立刻存 `srs` 和 `daily.reviewed`；`startStudy({reviewOnly})` 只复习、复习完到完成页。「我的生词」`wordsView`（设置页进入，DEPTH 2，`renderWords`、`openWordCard`；筛选标签 + 搜索 + 多选，底部「标为认识 / 取消认识 / 删除」，删除走 `deleteWords(ws)`，5 秒内可撤销，`commitWordDel()` 才真正删数据库（5 秒后、离开这页、切后台））正在学的歌：`STUDY.currentSong`，`setCurrentSong(id)`；存歌用 `saveSong(s)`（原地更新 `songs` 里的对象）
   - 设置页 `settingsView`：首页右上角齿轮进入；「每天新学几句」2/4/6/自定义（自定义展开「− 数字 +」，1–20；存 meta `daily.goal`，默认 4；旧的 `prefs.goal` 启动时搬过去）+ 备份与恢复（`renderSettings()`）
@@ -85,6 +89,8 @@
 - **M5 完成（待 iPhone 验收）**：复习（翻面卡片、忘了/模糊/记得、出处和原唱这句、先复习后新学）、首页两格并排 / 只剩复习时「开始复习」、设置页「我的生词」。细节见规格 9 M5
 - **我的生词：筛选和多选**（v20，待 iPhone 验收）：全部 / 学习中 / 已认识 / 今天到期（带数量）、搜索汉字/粤拼/意思、「选择」多选 +「全选」（只选当前筛选结果）、底部「标为认识 / 取消认识 / 删除」（删除 5 秒撤销）。取消认识 = 明天凌晨 4 点开始复习。见规格 6.3
 - **M4b 完成**（2026-10-29 iPhone 验收通过，含验收反馈：底部按钮动画、首页紧凑一行、原唱只播这一句、「＋ 导入新歌」和「保存」常驻）：首页「今天的学习」（M5 前不显示复习格）、学词卡片、整句（原唱 0.8× 循环）、完成页、再学 2 句、中途退出继续、副歌和没汉字的句子自动跳过、「设为正在学」、整首学完「选下一首歌」。细节见规格 9 M4b
+- **v22**：首页底部渐进模糊上边缘对齐「＋ 导入新歌」（`fitEdgeBlur()` 按按钮位置算），最强 4px
+- **v23（2026-10-30，待 iPhone 验收）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。下一步：开发者测好后做发音改进（cantone 音节录音，先做试听页）
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）

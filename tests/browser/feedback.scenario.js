@@ -65,14 +65,23 @@ module.exports = { name: "feedback", async run(b) {
   b.check("wordcard-no-dim", JSON.stringify(await b.ev(topFixed)) === "[]" && (await b.ev(cs("#sheet", "boxShadow"))).includes("-8px 40px"));
   await F.tapAt(b, ...(await b.ev(center('#lyrics .line[data-li="1"] .c[data-ci="0"]')))); await b.sleep(500);
   b.check("wordcard-outside-close", !(await b.ev(sheetShown)));
-  // 删除确认：点外面、往下拖都不关，必须点按钮；没有拖动条
+  // 删除确认：有拖动条，统一间距；点外面不关；往下拖关闭等于取消
   await b.ev(click("#btnMenu")); await b.sleep(300);
   await b.ev(click('[data-menu="del"]')); await b.sleep(500);
-  b.check("confirm-no-grab", (await b.ev(F.sheetText)).includes("删除这首歌？") && !(await b.ev(`!!document.querySelector("#sheet .grab")`)));
+  b.check("confirm-has-grab", (await b.ev(F.sheetText)).includes("删除这首歌？") && (await b.ev(`!!document.querySelector("#sheet .grab")`)));
+  // 弹窗间距（设计规范 5.6）：顶部 12 → 拖动条 → 20 → 标题 → 8 → 说明 → 24 → 按钮 → 12 → 按钮；左右 20；底部 16
+  const gaps = await b.ev(`(() => { const sh = document.querySelector("#sheet").getBoundingClientRect(), R = s => document.querySelector("#sheet " + s).getBoundingClientRect();
+    const g = R(".grab"), h = R("h3"), p = R("p.note"), ok = R('[data-confirm="ok"]'), no = R('[data-confirm="cancel"]'), r = Math.round;
+    return [r(g.top - sh.top), r(h.top - g.bottom), r(p.top - h.bottom), r(ok.top - p.bottom), r(no.top - ok.bottom), r(ok.left - sh.left), r(sh.right - ok.right), r(sh.bottom - no.bottom)]; })()`);
+  b.check("confirm-spacing " + JSON.stringify(gaps), JSON.stringify(gaps) === "[12,20,8,24,12,20,20,16]");
   await F.tapAt(b, ...(await b.ev(center('#lyrics .line[data-li="1"] .c[data-ci="0"]')))); await b.sleep(500);
+  b.check("confirm-stays", await b.ev(sheetShown) && (await b.ev(`document.querySelector("#sheet").classList.contains("open")`)));
   const st = await b.ev(`(() => { const r = document.querySelector("#sheet").getBoundingClientRect(); return [r.left + r.width / 2, r.top + 10]; })()`);
   await b.touch("touchStart", st[0], st[1]); for (let i = 1; i <= 5; i++) { await b.touch("touchMove", st[0], st[1] + i * 40); await b.sleep(16); } await b.touch("touchEnd"); await b.sleep(500);
-  b.check("confirm-stays", await b.ev(sheetShown) && (await b.ev(`document.querySelector("#sheet").classList.contains("open")`)));
+  b.check("confirm-drag-cancels", !(await b.ev(sheetShown)) && !!(await b.ev(F.idbGet("songs", "t1"))));
+  await b.ev(click("#btnMenu")); await b.sleep(300);
+  await b.ev(click('[data-menu="del"]')); await b.sleep(500);
+  b.check("confirm-tap-outside-stays", await b.ev(sheetShown));
   await b.ev(click('[data-confirm="cancel"]')); await b.sleep(500);
   b.check("confirm-cancel", !(await b.ev(sheetShown)) && !!(await b.ev(F.idbGet("songs", "t1"))));
   // 页面滚下去以后，菜单还是在「⋯」正下方
@@ -92,7 +101,7 @@ module.exports = { name: "feedback", async run(b) {
   const h1 = await b.ev(taH);
   const lh = await b.ev(`parseFloat(getComputedStyle(document.querySelector("#fLyrics")).lineHeight)`);
   const below = await b.ev(`document.querySelector("#lyricsInfo").getBoundingClientRect().top >= document.querySelector("#fLyrics").getBoundingClientRect().bottom`);
-  b.check(`lyrics-box-fixed ${h0} ${h1} ${lh}`, Math.abs(h0 - (lh * 7 + 28)) < 1 && h1 === h0 && below
+  b.check(`lyrics-box-fixed ${h0} ${h1} ${lh}`, Math.abs(h0 - (lh * 7 + 24)) < 1 && h1 === h0 && below
     && (await b.ev(cs("#fLyrics", "overflowY"))) === "auto" && (await b.ev(cs("#fLyrics", "clipPath"))) !== "none");
   await b.ev(click("#importView [data-back]")); await b.sleep(700);
 

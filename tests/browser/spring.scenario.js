@@ -23,10 +23,23 @@ module.exports = { name: "spring", async run(b) {
     const d = Math.round(document.querySelector(".edge-blur").getBoundingClientRect().top - add.getBoundingClientRect().top); add.style.minHeight = ""; await new Promise(r => setTimeout(r, 100)); return d; })()`);
   b.check("edge-blur-follows-add " + grow, grow === 0);
 
-  // 齿轮：点了带弹簧转 90 度，同时跳转到设置页；回首页后齿轮是新的（不带转过的状态）
-  await b.ev(`document.querySelector("#btnSettings").click()`); await b.sleep(60);
-  const gear = await b.ev(`(() => { const s = getComputedStyle(document.querySelector("#btnSettings svg")); return [document.querySelector("#btnSettings").classList.contains("turn"), s.animationName, s.animationTimingFunction]; })()`);
-  b.check("gear-turn " + JSON.stringify(gear), gear[0] && gear[1] === "gearTurn" && gear[2].startsWith("linear("));
+  // 齿轮：手指按下就开始转 60 度（0.5 秒 ease-out，不用弹簧）；手指移开取消 → 平滑转回原位；
+  // 正常点：抬手后接着转完，同时跳转到设置页；回首页后齿轮是新的（不带转过的状态）
+  const gearAt = await b.ev(`(() => { const r = document.querySelector("#btnSettings").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  const angle = `(() => { const m = new DOMMatrix(getComputedStyle(document.querySelector("#btnSettings svg")).transform); return Math.round(Math.atan2(m.b, m.a) * 180 / Math.PI); })()`;
+  const gStyle = await b.ev(`(() => { const s = getComputedStyle(document.querySelector("#btnSettings svg")); return [s.transitionDuration, s.transitionTimingFunction, s.animationName]; })()`);
+  b.check("gear-style " + JSON.stringify(gStyle), gStyle[0] === "0.5s" && gStyle[1].startsWith("cubic-bezier") && gStyle[2] === "none");
+  await b.touch("touchStart", gearAt[0], gearAt[1]); await b.sleep(250);
+  const midA = await b.ev(angle); await b.sleep(400);
+  const fullA = await b.ev(angle);
+  b.check("gear-turns-on-press " + JSON.stringify([midA, fullA]), midA > 20 && midA < 60 && fullA === 60 && (await b.ev(`history.state ? history.state.view : "home"`)) === "home");
+  await b.touch("touchMove", gearAt[0] - 120, gearAt[1] + 120); await b.sleep(250);
+  const backMid = await b.ev(angle); await b.sleep(500);
+  b.check("gear-cancel-turns-back " + JSON.stringify([backMid, await b.ev(angle)]), backMid > 0 && backMid < 60 && (await b.ev(angle)) === 0);
+  await b.touch("touchEnd"); await b.sleep(400);
+  b.check("gear-cancel-stays-home", (await b.ev(`history.state ? history.state.view : "home"`)) === "home" && (await b.ev(angle)) === 0);
+  await b.touch("touchStart", gearAt[0], gearAt[1]); await b.sleep(80); await b.touch("touchEnd"); await b.sleep(120);
+  b.check("gear-keeps-turning-after-release", await b.ev(`document.querySelector("#btnSettings").classList.contains("turn")`));
   await b.sleep(900);
   b.check("gear-goes-settings", (await b.ev(`history.state && history.state.view`)) === "settingsView" && !(await b.ev(`document.querySelector(".edge-blur").getBoundingClientRect().height`)));
   await b.ev(`history.back()`); await b.sleep(800);

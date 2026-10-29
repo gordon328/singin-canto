@@ -2,6 +2,10 @@
 const F = require("./fixtures.js");
 const click = sel => `document.querySelector(${JSON.stringify(sel)}).click()`;
 const visible = sel => `(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && !e.hidden && e.getBoundingClientRect().height > 0; })()`;
+const HOME_POS = [".home-head", ".brand", "#tones", "#songs", ".song", ".song .sq", "#appVer", ".sec-title:has(#btnSelect)"];
+// 记录主要元素的位置（进入/退出选择模式前后对比，除了勾选框其他都不能动）
+const pos = sels => `(() => { const o = {}; for (const s of ${JSON.stringify(sels)}) { const e = document.querySelector(s); const r = e.getBoundingClientRect(); o[s] = [r.left, r.top, r.width, r.height].map(Math.round).join(); } return o; })()`;
+const moved = (a, b) => Object.keys(a).filter(k => a[k] !== b[k]);
 const toast = `(document.querySelector("#toast").hidden ? "" : document.querySelector("#toast").innerText)`;
 const songIds = `[...document.querySelectorAll("#songs .song")].map(e => e.dataset.id).sort().join()`;
 const putSong = (id, title) => `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const tx = db.transaction("songs", "readwrite");
@@ -24,7 +28,10 @@ module.exports = { name: "delete", async run(b) {
   const danger = await b.ev(`(() => { const d = document.createElement("div"); d.style.color = "var(--danger)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`);
 
   b.check("select-button", (await b.ev(`document.querySelector("#btnSelect").innerText.trim()`)) === "选择" && await b.ev(visible("#btnSelect")));
+  const p0 = await b.ev(pos(HOME_POS)), w0 = await b.ev(`document.querySelector("#btnSelect").getBoundingClientRect().width`);
   await b.ev(click("#btnSelect")); await b.sleep(200);
+  const p1 = await b.ev(pos(HOME_POS)), w1 = await b.ev(`document.querySelector("#btnDone").getBoundingClientRect().width`);
+  b.check("select-nothing-moves " + JSON.stringify(moved(p0, p1)), moved(p0, p1).length === 0 && w0 === 60 && w1 === 60);
   b.check("select-mode " + (await b.ev(`document.querySelector("#btnDelSel").innerText`)),
     (await b.ev(`document.querySelectorAll("#songs .song .check").length`)) === 3 && (await b.ev(`document.querySelector("#btnDelSel").innerText.trim()`)) === "删除（0）"
     && (await b.ev(`getComputedStyle(document.querySelector("#btnDelSel")).backgroundColor`)) === danger

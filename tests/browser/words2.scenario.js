@@ -8,6 +8,10 @@ const mk = (w, jp, zh, due, known = false) => ({ w, jp, zh, tip: "", oral: false
 const words = `[...document.querySelectorAll("#wordsList .wrow")].map(e => e.dataset.w).join()`;
 const tabs = `[...document.querySelectorAll("#wTabs .btn")].map(e => e.innerText.replace(/\\s+/g, "")).join("|")`;
 const tabOn = `document.querySelector("#wTabs [aria-pressed=true]").dataset.tab`;
+// 记录主要元素的位置（进入/退出选择模式前后对比，除了勾选框其他都不能动）
+const pos = sels => `(() => { const o = {}; for (const s of ${JSON.stringify(sels)}) { const e = document.querySelector(s); const r = e.getBoundingClientRect(); o[s] = [r.left, r.top, r.width, r.height].map(Math.round).join(); } return o; })()`;
+const moved = (a, b) => Object.keys(a).filter(k => a[k] !== b[k]);
+const W_POS = ["#wordsView .bar", "#wordsView .bar .back", "#wTools", "#wordsList", ".wrow", ".wrow .wd"];
 const toast = `(document.querySelector("#toast").hidden ? "" : document.querySelector("#toast").innerText)`;
 const dis = k => `document.querySelector('#wAct [data-wact="${k}"]').disabled`;
 const type = q => `(() => { const i = document.querySelector("#wQ"); i.value = ${JSON.stringify(q)}; i.dispatchEvent(new Event("input", { bubbles: true })); })()`;
@@ -51,11 +55,15 @@ module.exports = { name: "words2", async run(b) {
   b.check("search-clear", (await b.ev(words)).split(",").length === 5);
 
   // 选择模式
+  const p0 = await b.ev(pos(W_POS));
   await b.ev(click("#wSelect")); await b.sleep(150);
   b.check("select-mode", (await b.ev(`document.querySelectorAll("#wordsList .wrow .check").length`)) === 5 && await b.ev(visible("#wDone")) && await b.ev(visible("#wSelAll"))
     && !(await b.ev(visible("#wSelect"))) && !(await b.ev(visible("#wAct"))) && (await b.ev(`document.querySelector("#wDone").innerText.trim()`)) === "完成");
   b.check("buttons-44px", await b.ev(`[...document.querySelectorAll("#wordsView button")].filter(e => e.getBoundingClientRect().height > 0).every(e => e.getBoundingClientRect().height >= 44)`));
   await b.ev(tap("我")); await b.sleep(100);
+  const p1 = await b.ev(pos(W_POS));
+  b.check("select-nothing-moves " + JSON.stringify(moved(p0, p1)), moved(p0, p1).length === 0 && await b.ev(visible("#wAct"))
+    && (await b.ev(`["#wSelAll", "#wDone"].map(s => document.querySelector(s).getBoundingClientRect().width).join()`)) === "60,60");
   b.check("tap-selects", await b.ev(visible("#wAct")) && !(await b.ev(visible("#sheet"))) && (await b.ev(`document.querySelectorAll("#wordsList .wrow.selected").length`)) === 1
     && (await b.ev(`document.querySelector("#wordsSub").innerText`)) === "已选 1 个");
   b.check("only-known-selected", (await b.ev(dis("known"))) === true && (await b.ev(dis("unknown"))) === false && (await b.ev(dis("del"))) === false);
