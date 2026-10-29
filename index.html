@@ -210,7 +210,14 @@ svg{display:block}
 .tones .key.fade .hz,.tones .key.fade .jp{opacity:0}
 #btnToneNext.spin svg{animation:spin 400ms var(--ease)}
 @keyframes spin{to{transform:rotate(360deg)}}
-.songs{display:flex;flex-direction:column;gap:10px;padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+.songs{display:flex;flex-direction:column;gap:10px}
+/* 首页底部版本号（连点 3 下开关调试面板），下面留出「＋ 导入新歌」的位置 */
+.ver{text-align:center;font-size:12px;color:var(--muted);padding:20px 0 calc(110px + env(safe-area-inset-bottom,0px));-webkit-user-select:none;user-select:none}
+/* 调试面板：浮在「＋ 导入新歌」上面，不挡手指（点击穿透到下面的按钮）；不放在屏幕顶部（会染状态栏） */
+.dbg{position:fixed;left:8px;right:8px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:50;max-height:64vh;overflow:hidden;pointer-events:none;
+  padding:8px 10px;border-radius:12px;background:var(--inverse);color:var(--on-inverse);opacity:.92;
+  font:10.5px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
+.dbg b{font-weight:700}
 .song{display:flex;align-items:center;gap:14px;padding:14px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
 .song.is-pressed{transform:scale(.98);background:var(--surface-press)}
@@ -438,6 +445,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
     <div class="sec-title"><span>我的歌</span><button class="btn text small" id="btnSelect" type="button" hidden>选择</button></div>
     <div id="homeNote"></div>
     <div class="songs" id="songs"></div>
+    <div class="ver num" id="appVer"></div>
   </div>
   <button class="btn danger-fill bottom bottom-bar" id="btnDelSel" type="button" hidden>删除（0）</button>
   <div class="snack" id="snack" hidden role="status"><span id="snackMsg"></span><button class="btn text small" id="snackUndo" type="button">撤销</button></div>
@@ -596,6 +604,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
+<div id="dbg" class="dbg" hidden></div>
 
 <script src="vendor/to-jyutping.js"></script>
 <script src="pack.js"></script>
@@ -658,7 +667,7 @@ function show(id,dir){
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
   clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
-  pageButtons();
+  pageButtons();renderDbg();
   const BARS=".player,.study-foot";
   document.querySelectorAll(BARS).forEach(p=>p.classList.remove("bar-in"));
   const bars=to.querySelectorAll(BARS),barIn=()=>bars.forEach(x=>x.classList.add("bar-in"));
@@ -716,10 +725,86 @@ window.addEventListener("popstate",e=>{
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
   // 回到首页：停掉播放，放开音频文件占的内存
-  if(curView!=="home"){au.pause();loopIdx=null;cancelAnimationFrame(raf);setAudio(null)}
-  show("home",anim);renderHome();
+  const back=curView!=="home";
+  if(back){au.pause();loopIdx=null;cancelAnimationFrame(raf);setAudio(null)}
+  freshHome();show("home",anim);renderHome();
+  if(back)dbgReturn(anim?"返回按钮":"系统右滑/其他");
 });
 document.querySelectorAll("[data-back]").forEach(b=>b.addEventListener("click",goBack));
+// 首页的固定按钮回首页时会被换成新元素，所以点击统一在 document 上按 id 分发
+function onClick(id,fn){document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#"+id))fn(e)})}
+// 回到首页：放掉焦点，把首页固定按钮换成新元素（不带任何旧状态）。歌曲卡片、声调键帽、今天的学习在 renderHome 里本来就是新生成的
+const HOME_BTNS=["btnDone","btnSettings","btnToneNext","btnSelect","btnDelSel","snackUndo","btnAdd"];
+function freshHome(){
+  if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
+  HOME_BTNS.forEach(id=>{const o=$("#"+id),n=o.cloneNode(true);n.classList.remove("is-pressed","spin");o.replaceWith(n)});
+}
+
+/* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
+// 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
+const APP_VERSION="v18";
+const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
+try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
+function descEl(el){
+  if(!el||!el.tagName)return "无";
+  if(el===document.body||el===document.documentElement)return el.tagName.toLowerCase();
+  let d=el.tagName.toLowerCase()+(el.id?"#"+el.id:"");
+  const c=[...el.classList].slice(0,3);if(c.length)d+="."+c.join(".");
+  const t=(el.textContent||"").trim().replace(/\s+/g," ").slice(0,8);
+  return t?`${d}「${t}」`:d;
+}
+// 回首页后用来找"同一个"按钮的选择器（旧元素已被换掉）
+function keyOf(el){
+  if(el.id)return "#"+el.id;
+  for(const a of ["id","say","today","pick"])if(el.dataset[a])return `#home [data-${a}="${CSS.escape(el.dataset[a])}"]`;
+  return el.hasAttribute("data-add")?"#home [data-add]":null;
+}
+const yn=b=>b?"是":"否";
+function safeMatches(el,s){try{return el.matches(s)}catch(e){return false}}
+function dbgSample(ms){
+  const L=dbg.last,el=(L.key&&document.querySelector(L.key))||L.el,cs=getComputedStyle(el),face=el.querySelector(".key-face");
+  const act=[...document.querySelectorAll(":active")].filter(x=>x!==document.documentElement&&x!==document.body).map(descEl).join(" / ")||"无";
+  return `<b>${String(ms).padStart(4)}ms</b> 新元素:${yn(el!==L.el)} 在页面:${yn(document.contains(el))} is-pressed:${yn(el.classList.contains("is-pressed"))} :active:${yn(safeMatches(el,":active"))} :focus:${yn(safeMatches(el,":focus"))} :hover:${yn(safeMatches(el,":hover"))}
+  焦点=${esc(descEl(document.activeElement))} transform=${cs.transform} 背景=${cs.backgroundColor} 透明度=${cs.opacity}${face?` 键面transform=${getComputedStyle(face).transform}`:""}
+  全部is-pressed=${document.querySelectorAll(".is-pressed").length} 所有:active=${esc(act)} 首页class=「${$("#home").className}」navigating=${yn(document.body.classList.contains("navigating"))}`;
+}
+function dbgReturn(how){
+  if(!dbg.on)return;
+  if(!dbg.last){dbg.ret={how,rows:["（离开首页前没有记到点了哪个按钮）"]};renderDbg();return}
+  const r=dbg.ret={how,rows:[]},t0=performance.now();
+  const take=()=>{if(dbg.ret!==r)return;r.rows.push(dbgSample(Math.round(performance.now()-t0)));renderDbg()};
+  take();[100,500,1000,3000].forEach(ms=>setTimeout(take,ms));
+}
+function renderDbg(){
+  const box=$("#dbg");box.hidden=!(dbg.on&&curView==="home");if(box.hidden)return;
+  const L=dbg.last,R=dbg.ret;
+  box.innerHTML=`<b>调试 ${APP_VERSION} · ${navigator.standalone?"主屏幕":"Safari"} · 返回方式：${R?R.how:"—"}</b>
+<b>刚才点的：</b>${L?esc(L.desc):"—"}
+${R?R.rows.join("\n"):"（回到首页后这里显示 0/100/500/1000/3000ms 的状态）"}
+<b>最近 10 个触摸事件：</b>
+${dbg.log.map(x=>`${x.t} ${x.type.padEnd(13)} ${x.view} ${esc(x.desc)}`).join("\n")}`;
+}
+// 记下在首页点的按钮（版本号本身不是按钮，不会覆盖）
+document.addEventListener("pointerdown",e=>{
+  if(!dbg.on||curView!=="home")return;
+  const t=e.target.closest&&e.target.closest(PRESSABLE);
+  if(t)dbg.last={el:t,key:keyOf(t),desc:descEl(t)};
+},{passive:true,capture:true});
+["pointerdown","pointerup","pointercancel","touchend","click"].forEach(type=>document.addEventListener(type,e=>{
+  if(!dbg.on)return;
+  const d=new Date(),p=e.target.closest&&e.target.closest(PRESSABLE);
+  dbg.log.push({type,view:curView,desc:p&&p!==e.target?`${e.target.tagName.toLowerCase()} ∈ ${descEl(p)}`:descEl(e.target),t:`${String(d.getSeconds()).padStart(2,"0")}.${String(d.getMilliseconds()).padStart(3,"0")}`});
+  if(dbg.log.length>10)dbg.log.shift();
+  if(curView==="home")renderDbg();
+},{passive:true,capture:true}));
+$("#appVer").textContent="版本 "+APP_VERSION;
+$("#appVer").addEventListener("click",e=>{
+  dbg.taps=e.timeStamp-dbg.tapAt<600?dbg.taps+1:1;dbg.tapAt=e.timeStamp;
+  if(dbg.taps<3)return;
+  dbg.taps=0;dbg.on=!dbg.on;dbg.log=[];dbg.last=null;dbg.ret=null;
+  try{localStorage.setItem("yc-debug",dbg.on?"1":"0")}catch(e){}
+  renderDbg();toast(dbg.on?"调试面板已打开":"调试面板已关闭");
+});
 
 
 /* ---------- speech ---------- */
@@ -758,12 +843,12 @@ function renderTones(animate){
     },k*30);
   });
 }
-$("#btnToneNext").addEventListener("click",()=>{
+onClick("btnToneNext",()=>{
   const r=metaRecs.get("tones");saveTones({key:"tones",setIndex:(r.setIndex+1)%LESSONS.TONE_SETS.length,date:SRS.today(Date.now())});renderTones(true);
   // 刷新图标转一圈（减弱动态效果时，全局规则会去掉动画）
   const btn=$("#btnToneNext");btn.classList.remove("spin");void btn.offsetWidth;btn.classList.add("spin");
 });
-$("#btnToneNext").addEventListener("animationend",e=>e.currentTarget.classList.remove("spin"));
+document.addEventListener("animationend",e=>{if(e.target.id==="btnToneNext")e.target.classList.remove("spin")});
 $("#tones").addEventListener("click",e=>{const b=e.target.closest("[data-say]");if(b)speak(b.dataset.say,0.7)});
 
 function renderHome(){
@@ -870,9 +955,9 @@ function renderSelectBar(){
   $("#btnDelSel").textContent=`删除（${selected.size}）`;
 }
 function setSelectMode(on){selectMode=on;selected.clear();renderHome()}
-$("#btnSelect").addEventListener("click",()=>setSelectMode(true));
-$("#btnDone").addEventListener("click",()=>setSelectMode(false));
-$("#btnDelSel").addEventListener("click",async()=>{
+onClick("btnSelect",()=>setSelectMode(true));
+onClick("btnDone",()=>setSelectMode(false));
+onClick("btnDelSel",async()=>{
   const ids=songs.filter(s=>selected.has(s.id)).map(s=>s.id);
   if(!ids.length){toast("先点歌曲选择要删除的歌");return}
   if(!await confirmSheet({title:`删除 ${ids.length} 首歌？`,body:SONG_DEL_NOTE}))return;
@@ -894,14 +979,14 @@ async function commitDelete(){
   // 生词卡片保留，只去掉这几首歌的出处
   for(const c of cards.values())if(c.sources.some(x=>ids.has(x.songId))){c.sources=c.sources.filter(x=>!ids.has(x.songId));c.updated=Date.now();await DB.put(c,"cards")}
 }
-$("#snackUndo").addEventListener("click",()=>{
+onClick("snackUndo",()=>{
   const p=pendingDel;if(!p)return;
   pendingDel=null;clearTimeout(p.timer);$("#snack").hidden=true;
   songs.push(...p.songs);renderHome();
 });
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")commitDelete()});
 window.addEventListener("pagehide",()=>commitDelete());
-$("#btnAdd").addEventListener("click",openImport);
+onClick("btnAdd",openImport);
 
 /* ---------- LRC ---------- */
 function parseLRC(txt){
@@ -1533,7 +1618,7 @@ function openPack(){
 }
 
 /* ---------- settings：每天新学几句（M4 接上功能）+ 备份与恢复 ---------- */
-$("#btnSettings").addEventListener("click",()=>{renderSettings();go("settingsView")});
+onClick("btnSettings",()=>{renderSettings();go("settingsView")});
 // 2 / 4 / 6 / 自定义（1–20）；goalCustom 只在这次打开设置页时有效
 let goalCustom=false;
 function setGoal(g){saveDaily({...getDaily(),goal:Math.min(STUDY.GOAL_MAX,Math.max(STUDY.GOAL_MIN,g))});renderGoal()}
@@ -1853,7 +1938,7 @@ history.replaceState({view:"home"},"");
   // 「每天新学几句」以前存在 prefs.goal，搬到 meta daily
   if(!metaRecs.has("daily"))await saveDaily({...getDaily(),goal:STUDY.goalOf({goal:prefs.goal})});
   if("goal" in prefs){delete prefs.goal;savePrefs()}
-  renderHome();
+  renderHome();renderDbg();
 })();
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
