@@ -243,6 +243,10 @@ input[type=search]{-webkit-appearance:none;appearance:none}
   padding:8px 12px;border-radius:12px;background:var(--inverse);color:var(--on-inverse);opacity:.92;
   font:10.5px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 .dbg b{font-weight:700}
+/* 调试面板打开时，首页最下面多一行「模拟日期」（测打卡跨天用） */
+.dbg-sim{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:24px;padding:12px 16px;border-radius:18px;background:var(--surface);font-size:13px;color:var(--ink-2)}
+.dbg-sim .lbl{flex-basis:100%}
+.dbg-sim input{min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:8px 12px}
 .song{display:flex;align-items:center;gap:12px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
 .song.is-pressed{transform:scale(.98);background:var(--surface-press)}
@@ -503,6 +507,7 @@ label.btn{overflow:hidden}
     <div class="sec-title"><span>我的歌</span><button class="btn text small" id="btnSelect" type="button" hidden>选择</button></div>
     <div id="homeNote"></div>
     <div class="songs" id="songs"></div>
+    <div class="dbg-sim" id="dbgSim" hidden></div>
     <div class="ver num" id="appVer"></div>
   </div>
   <button class="btn danger-fill bottom bottom-bar" id="btnDelSel" type="button" hidden>删除（0）</button>
@@ -832,6 +837,33 @@ function freshHome(){
 const APP_VERSION="v25";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
+// 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
+let simDays=0;
+try{if(dbg.on)simDays=parseInt(localStorage.getItem("yc-simdays"),10)||0}catch(e){}
+function appNow(){return Date.now()+simDays*86400000}
+function setSimDays(n){
+  simDays=dbg.on?n:0;
+  try{if(simDays)localStorage.setItem("yc-simdays",String(simDays));else localStorage.removeItem("yc-simdays")}catch(e){}
+  renderSim();onDayChange();
+}
+// 日期变了（模拟日期、第二天切回 App）：刷新首页
+function onDayChange(){renderHome()}
+const dayNum=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/86400000;
+function renderSim(){
+  const box=$("#dbgSim");box.hidden=!dbg.on;if(box.hidden){box.innerHTML="";return}
+  const day=SRS.today(appNow());
+  box.innerHTML=`<span class="lbl">模拟日期 <b class="num">${day}</b>（真实 ${simDays>=0?"+":""}${simDays} 天）</span>
+    <button class="btn soft small" type="button" id="simMinus">−1 天</button><button class="btn soft small" type="button" id="simPlus">+1 天</button><button class="btn soft small" type="button" id="simReset">回到今天</button>
+    <input type="date" id="simDate" value="${day}" aria-label="选择模拟日期">`;
+}
+$("#dbgSim").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.id==="simMinus")setSimDays(simDays-1);else if(b.id==="simPlus")setSimDays(simDays+1);else if(b.id==="simReset")setSimDays(0);
+});
+$("#dbgSim").addEventListener("change",e=>{
+  if(e.target.id!=="simDate"||!/^\d{4}-\d{2}-\d{2}$/.test(e.target.value))return;
+  setSimDays(simDays+dayNum(e.target.value)-dayNum(SRS.today(appNow())));
+});
 function descEl(el){
   if(!el||!el.tagName)return "无";
   if(el===document.body||el===document.documentElement)return el.tagName.toLowerCase();
@@ -896,7 +928,7 @@ $("#appVer").addEventListener("click",e=>{
   if(dbg.taps<3)return;
   dbg.taps=0;dbg.on=!dbg.on;dbg.log=[];dbg.last=null;dbg.ret=null;
   try{localStorage.setItem("yc-debug",dbg.on?"1":"0")}catch(e){}
-  renderDbg();toast(dbg.on?"调试面板已打开":"调试面板已关闭");
+  renderDbg();if(dbg.on)renderSim();else setSimDays(0);toast(dbg.on?"调试面板已打开":"调试面板已关闭");
 });
 
 
@@ -959,7 +991,7 @@ const TONE_NAMES=["","高平","高升","中平","低降","低升","低平"];
 // 首页声调字：每天换一组（凌晨 4 点换日），也能手动换；记录在 meta "tones"
 function saveTones(rec){metaRecs.set("tones",rec);DB.put(rec,"meta")}
 // 今天的学习计数和每天新学几句（meta daily，凌晨 4 点换日）
-function getDaily(){return STUDY.dailyFor(metaRecs.get("daily"),SRS.today(Date.now()))}
+function getDaily(){return STUDY.dailyFor(metaRecs.get("daily"),SRS.today(appNow()))}
 function saveDaily(rec){metaRecs.set("daily",rec);return DB.put(rec,"meta")}
 function renderTones(animate){
   const set=LESSONS.TONE_SETS[metaRecs.get("tones").setIndex];
@@ -976,7 +1008,7 @@ function renderTones(animate){
   });
 }
 onClick("btnToneNext",()=>{
-  const r=metaRecs.get("tones");saveTones({key:"tones",setIndex:(r.setIndex+1)%LESSONS.TONE_SETS.length,date:SRS.today(Date.now())});renderTones(true);
+  const r=metaRecs.get("tones");saveTones({key:"tones",setIndex:(r.setIndex+1)%LESSONS.TONE_SETS.length,date:SRS.today(appNow())});renderTones(true);
   // 刷新图标转一圈（减弱动态效果时，全局规则会去掉动画）
   const btn=$("#btnToneNext");btn.classList.remove("spin");void btn.offsetWidth;btn.classList.add("spin");
 });
@@ -984,7 +1016,7 @@ document.addEventListener("animationend",e=>{if(e.target.id==="btnToneNext")e.ta
 $("#tones").addEventListener("click",e=>{const b=e.target.closest("[data-say]");if(b)say(b.dataset.say,b.dataset.jp,"word",0.7)});
 
 function renderHome(){
-  const tr=LESSONS.toneSetFor(metaRecs.get("tones"),SRS.today(Date.now())),old=metaRecs.get("tones");
+  const tr=LESSONS.toneSetFor(metaRecs.get("tones"),SRS.today(appNow())),old=metaRecs.get("tones");
   if(!old||old.setIndex!==tr.setIndex||old.date!==tr.date)saveTones(tr);
   renderTones(false);
   const box=$("#songs");
@@ -1024,7 +1056,7 @@ function renderToday(){
   const box=$("#today");
   if(!songs.length){box.hidden=true;box.innerHTML="";return}
   const s=STUDY.currentSong(songs),d=getDaily(),texts=lineTexts(s),learned=STUDY.progressOf(s).learned,left=STUDY.remaining(d);
-  const title=esc(s.title||"未命名"),due=STUDY.dueCount(cards.values(),Date.now()),finished=STUDY.nextLine(texts,learned).li===null;
+  const title=esc(s.title||"未命名"),due=STUDY.dueCount(cards.values(),appNow()),finished=STUDY.nextLine(texts,learned).li===null;
   let body;
   if(due&&!finished&&left>0&&s.pack){
     // 复习和新学都有：两格左右并排（设计规范 5.4）
@@ -1109,7 +1141,7 @@ async function commitDelete(){
   const ids=new Set(p.songs.map(s=>s.id));
   for(const id of ids)await DB.del(id);
   // 生词卡片保留，只去掉这几首歌的出处
-  for(const c of cards.values())if(c.sources.some(x=>ids.has(x.songId))){c.sources=c.sources.filter(x=>!ids.has(x.songId));c.updated=Date.now();await DB.put(c,"cards")}
+  for(const c of cards.values())if(c.sources.some(x=>ids.has(x.songId))){c.sources=c.sources.filter(x=>!ids.has(x.songId));c.updated=appNow();await DB.put(c,"cards")}
 }
 onClick("snackUndo",()=>{
   const p=pendingDel;if(!p)return;
@@ -1210,7 +1242,7 @@ $("#btnSave").addEventListener("click",async()=>{
   }
   if(isNaN(imp.dur)){toast("音频还在读取，稍等一下");return}
   importSaving=true;setTimeout(()=>{importSaving=false},1500);
-  const song={id:uid(),title:$("#fTitle").value.trim()||"未命名",artist:$("#fArtist").value.trim(),audio:imp.blob,audioName:imp.name,duration:imp.dur,lines:[],pack:null,overrides:{},created:Date.now(),updated:Date.now()};
+  const song={id:uid(),title:$("#fTitle").value.trim()||"未命名",artist:$("#fArtist").value.trim(),audio:imp.blob,audioName:imp.name,duration:imp.dur,lines:[],pack:null,overrides:{},created:appNow(),updated:appNow()};
   if(imp.parsed.length){
     song.lines=finishEnds(imp.parsed.map(l=>({t:l.t,end:l.end,text:l.text})),imp.dur);
     await DB.put(song);songs.push(song);openSong(song.id);toast("已保存。点「词汇包」可以加重点词和释义");
@@ -1537,7 +1569,7 @@ async function saveProof(){
   s.progress={...STUDY.progressOf(s),learned:r.learned};
   s.title=$("#prTitle").value.trim()||"未命名";s.artist=$("#prArtist").value.trim();
   if(proof.newAudio){s.audio=proof.newAudio.blob;s.audioName=proof.newAudio.name;s.duration=proof.newAudio.dur}
-  s.updated=Date.now();
+  s.updated=appNow();
   // 错别字更正已经写进歌词里了，清空它，免得又把你改回来的字改掉
   if(s.pack&&Array.isArray(s.pack.fix)&&s.pack.fix.length)s.pack={...s.pack,fix:[]};
   await DB.put(s);
@@ -1545,7 +1577,7 @@ async function saveProof(){
     if(!c.sources.some(x=>x.songId===s.id))continue;
     const seen=new Set(),src=[];
     for(const x of c.sources){const y=x.songId!==s.id?x:(r.map[x.li]!=null?{...x,li:r.map[x.li]}:null);if(y&&!seen.has(y.songId+":"+y.li)){seen.add(y.songId+":"+y.li);src.push(y)}}
-    if(JSON.stringify(src)!==JSON.stringify(c.sources)){c.sources=src;c.updated=Date.now();await DB.put(c,"cards")}
+    if(JSON.stringify(src)!==JSON.stringify(c.sources)){c.sources=src;c.updated=appNow();await DB.put(c,"cards")}
   }
   proof.dirty=false;toast("已保存");return true;
 }
@@ -1697,7 +1729,7 @@ function openWord(li,ci){
   const card=cards.get(wordText);
   const allRead=idxs.every(i=>!v.items[i].han||v.items[i].jp); // 每个字都有读音才能建卡
   const cardRow=!(it.han&&shown&&allRead)?"":card
-    ?`<div class="wc-known">已在生词本 · ${card.known?"已认识":esc(SRS.dueLabel(card.srs.due,Date.now()))+"复习"}</div>`
+    ?`<div class="wc-known">已在生词本 · ${card.known?"已认识":esc(SRS.dueLabel(card.srs.due,appNow()))+"复习"}</div>`
     :`<button class="btn block add-dashed" type="button" data-addcard="1">＋ 加入生词</button>`;
   openSheet(`
     <div class="wc-top${idxs.length>3?" long":""}">
@@ -1721,7 +1753,7 @@ function openWord(li,ci){
     const o=e.target.closest("[data-orig]");if(o){closeSheet();playLine(li);return}
     if(e.target.closest("[data-addcard]")){
       if(!cards.has(wordText)){
-        const c=SRS.newCard({w:wordText,jp:shown,zh:w?.zh,tip:w?.tip,oral:w?.oral},{songId:cur.id,li},Date.now());
+        const c=SRS.newCard({w:wordText,jp:shown,zh:w?.zh,tip:w?.tip,oral:w?.oral},{songId:cur.id,li},appNow());
         await DB.put(c,"cards");cards.set(c.w,c);toast("已加入生词本");
       }
       openWord(li,ci);return;
@@ -1730,7 +1762,7 @@ function openWord(li,ci){
     if(set||rs){
       const key=li+":"+ci;
       if(rs||(orig&&set.dataset.set===orig.jp))delete cur.overrides[key];else cur.overrides[key]=set.dataset.set;
-      cur.updated=Date.now();await DB.put(cur);rebuildLine(li);if(loopIdx===li)$("#lyrics").children[li].classList.add("loop");openWord(li,ci);toast("读音已修改");
+      cur.updated=appNow();await DB.put(cur);rebuildLine(li);if(loopIdx===li)$("#lyrics").children[li].classList.add("loop");openWord(li,ci);toast("读音已修改");
     }
   };
 }
@@ -1762,12 +1794,12 @@ function openPack(){
     const raw=$("#packIn").value;if(!raw.trim()){toast("先粘贴 Claude 的回复");return}
     const r=PACK.parsePack(raw,cur.lines);const msg=$("#packMsg");
     if(r.errs.length){msg.innerHTML=r.errs.slice(0,10).map(x=>`<div class="err">✗ ${esc(x)}</div>`).join("")+(r.errs.length>10?`<div class="err">……还有 ${r.errs.length-10} 个问题</div>`:"")+'<div class="note">可以把这些问题发给 Claude，请它修正后重新输出。</div>';return}
-    cur.pack=r.pack;cur.overrides={};cur.updated=Date.now();await DB.put(cur);
+    cur.pack=r.pack;cur.overrides={};cur.updated=appNow();await DB.put(cur);
     buildLyrics();applyToggles();if(loopIdx!=null)setLoop(loopIdx);if(curIdx>=0)$("#lyrics").children[curIdx]?.classList.add("cur");
     if(r.warns.length){msg.innerHTML=`<div class="ok">✓ 已导入，有 ${r.warns.length} 处小问题已自动处理：</div>`+r.warns.slice(0,8).map(x=>`<div class="note">· ${esc(x)}</div>`).join("");}
     else{closeSheet();toast("词汇包已导入")}
   });
-  const rm=$("#rmPack");if(rm)rm.addEventListener("click",async()=>{if(!await confirmSheet({title:"删除词汇包？",body:"重点词的意思、记忆提示和这首歌的大意会被删掉。生词卡片不受影响。"}))return;cur.pack=null;cur.updated=Date.now();await DB.put(cur);buildLyrics();applyToggles();closeSheet();toast("词汇包已删除")});
+  const rm=$("#rmPack");if(rm)rm.addEventListener("click",async()=>{if(!await confirmSheet({title:"删除词汇包？",body:"重点词的意思、记忆提示和这首歌的大意会被删掉。生词卡片不受影响。"}))return;cur.pack=null;cur.updated=appNow();await DB.put(cur);buildLyrics();applyToggles();closeSheet();toast("词汇包已删除")});
 }
 
 /* ---------- settings：每天新学几句（M4 接上功能）+ 备份与恢复 ---------- */
@@ -1797,7 +1829,7 @@ let wTab="all",wQuery="",wSelMode=false,wPendingDel=null;
 const wSel=new Set();
 // 排序：要复习的按下次复习时间，已认识的放最后。标签后面的数量跟着搜索走
 function renderWords(){
-  const now=Date.now(),all=[...cards.values()].sort((a,b)=>(!!a.known-!!b.known)||(a.known?a.w.localeCompare(b.w):a.srs.due-b.srs.due));
+  const now=appNow(),all=[...cards.values()].sort((a,b)=>(!!a.known-!!b.known)||(a.known?a.w.localeCompare(b.w):a.srs.due-b.srs.due));
   const hit=all.filter(c=>SRS.matchCard(c,wQuery)),list=hit.filter(c=>SRS.inTab(c,wTab,now));
   if(!all.length)wSelMode=false;
   // 只能选当前筛选结果里的词：换标签或搜索后，看不到的词自动取消选中
@@ -1832,13 +1864,13 @@ function setWordSel(on){wSelMode=on;wSel.clear();renderWords()}
 $("#wSelect").addEventListener("click",()=>setWordSel(true));
 $("#wDone").addEventListener("click",()=>setWordSel(false));
 $("#wSelAll").addEventListener("click",()=>{
-  const now=Date.now(),list=[...cards.values()].filter(c=>SRS.matchCard(c,wQuery)&&SRS.inTab(c,wTab,now));
+  const now=appNow(),list=[...cards.values()].filter(c=>SRS.matchCard(c,wQuery)&&SRS.inTab(c,wTab,now));
   if(list.every(c=>wSel.has(c.w)))wSel.clear();else list.forEach(c=>wSel.add(c.w));
   renderWords();
 });
 $("#wAct").addEventListener("click",async e=>{
   const b=e.target.closest("[data-wact]");if(!b||b.disabled)return;
-  const sel=[...wSel].map(w=>cards.get(w)).filter(Boolean),now=Date.now();if(!sel.length)return;
+  const sel=[...wSel].map(w=>cards.get(w)).filter(Boolean),now=appNow();if(!sel.length)return;
   if(b.dataset.wact==="del"){
     if(!await confirmSheet({title:`删除 ${sel.length} 个词？`,body:"删除后它们不会再出现在学习和复习里。"}))return;
     setWordSel(false);deleteWords(sel.map(c=>c.w));return;
@@ -1878,13 +1910,13 @@ function openWordCard(w){
     <div class="st-chars">${chars.map(studyCharHTML).join("")}</div>
     <div class="st-mean${c.zh?"":" none"}">${esc(c.zh||"暂无释义")}</div>
     ${c.tip?`<div class="wc-tip">${esc(c.tip)}</div>`:""}
-    <div class="note">${c.known?"已认识，不进入复习":esc(SRS.dueLabel(c.srs.due,Date.now()))+"复习"}</div>
+    <div class="note">${c.known?"已认识，不进入复习":esc(SRS.dueLabel(c.srs.due,appNow()))+"复习"}</div>
     <div class="row"><button class="btn primary" type="button" data-say>🔊 听发音</button><button class="btn soft" type="button" data-known>${c.known?"取消已认识":"标记为已认识"}</button></div>
     <button class="btn text block danger" type="button" data-del>删除</button>
   </div>`);
   $("#sheetBody").onclick=async e=>{
     if(e.target.closest("[data-say]")){say(c.w,c.jp);return}
-    if(e.target.closest("[data-known]")){const now=Date.now();c.known=!c.known;if(!c.known)c.srs=SRS.newSrs(now);c.updated=now;await DB.put(c,"cards");renderWords();openWordCard(w);return}
+    if(e.target.closest("[data-known]")){const now=appNow();c.known=!c.known;if(!c.known)c.srs=SRS.newSrs(now);c.updated=now;await DB.put(c,"cards");renderWords();openWordCard(w);return}
     if(e.target.closest("[data-del]")){
       if(!await confirmSheet({title:`删除「${c.w}」？`,body:"这个词和它的复习进度会一起删掉，以后学到它会重新出现。"})){if(curView==="wordsView")openWordCard(w);return}
       cards.delete(c.w);await DB.del(c.w,"cards");renderWords();toast("已删除");
@@ -1899,7 +1931,7 @@ function renderSettings(){
 /* ---------- 备份文件（规格 3.5）：导出用分享面板（存到「文件」），恢复用文件选择器 ---------- */
 // meta "backup"：这台设备上次导出备份的时间（不放进备份文件）
 function renderBackupCard(){
-  const age=BACKUP.ageLabel(metaRecs.get("backup")?.at,Date.now());
+  const age=BACKUP.ageLabel(metaRecs.get("backup")?.at,appNow());
   $("#backupCard").innerHTML=`
     <div class="label">备份与恢复</div>
     <p class="note" style="margin:0">备份文件包含歌词、时间轴、词汇包、改过的读音和生词卡片，不含音频。可以存到「文件」App 或隔空投送到别的设备。</p>
@@ -1913,7 +1945,7 @@ function renderBackupCard(){
 function markBackup(at){const r={key:"backup",at};metaRecs.set("backup",r);return DB.put(r,"meta")}
 // 分享面板要在点按钮的同一时刻调出来，所以前面不能 await
 async function exportBackup(){
-  const now=Date.now();
+  const now=appNow();
   const text=JSON.stringify(BACKUP.build({songs,cards:cards.values(),meta:metaRecs.values(),now}));
   const file=new File([text],BACKUP.fileName(now),{type:"application/json"});
   let shared=false;
@@ -1949,12 +1981,12 @@ async function restoreBackup(obj){
   for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};
     if(ex)merged.progress=STUDY.mergeProgress(ex.progress,s.progress,merged.lines.length);else if(hasCurrent)merged.progress={...STUDY.progressOf(merged),current:false};
     await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
-  const merged=SRS.mergeCards([...cards.values()],obj.cards,Date.now());
+  const merged=SRS.mergeCards([...cards.values()],obj.cards,appNow());
   for(const c of merged)await DB.put(c,"cards");
   cards=new Map(merged.map(c=>[c.w,c]));
   // meta：daily 用备份里的每天几句（今天的计数留本机的）；其他只恢复本机还没有的记录
   if(Array.isArray(obj.meta))for(const m of obj.meta){if(!m||typeof m.key!=="string")continue;
-    if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(Date.now())));
+    if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(appNow())));
     else if(m.key!=="backup"&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
   // 新设备从备份恢复：这份备份就是"上次备份"
   const ex=Date.parse(obj.exported);
@@ -1971,7 +2003,7 @@ async function startStudy(opts={}){
   if(!STUDY.progressOf(s).current)await setCurrentSong(s.id);
   const d=getDaily();if(d.songId!==s.id)await saveDaily({...d,songId:s.id,done:[]});
   // 先复习到期的卡（规格 5.2），复习完再学新句子；reviewOnly（今天新句子学完了）复习完到完成页
-  const queue=STUDY.reviewQueue(cards.values(),Date.now());
+  const queue=STUDY.reviewQueue(cards.values(),appNow());
   study={song:s,li:null,units:[],i:0,phase:queue.length?"review":"word",stopAt:null,loop:false,from:0,reviewOnly:!!opts.reviewOnly,
     review:{queue,i:0,requeued:new Set(),flipped:false,flippedAt:0}};
   setAudio(s.audio||null);
@@ -2039,11 +2071,11 @@ function renderReview(){
       ${srcHTML}
       <div class="st-btns"><button class="btn primary st-say" type="button" data-act="say" aria-label="听标准发音"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></button>${src&&src.song.audio?'<button class="btn soft" type="button" data-act="orig">▶ 原唱这句</button>':""}</div>
     </div>`;
-  const now=Date.now(),g=(a,label,cls)=>`<button class="btn ${cls} st-big" type="button" data-act="${a}"><span>${label}</span><small>${STUDY.intervalLabel(c.srs,a,now)}</small></button>`;
+  const now=appNow(),g=(a,label,cls)=>`<button class="btn ${cls} st-big" type="button" data-act="${a}"><span>${label}</span><small>${STUDY.intervalLabel(c.srs,a,now)}</small></button>`;
   $("#stFoot").innerHTML=`<div class="st-grades">${g("again","忘了","")}${g("hard","模糊","soft")}${g("good","记得","primary")}</div>`;
 }
 async function gradeCard(grade){
-  const st=study,r=st.review,w=r.queue[r.i],c=cards.get(w),now=Date.now();
+  const st=study,r=st.review,w=r.queue[r.i],c=cards.get(w),now=appNow();
   if(c){c.srs=SRS.review(c.srs,grade,now);c.updated=now;await DB.put(c,"cards")}
   const d=getDaily();if(!d.reviewedW.includes(w))await saveDaily({...d,reviewed:d.reviewed+1,reviewedW:[...d.reviewedW,w]});
   if(study!==st)return;
@@ -2069,7 +2101,7 @@ function renderLine(){
 }
 function refreshLoop(){const b=$("#stLoop");if(b)b.innerHTML=`<span>原唱 ↻</span><small>${study&&study.loop?"0.8× · 循环中":"0.8× · 单句循环"}</small>`}
 function renderDone(){
-  const s=study.song,d=getDaily(),now=Date.now(),day=SRS.today(now),learned=STUDY.progressOf(s).learned;
+  const s=study.song,d=getDaily(),now=appNow(),day=SRS.today(now),learned=STUDY.progressOf(s).learned;
   const newWords=[...cards.values()].filter(c=>SRS.today(c.created)===day).length;
   const due=STUDY.dueCount(cards.values(),SRS.dayDue(now,1),Infinity),up=STUDY.upcoming(lineTexts(s),learned,d.goal);
   studyCells(1,1);$("#stCount").textContent="";$("#stCount").classList.remove("whole");
@@ -2120,7 +2152,7 @@ function stopStudyAudio(){if(study){study.stopAt=null;study.loop=false}if(!au.pa
 async function learnWord(known){
   const st=study,u=st.units[st.i];
   if(!cards.has(u.w)){
-    const w=u.word||{},c=SRS.newCard({w:u.w,jp:u.jp,zh:w.zh,tip:w.tip,oral:w.oral},{songId:study.song.id,li:study.li},Date.now());
+    const w=u.word||{},c=SRS.newCard({w:u.w,jp:u.jp,zh:w.zh,tip:w.tip,oral:w.oral},{songId:study.song.id,li:study.li},appNow());
     if(known)c.known=true;
     cards.set(c.w,c);await DB.put(c,"cards");
   }
@@ -2162,7 +2194,7 @@ history.replaceState({view:"home"},"");
   // 「每天新学几句」以前存在 prefs.goal，搬到 meta daily
   if(!metaRecs.has("daily"))await saveDaily({...getDaily(),goal:STUDY.goalOf({goal:prefs.goal})});
   if("goal" in prefs){delete prefs.goal;savePrefs()}
-  renderHome();renderDbg();
+  renderHome();renderDbg();renderSim();
   setTimeout(()=>prefetchVoice([...LESSONS.TONE_SETS.flatMap(t=>[1,2,3,4,5,6].map(k=>t.syl+k)),...[...cards.values()].map(c=>c.jp)]),3000);
 })();
 // iOS 切到后台再回来，声音会被暂停：下一次点按时恢复
