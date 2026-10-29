@@ -260,15 +260,16 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .empty ol{margin:10px 0 16px;padding-left:20px;display:grid;gap:6px;color:var(--ink-2);font-size:14px;line-height:1.6}
 /* 「我的歌」底部渐进模糊：越往下越模糊。几层 backdrop-filter，每层用 mask-image 只露出一段。
    不能有背景色（iOS 26 Safari 用屏幕边缘 fixed 元素的颜色染浏览器界面，见 7.4），不能点，在「＋ 导入新歌」下面 */
-.edge-blur{position:fixed;left:0;right:0;bottom:0;height:calc(140px + env(safe-area-inset-bottom,0px));z-index:19;pointer-events:none}
+.edge-blur{position:fixed;left:0;right:0;bottom:0;height:calc(80px + env(safe-area-inset-bottom,0px));z-index:19;pointer-events:none}
 .edge-blur>i{position:absolute;inset:0;pointer-events:none;-webkit-backdrop-filter:blur(var(--b));backdrop-filter:blur(var(--b));
   -webkit-mask-image:linear-gradient(to bottom,transparent var(--m0),#000 var(--m1),#000 var(--m2),transparent var(--m3));
   mask-image:linear-gradient(to bottom,transparent var(--m0),#000 var(--m1),#000 var(--m2),transparent var(--m3))}
-.edge-blur>i:nth-child(1){--b:1px;--m0:0%;--m1:16%;--m2:32%;--m3:48%}
-.edge-blur>i:nth-child(2){--b:2px;--m0:16%;--m1:32%;--m2:48%;--m3:64%}
-.edge-blur>i:nth-child(3){--b:4px;--m0:32%;--m1:48%;--m2:64%;--m3:80%}
-.edge-blur>i:nth-child(4){--b:8px;--m0:48%;--m1:64%;--m2:80%;--m3:100%}
-.edge-blur>i:nth-child(5){--b:16px;--m0:64%;--m1:80%;--m2:100%;--m3:101%}
+/* 高度由 fitEdgeBlur() 按「＋ 导入新歌」的位置算（上边缘和按钮上边缘对齐），上面的 80px 只是算出来之前的初值。
+   上边缘不模糊，往下逐层加强，最强 4px，还能隐约看出下面的卡片 */
+.edge-blur>i:nth-child(1){--b:1px;--m0:0%;--m1:25%;--m2:50%;--m3:75%}
+.edge-blur>i:nth-child(2){--b:2px;--m0:25%;--m1:50%;--m2:75%;--m3:100%}
+.edge-blur>i:nth-child(3){--b:3px;--m0:50%;--m1:75%;--m2:100%;--m3:101%}
+.edge-blur>i:nth-child(4){--b:4px;--m0:75%;--m1:100%;--m2:101%;--m3:102%}
 .fab{position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:20;
   min-height:56px;padding:0 24px;border-radius:999px;box-shadow:var(--shadow-3)}
 
@@ -645,7 +646,7 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 </section>
 
 <!-- 常驻按钮：不放在页面里（切页时页面会滑动），到了对应页面直接显示，离开直接隐藏，没有动画 -->
-<div class="edge-blur" data-page="home" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="edge-blur" data-page="home" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <button class="btn inverse fab" id="btnAdd" type="button" data-page="home">＋ 导入新歌</button>
 <button class="btn primary bottom bottom-bar" id="btnSave" type="button" data-page="importView" hidden>保存</button>
 
@@ -708,6 +709,9 @@ let curView="home",navAnim=false,navTimer=0,navPending=false;
 const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 // 常驻按钮：只在自己那一页显示（「＋ 导入新歌」多选模式下也隐藏）
 function pageButtons(){document.querySelectorAll("[data-page]").forEach(e=>e.hidden=e.dataset.page!==curView||(e.id==="btnAdd"&&selectMode))}
+// 底部模糊层高度 = 按钮高度 + 按钮离底部的距离（含安全区），按钮改大小、转屏时跟着变；按钮隐藏时（多选模式）保持原样
+function fitEdgeBlur(){const a=$("#btnAdd");if(!a.offsetHeight)return;$(".edge-blur").style.height=a.offsetHeight+parseFloat(getComputedStyle(a).bottom)+"px"}
+new ResizeObserver(fitEdgeBlur).observe($("#btnAdd"));addEventListener("resize",fitEdgeBlur);
 function show(id,dir){
   const from=$("#"+curView),to=$("#"+id),y=scrollY;
   clearTimeout(navTimer);document.body.classList.remove("navigating");views.forEach(v=>{const el=$("#"+v);el.classList.remove("nav-layer","enter-fwd","leave-fwd","enter-back","leave-back");el.style.cssText=""});
@@ -793,7 +797,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v21";
+const APP_VERSION="v22";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 function descEl(el){

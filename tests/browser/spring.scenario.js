@@ -8,16 +8,20 @@ module.exports = { name: "spring", async run(b) {
   await F.seed(b);
   // 首页底部：列表下面留够空白，最后的内容能滚到「＋ 导入新歌」上方；渐进模糊层没有背景色、不能点、在按钮下面
   const blur = await b.ev(`(() => { const e = document.querySelector(".edge-blur"), s = getComputedStyle(e), r = e.getBoundingClientRect(), add = document.querySelector("#btnAdd");
-    const layers = [...e.children].map(i => getComputedStyle(i)), fs = layers.map(l => l.backdropFilter);
-    return { vis: !e.hidden && r.height > 0, h: Math.round(r.height), bottom: Math.round(innerHeight - r.bottom), bg: s.backgroundColor, pe: s.pointerEvents, pos: s.position,
+    const ar = add.getBoundingClientRect(), layers = [...e.children].map(i => getComputedStyle(i)), fs = layers.map(l => l.backdropFilter);
+    return { vis: !e.hidden && r.height > 0, h: Math.round(r.height), top: Math.round(r.top - ar.top), bottom: Math.round(innerHeight - r.bottom), bg: s.backgroundColor, pe: s.pointerEvents, pos: s.position,
       z: +s.zIndex < +getComputedStyle(add).zIndex, fs, mask: layers.every(l => (l.maskImage || l.webkitMaskImage).includes("gradient")), lbg: layers.every(l => l.backgroundColor === "rgba(0, 0, 0, 0)") }; })()`);
-  b.check("edge-blur " + JSON.stringify(blur), blur.vis && blur.h === 140 && blur.bottom === 0 && blur.bg === "rgba(0, 0, 0, 0)" && blur.lbg && blur.pe === "none" && blur.pos === "fixed"
-    && blur.z && blur.mask && blur.fs.length >= 4 && blur.fs.every(f => f.startsWith("blur(")) && blur.fs[0] !== blur.fs[blur.fs.length - 1]);
+  b.check("edge-blur " + JSON.stringify(blur), blur.vis && blur.h > 56 && blur.top === 0 && blur.bottom === 0 && blur.bg === "rgba(0, 0, 0, 0)" && blur.lbg && blur.pe === "none" && blur.pos === "fixed"
+    && blur.z && blur.mask && blur.fs.length >= 4 && blur.fs.every(f => f.startsWith("blur(")) && blur.fs[0] !== blur.fs[blur.fs.length - 1] && parseFloat(blur.fs[blur.fs.length - 1].slice(5)) <= 6);
   const room = await b.ev(`(() => { scrollTo(0, document.documentElement.scrollHeight); const add = document.querySelector("#btnAdd").getBoundingClientRect();
     const songs = [...document.querySelectorAll("#songs .song")], last = songs[songs.length - 1].getBoundingClientRect(); const r = { gap: Math.round(add.top - last.bottom) }; scrollTo(0, 0); return r; })()`);
   b.check("last-song-above-add " + JSON.stringify(room), room.gap >= 24);
   b.check("blur-tap-through", await b.ev(`(() => { const e = document.querySelector(".edge-blur").getBoundingClientRect(); const t = document.elementFromPoint(20, e.top + 30); return !!t && !t.closest(".edge-blur"); })()`));
   await b.shot("edge-blur");
+  // 按钮变大，模糊层上边缘跟着按钮上边缘走
+  const grow = await b.ev(`(async () => { const add = document.querySelector("#btnAdd"); add.style.minHeight = "80px"; await new Promise(r => setTimeout(r, 100));
+    const d = Math.round(document.querySelector(".edge-blur").getBoundingClientRect().top - add.getBoundingClientRect().top); add.style.minHeight = ""; await new Promise(r => setTimeout(r, 100)); return d; })()`);
+  b.check("edge-blur-follows-add " + grow, grow === 0);
 
   // 齿轮：点了带弹簧转 90 度，同时跳转到设置页；回首页后齿轮是新的（不带转过的状态）
   await b.ev(`document.querySelector("#btnSettings").click()`); await b.sleep(60);
