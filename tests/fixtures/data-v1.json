@@ -1,0 +1,92 @@
+{
+  "_说明": "数据格式第 1 版（第一阶段）：数据库只有 songs 表；每天几句当时还没有",
+  "dataVersion": 1,
+  "songs": [
+    {
+      "id": "s1",
+      "title": "示例歌一",
+      "artist": "示例歌手",
+      "audioName": "a.mp3",
+      "duration": 30,
+      "lines": [
+        {
+          "t": 1,
+          "end": 4,
+          "text": "我哋去飲茶"
+        },
+        {
+          "t": 4,
+          "end": 7,
+          "text": "今日天氣好好"
+        },
+        {
+          "t": 7,
+          "end": 10,
+          "text": "落雨要帶遮"
+        },
+        {
+          "t": 10,
+          "end": 13,
+          "text": "巴士嚟喇"
+        },
+        {
+          "t": 13,
+          "end": 16,
+          "text": "聽日再見"
+        }
+      ],
+      "pack": {
+        "v": 2,
+        "summary": "编的大意。",
+        "imported": 1,
+        "fix": [
+          {
+            "from": "巴仕",
+            "to": "巴士"
+          }
+        ],
+        "words": [
+          {
+            "w": "飲茶",
+            "jp": "jam2 caa4",
+            "zh": "喝早茶",
+            "tip": "",
+            "oral": false
+          }
+        ]
+      },
+      "overrides": {
+        "0:0": "ngo5"
+      },
+      "created": 1761400000000,
+      "updated": 1761400000000
+    },
+    {
+      "id": "s2",
+      "title": "示例歌二",
+      "artist": "",
+      "audioName": "",
+      "duration": 0,
+      "lines": [
+        {
+          "t": 1,
+          "end": 4,
+          "text": "我哋去飲茶"
+        },
+        {
+          "t": 4,
+          "end": 7,
+          "text": "今日天氣好好"
+        }
+      ],
+      "pack": null,
+      "overrides": {},
+      "created": 1761400001000,
+      "updated": 1761400001000
+    }
+  ],
+  "prefs": {
+    "jp": true,
+    "zh": false
+  }
+}

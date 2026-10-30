@@ -458,6 +458,12 @@ label.btn{overflow:hidden}
 .filebox input[type=file],label.btn input[type=file]{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
 .filebox .btn{flex:none;white-space:nowrap}
 .note{font-size:13px;color:var(--muted);line-height:1.6}
+/* 版本记录（CHANGELOG.md）：每个版本一张卡片 */
+.cl h3{margin:0;font-size:17px;font-weight:700;color:var(--ink)}
+.cl h4{margin:4px 0 0;font-size:15px;font-weight:600;color:var(--ink-2)}
+.cl ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:15px;line-height:1.6;color:var(--ink)}
+.cl p{margin:0;font-size:15px;line-height:1.6;color:var(--ink)}
+.cl .cl-warn{color:var(--danger);font-weight:600}
 .ok{color:var(--t3);font-weight:600}
 .err{color:var(--t1);font-weight:600}
 .stale{color:var(--danger);font-weight:600}
@@ -704,6 +710,7 @@ label.btn{overflow:hidden}
     </div>
     <div class="card field" id="wordsCard"></div>
     <div class="card field" id="backupCard"></div>
+    <div class="card field" id="aboutCard"><div class="label">关于</div><button class="btn soft block" type="button" id="btnChangelog">版本记录</button><div class="note" id="setVer"></div></div>
   </div>
 </section>
 
@@ -739,6 +746,15 @@ label.btn{overflow:hidden}
   <div class="wrap cal" id="calBody"></div>
 </section>
 
+<!-- CHANGELOG：版本记录（设置页进入，内容是 CHANGELOG.md） -->
+<section id="changelogView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>版本记录</b><span id="clSub"></span></div>
+  </div></div>
+  <div class="wrap form cl" id="clBody"></div>
+</section>
+
 <!-- STUDY：每日学习（学词、整句、完成） -->
 <section id="studyView" hidden>
   <div class="bar"><div class="wrap">
@@ -767,6 +783,7 @@ label.btn{overflow:hidden}
 <script src="lessons.js"></script>
 <script src="proof.js"></script>
 <script src="gesture.js"></script>
+<script src="data.js"></script>
 <script src="backup.js"></script>
 <script src="voice.js"></script>
 <script>
@@ -786,13 +803,21 @@ let toastT;
 function toast(msg,ms=2600){const el=$("#toast");el.textContent=msg;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,ms)}
 
 /* ---------- storage (IndexedDB, falls back to memory) ---------- */
-// v2: songs + cards（记忆卡片）+ meta（杂项）。升级只加表，绝不动 songs
-const STORES={songs:"id",cards:"w",meta:"key"};
-const DB={db:null,mem:{songs:new Map(),cards:new Map(),meta:new Map()},ok:false,
-  open(){return new Promise(res=>{try{const r=indexedDB.open("yuechang",2);
-    r.onupgradeneeded=()=>{const db=r.result;for(const [name,keyPath] of Object.entries(STORES))if(!db.objectStoreNames.contains(name))db.createObjectStore(name,{keyPath})};
-    r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>this.db.close();this.ok=true;res()};r.onerror=()=>res();
-    r.onblocked=()=>toast("请先关闭其他打开着的唱学粤语页面",6000)}catch(e){res()}})},
+// songs + cards（记忆卡片）+ meta（杂项）+ snapshot（数据格式升级前的快照）。升级只加表，绝不删表、清空表（docs/数据兼容规则.md）
+// 打开时不写死版本号：先按现有版本打开，缺表才把版本加一补上。这样以后回退到旧代码也不会因为版本号对不上打不开
+// had：打开前数据库里已经有哪些表（判断没记 dataVersion 的老数据是第几版）
+const STORES={songs:"id",cards:"w",meta:"key",snapshot:"key"};
+const DB={db:null,mem:{songs:new Map(),cards:new Map(),meta:new Map(),snapshot:new Map()},ok:false,had:null,
+  open(){return new Promise(res=>{const go=ver=>{try{const r=ver?indexedDB.open("yuechang",ver):indexedDB.open("yuechang");
+    r.onupgradeneeded=()=>{const db=r.result;if(!this.had)this.had=[...db.objectStoreNames];for(const [name,keyPath] of Object.entries(STORES))if(!db.objectStoreNames.contains(name))db.createObjectStore(name,{keyPath})};
+    r.onsuccess=()=>{const db=r.result;if(!this.had)this.had=[...db.objectStoreNames];
+      if(Object.keys(STORES).some(n=>!db.objectStoreNames.contains(n))){const v=db.version+1;db.close();go(v);return}
+      this.db=db;db.onversionchange=()=>db.close();this.ok=true;res()};r.onerror=()=>res();
+    r.onblocked=()=>toast("请先关闭其他打开着的唱学粤语页面",6000)}catch(e){res()}};go(0)})},
+  // 一次写进很多条（同一个事务：要么全写进去，要么一条都不写）。d = {songs, cards, meta, snapshot}
+  putAll(d){if(!this.ok)return Promise.reject(new Error("数据库没打开"));return new Promise((res,rej)=>{try{const names=Object.keys(d).filter(n=>STORES[n]&&d[n].length);if(!names.length){res();return}
+    const tx=this.db.transaction(names,"readwrite");for(const n of names)for(const o of d[n])tx.objectStore(n).put(o);
+    tx.oncomplete=()=>res();tx.onerror=tx.onabort=()=>rej(tx.error||new Error("写入失败"))}catch(e){rej(e)}})},
   _st(store,m){return this.db.transaction(store,m).objectStore(store)},
   fresh(key,store="songs"){if(!this.ok)return Promise.resolve(null);return new Promise(res=>{try{const r=this._st(store,"readonly").get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null)}catch(e){res(null)}})},
   all(store="songs"){const mem=this.mem[store];if(!this.ok)return Promise.resolve([...mem.values()]);return new Promise(res=>{try{const r=this._st(store,"readonly").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([...mem.values()])}catch(e){res([...mem.values()])}})},
@@ -808,8 +833,8 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView"];
-const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2};
+const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView","changelogView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2,changelogView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
@@ -889,6 +914,7 @@ window.addEventListener("popstate",e=>{
   if(st.view==="settingsView"){renderSettings();show("settingsView",anim);return}
   if(st.view==="wordsView"){renderWords();show("wordsView",anim);return}
   if(st.view==="calendarView"){renderCalendar();show("calendarView",anim);return}
+  if(st.view==="changelogView"){renderChangelog();show("changelogView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
   // 回到首页：停掉播放，放开音频文件占的内存
@@ -909,7 +935,8 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v29";
+// App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
+const APP_VERSION="v0.30";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
@@ -2082,7 +2109,38 @@ function renderSettings(){
   renderWordsCard();
   goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
   renderBackupCard();
+  $("#setVer").textContent="版本 "+APP_VERSION;
 }
+/* ---------- 版本记录：显示 CHANGELOG.md（设置页「关于」进入，DEPTH 2） ---------- */
+// 只认几种写法：## 版本标题、### 小标题、- 列表、含 ⚠️ 的行醒目显示、**粗体**。# 大标题不显示（顶栏已经有）
+function changelogHTML(md){
+  const inl=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");
+  let html="",card=false,list=false;
+  const endList=()=>{if(list){html+="</ul>";list=false}};
+  const endCard=()=>{endList();if(card){html+="</div>";card=false}};
+  for(const raw of String(md).split(/\r?\n/)){
+    const line=raw.trim();if(!line||/^# /.test(line))continue;
+    if(/^## /.test(line)){endCard();html+=`<div class="card field"><h3>${inl(line.slice(3))}</h3>`;card=true;continue}
+    if(!card){html+='<div class="card field">';card=true}
+    const warn=line.includes("⚠️");
+    if(/^### /.test(line)){endList();html+=`<h4>${inl(line.slice(4))}</h4>`}
+    else if(/^[-*] /.test(line)){if(!list){html+="<ul>";list=true}html+=`<li${warn?' class="cl-warn"':""}>${inl(line.slice(2))}</li>`}
+    else{endList();html+=`<p${warn?' class="cl-warn"':""}>${inl(line)}</p>`}
+  }
+  endCard();return html;
+}
+let changelogMd=null;
+async function renderChangelog(){
+  $("#clSub").textContent="现在是 "+APP_VERSION;
+  if(changelogMd==null){
+    $("#clBody").innerHTML='<div class="note">正在读取…</div>';
+    try{const r=await fetch("CHANGELOG.md",{cache:"no-cache"});if(!r.ok)throw 0;changelogMd=await r.text()}
+    catch(e){$("#clBody").innerHTML='<div class="note">没读到版本记录，请联网后再试</div>';return}
+  }
+  $("#clBody").innerHTML=changelogHTML(changelogMd);
+}
+$("#btnChangelog").addEventListener("click",()=>{if(navPending)return;renderChangelog();go("changelogView")});
+
 /* ---------- 备份文件（规格 3.5）：导出用分享面板（存到「文件」），恢复用文件选择器 ---------- */
 // meta "backup"：这台设备上次导出备份的时间（不放进备份文件）
 function renderBackupCard(){
@@ -2093,7 +2151,10 @@ function renderBackupCard(){
     <div class="row"><button class="btn primary" type="button" id="bkExport">导出备份文件</button><span class="note">${songs.length} 首歌 · ${cards.size} 个生词</span></div>
     <div class="note${age.stale&&songs.length?" stale":""}" id="bkAge">${age.text}</div>
     <div class="row"><label class="btn soft" for="bkFile">从文件恢复<input id="bkFile" type="file" accept=".json,application/json"></label><span id="bkMsg" class="note"></span></div>
+    ${snapInfo?`<div class="row"><button class="btn soft" type="button" id="bkSnap">恢复到更新前的数据</button></div><div class="note" id="bkSnapNote">${esc(snapLabel(snapInfo))}</div>`:""}
+    <div class="note" id="bkTip">建议从主屏幕图标打开 App，并定期导出备份</div>
   `;
+  if(snapInfo)$("#bkSnap").addEventListener("click",restoreSnapshot);
   $("#bkExport").addEventListener("click",exportBackup);
   $("#bkFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)restoreFromFile(f)});
 }
@@ -2101,7 +2162,7 @@ function markBackup(at){const r={key:"backup",at};metaRecs.set("backup",r);retur
 // 分享面板要在点按钮的同一时刻调出来，所以前面不能 await
 async function exportBackup(){
   const now=appNow();
-  const text=JSON.stringify(BACKUP.build({songs,cards:cards.values(),meta:metaRecs.values(),now}));
+  const text=JSON.stringify(BACKUP.build({songs,cards:cards.values(),meta:metaRecs.values(),now,appVersion:APP_VERSION}));
   const file=new File([text],BACKUP.fileName(now),{type:"application/json"});
   let shared=false;
   if(navigator.canShare&&navigator.canShare({files:[file]})){
@@ -2122,10 +2183,12 @@ async function restoreFromFile(f){
   let text;try{text=await f.text()}catch(e){msg('<span class="err">读不出这个文件，请再选一次</span>');return}
   const r=BACKUP.parse(text);
   if(!r.ok){msg(`<span class="err">${esc(r.err)}</span>`);return}
-  const sm=BACKUP.summary(r.obj);
+  // 旧版本的备份：先升到现在的数据格式，再和本机数据合并
+  let obj;try{obj=DATA.upgradeBackup(r.obj)}catch(e){msg('<span class="err">这个备份的格式升级失败，没有导入。请把备份文件发给开发者看看</span>');return}
+  const sm=BACKUP.summary(obj);
   if(!await confirmSheet({title:"从这个备份恢复？",ok:"恢复",danger:false,
     body:`备份日期：${sm.date||"未知"} · ${sm.songs} 首歌 · ${sm.cards} 张卡片。会和本机的数据合并，不会删掉本机已有的歌和生词。备份里没有音频。`}))return;
-  const n=await restoreBackup(r.obj);
+  const n=await restoreBackup(obj);
   renderBackupCard();msg(`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`);
 }
 async function restoreBackup(obj){
@@ -2144,12 +2207,60 @@ async function restoreBackup(obj){
     if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(appNow())));
     // 打卡：这台设备还没打过卡（新设备、清空过）就直接用备份里的，不然新记录送的 1 张休息卡会被算进去
     else if(m.key==="checkin"){const loc=getCheckin();await saveCheckin(CHECKIN.normalize(Object.keys(loc.days).length?CHECKIN.merge(loc,m):m,SRS.today(appNow())))}
-    else if(m.key!=="backup"&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
+    else if(!BACKUP.DEVICE_ONLY.includes(m.key)&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
   // 新设备从备份恢复：这份备份就是"上次备份"
   const ex=Date.parse(obj.exported);
   if(!metaRecs.get("backup")&&isFinite(ex))await markBackup(ex);
   processCheckin();renderHome();
   return n;
+}
+
+/* ---------- 数据格式升级（docs/数据兼容规则.md）：meta dataVersion，迁移前存快照 ---------- */
+// snapshot 表里只有一条 "last"：最近一次升级前的全部数据（不含音频）。snapInfo 是它的说明（不含数据），有快照才显示「恢复到更新前的数据」
+let snapInfo=null;
+const stripAudio=s=>{const o={...s};delete o.audio;return o};
+function readPrefs(){try{return JSON.parse(localStorage.getItem("yc-prefs")||"{}")||{}}catch(e){return {}}}
+function snapLabel(i){const d=new Date(i.at);return `${d.getMonth()+1}月${d.getDate()}日更新到 ${i.app||"新版本"} 前自动保存的数据。更新后新加的歌和生词会保留`}
+// 没记 dataVersion 的老数据：打开前一张表都没有 = 新装；只有 songs 表 = 第一阶段（1）；有 meta 表 = M1 以后（2）
+function storedVersion(){
+  const r=metaRecs.get("dataVersion");if(r&&Number.isInteger(r.v))return r.v;
+  const had=DB.had||[];
+  return !had.includes("songs")?DATA.VERSION:had.includes("meta")?2:1;
+}
+async function reloadData(){songs=await DB.all();cards=new Map((await DB.all("cards")).map(c=>[c.w,c]));metaRecs=new Map((await DB.all("meta")).map(m=>[m.key,m]))}
+// 启动时：数据比 App 旧就一步步升级。升级前先存快照；升级失败就用快照恢复并提示
+async function upgradeData(){
+  if(!DB.ok)return;
+  const from=storedVersion(),mark={key:"dataVersion",v:DATA.VERSION};
+  if(from>DATA.VERSION)return; // 回退到了旧版本的 App：数据比 App 新，不动它
+  if(from===DATA.VERSION){if(!metaRecs.has("dataVersion")){metaRecs.set("dataVersion",mark);await DB.put(mark,"meta")}return}
+  const before={songs:songs.map(stripAudio),cards:[...cards.values()],meta:[...metaRecs.values()],prefs:readPrefs()};
+  const snap={key:"last",at:Date.now(),from,to:DATA.VERSION,app:APP_VERSION,data:before};
+  try{await DB.putAll({snapshot:[snap]})}catch(e){toast("手机存储空间不够，没能保存更新前的数据，这次先不升级数据格式",6000);return}
+  try{
+    const out=DATA.migrate(JSON.parse(JSON.stringify(before)),from).data;
+    const audio=new Map(songs.map(s=>[s.id,s.audio]));
+    await DB.putAll({songs:out.songs.map(s=>({...s,audio:audio.get(s.id)??null})),cards:out.cards,meta:[...out.meta.filter(m=>m&&m.key!=="dataVersion"),mark]});
+    if(out.prefs){Object.assign(prefs,out.prefs);savePrefs()}
+  }catch(e){
+    await putSnapshot(snap,from);
+    toast("更新数据格式时出了问题，已经恢复到更新前的数据。可以正常使用，请告诉开发者",8000);
+  }
+  await reloadData();
+}
+// 把快照写回去：快照里有的歌、卡片、meta 用快照的（歌保留现在的音频），快照里没有的（更新后新加的）留着。dataVersion 回到快照那一版
+async function putSnapshot(snap,from){
+  const d=snap.data,audio=new Map(songs.map(s=>[s.id,s.audio]));
+  await DB.putAll({songs:d.songs.map(s=>({...s,audio:audio.get(s.id)??null})),cards:d.cards,meta:[...d.meta.filter(m=>m&&m.key!=="dataVersion"),{key:"dataVersion",v:from}]});
+  try{localStorage.setItem("yc-prefs",JSON.stringify(d.prefs||{}))}catch(e){}
+}
+async function restoreSnapshot(){
+  const snap=await DB.fresh("last","snapshot");if(!snap){snapInfo=null;renderBackupCard();return}
+  if(!await confirmSheet({title:"恢复到更新前的数据？",ok:"恢复",danger:false,
+    body:`会把歌、生词和学习记录换回 ${snapLabel(snap).replace(/。.*/,"")}。更新后新加的歌和生词会保留。恢复后 App 会重新打开。`}))return;
+  await commitDelete();
+  try{await putSnapshot(snap,snap.from)}catch(e){toast("恢复失败：手机存储空间可能不够",6000);return}
+  location.reload(); // 重新打开时按现在的规则再升级一次
 }
 
 /* ---------- 每日学习 ---------- */
@@ -2357,9 +2468,11 @@ history.replaceState({view:"home"},"");
   await DB.open();songs=await DB.all();
   cards=new Map((await DB.all("cards")).map(c=>[c.w,c]));
   metaRecs=new Map((await DB.all("meta")).map(m=>[m.key,m]));
-  // 「每天新学几句」以前存在 prefs.goal，搬到 meta daily
-  if(!metaRecs.has("daily"))await saveDaily({...getDaily(),goal:STUDY.goalOf({goal:prefs.goal})});
-  if("goal" in prefs){delete prefs.goal;savePrefs()}
+  await upgradeData();
+  if(DB.ok)snapInfo=await DB.fresh("last","snapshot").then(s=>s&&{at:s.at,from:s.from,to:s.to,app:s.app});
+  if(!metaRecs.has("daily"))await saveDaily(getDaily());
+  // 申请持久存储：手机空间紧张时浏览器不会自动清掉 App 的数据
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}
   processCheckin();booted=true;
   renderHome();renderDbg();renderSim();
   setTimeout(()=>prefetchVoice([...LESSONS.TONE_SETS.flatMap(t=>[1,2,3,4,5,6].map(k=>t.syl+k)),...[...cards.values()].map(c=>c.jp)]),3000);

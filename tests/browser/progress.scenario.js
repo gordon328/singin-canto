@@ -11,7 +11,7 @@ module.exports = { name: "progress", async run(b) {
   await b.ev(setProgress({ learned: [0, 1], current: true }));
   await b.nav("/");
   const prefs = JSON.parse(await b.ev(`localStorage.getItem("yc-prefs")`));
-  b.check("migrate-prefs-goal", (await b.ev(F.idbGet("meta", "daily")))?.goal === 6 && !("goal" in prefs) && prefs.jp === true);
+  b.check("migrate-prefs-goal", (await b.ev(F.idbGet("meta", "daily")))?.goal === 6 && prefs.goal === 6 && prefs.jp === true); // 数据兼容规则：搬家后旧字段 prefs.goal 留着不删
 
   await b.ev(click("#btnSettings")); await b.sleep(800);
   b.check("goal-shows-6", (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "6");

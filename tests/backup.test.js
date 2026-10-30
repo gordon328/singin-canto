@@ -9,7 +9,7 @@ test("fileName：本地日期，月日补零", () => {
 test("build：不含音频，meta 里不带 backup 记录", () => {
   const o = BACKUP.build({ songs: [{ id: "a", lines: [], audio: { size: 1 } }], cards: [{ w: "你" }],
     meta: [{ key: "daily", goal: 4 }, { key: "backup", at: 1 }], now: at(2026, 10, 29) });
-  assert.equal(o.app, "yuechang"); assert.equal(o.v, 2);
+  assert.equal(o.app, "yuechang"); assert.equal(o.v, 3);
   assert.ok(!("audio" in o.songs[0]));
   assert.deepEqual(o.meta.map(m => m.key), ["daily"]);
   assert.equal(o.cards.length, 1);

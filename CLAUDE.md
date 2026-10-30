@@ -17,6 +17,12 @@
 - 上线前确认没有提交任何 mp3、lrc 或歌词文本（唯一例外：`audio/hiujin/` 里 MIT 授权的单音节发音录音，见下面「标准发音」）
 - **每次改界面都要按设计规范 4.4「视觉对齐规则」检查**：间距只用 4/8/12/16/20/24/32px；左右边距和左边缘对齐；同类按钮一致；状态切换时其他元素不动。改完跑 `node tests/browser/run.js visual`（440×956，浅色 + 深色截图，检查没有横向溢出），自己看过截图、量过状态切换前后的位置，发现问题先修好再给开发者测
 - **完成后直接合并到 main 并 push 上线，不开 PR，不需要 gh 命令行工具**（开发者一个人的项目，2026-10-28 开发者决定）。做法：在功能分支上提交并跑完测试 → `git merge` 到 main（能快进就快进）→ `git push origin main`。推送后 GitHub Pages 1–2 分钟内更新，告诉开发者可以在 iPhone 上测了
+- **版本管理**（2026-10-30 起，从 v0.30 开始执行）：
+  1. 版本号 `v0.xx`：每次上线小数点后 +1（v0.30、v0.31……v0.99 之后是 v0.100、v0.101，不会变成 v1.0）。只有开发者明确说「发布正式版」才改成 v1.0。每次同步改：`index.html` 的 `APP_VERSION`（首页底部和设置页「关于」都用它）、`sw.js` 的 `VERSION`、测试里写死的版本号（`grep -rn "v0\.[0-9]" tests/browser`）
+  2. git 标签：上线（push main）后给这次的提交打标签 `git tag v0.31`，并 `git push origin v0.31`
+  3. 更新记录：根目录 `CHANGELOG.md`，最新的在最上面。每个版本：`## v0.31 · 日期`，下面用中文大白话写改动（给开发者看的，不写技术细节）。改了数据结构的版本加一行醒目的「⚠️ 数据结构有变化：……」。App 里设置页「关于 → 版本记录」直接显示这个文件（`renderChangelog()`，只认 `##`、`###`、`- `、含 ⚠️ 的行、`**粗体**`）
+  4. 回退：开发者说「回到某个版本」时，用新的提交把代码恢复到那个版本（`git checkout v0.xx -- .` 之类，再提交），**不用 reset 或 force push 删除历史**。中间如果有「⚠️ 数据结构有变化」的版本，先停下来告诉开发者风险，让开发者先导出备份再商量。回退也是一个新版本，版本号继续 +1，更新记录写「回退到 v0.xx」
+- **每次改动涉及数据时，必须遵守 `docs/数据兼容规则.md`**（dataVersion + 迁移函数、只加不删、迁移前快照、备份兼容、`tests/fixtures/` 兼容性测试每次上线前必须通过）
 
 ## 技术约定
 - **`index.html` + 少量普通 .js 文件**（`<script src>` 引入），原生 HTML/CSS/JavaScript，不用框架，不用构建工具（没有 npm build）。保持简单，开发者能直接打开
@@ -47,7 +53,8 @@
   - `getJyutpingText(text)` 返回空格分隔的粤拼
   - `getJyutpingCandidates(text)` 返回多音字候选
   - 注意：`getJyutping()` 返回的是「行(haang4)街(gaai1)」这种格式，不是空格分隔
-- 数据存在浏览器 IndexedDB（数据库 `yuechang`，版本 2：表 `songs`（keyPath `id`）、`cards`（`w`）、`meta`（`key`）；升级只能加表，不能动 `songs`），音频以 Blob 形式存储；偏好设置存 localStorage（`yc-prefs`）
+- 数据存在浏览器 IndexedDB（数据库 `yuechang`，v0.30 起版本 3：表 `songs`（keyPath `id`）、`cards`（`w`）、`meta`（`key`）、`snapshot`（`key`，升级前快照）；`DB.open()` 不写死版本号，缺表才加一；升级只能加表），音频以 Blob 形式存储；偏好设置存 localStorage（`yc-prefs`）
+  - 数据格式：`data.js`（全局 `DATA`：`VERSION`、`STEPS`、`migrate`、`backupVersion`、`upgradeBackup`），本机版本在 meta `dataVersion`。启动时 `upgradeData()`（先存快照再迁移，失败自动恢复）；设置页「恢复到更新前的数据」`restoreSnapshot()`。规则见 `docs/数据兼容规则.md`，示例数据在 `tests/fixtures/`，测试 `tests/data.test.js` 和 `tests/browser/data.scenario.js`
 - 标准发音（v24，规格 7.8）：用 `audio/hiujin/音节.mp3` 单音节录音（Cantone 数据集的 Amazon Hiujin，MIT，授权在 `audio/LICENSE`），`say(text, jp, mode, rate)` 用 Web Audio 拼接：正常字间 0.05 秒，「逐字听」和整句「标准慢读」0.3 秒。有音节没录音时整个词退回浏览器 `speechSynthesis`（`speak()`，zh-HK）。`sw.js` 把 `audio/` 存在单独缓存 `voice-hiujin-1`（先用缓存，换版本不删）；启动后和打开歌曲时提前下载要用的音节。`.gitignore` 只放行 `audio/hiujin/*.mp3`
 - 歌词来源：LRCLIB 公开接口 `https://lrclib.net/api/search`（免费、无需 key，连续请求要间隔几百毫秒，偶尔返回 503 需要重试）
 - 主要目标设备：**iPhone Safari**。所有功能都要在 iPhone 上能用，按钮至少 44px 高，注意安全区（刘海、底部横条）
@@ -97,6 +104,7 @@
 - **v23（2026-10-30）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
 - **v24（2026-10-30）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒；有录音时不再显示「系统朗读可能读错」。iPhone 验收通过
 - **v25（2026-10-30）**：开发者听过决定多字词保持录音连读；整句「标准慢读」也改成逐字录音（停 0.3 秒，有音节没录音时整句退回系统朗读）。2026-10-30 iPhone 验收通过
+- **v0.30（2026-10-30，待 iPhone 验收）**：版本号改成 v0.xx、git 标签、CHANGELOG.md 和设置页「版本记录」；数据兼容：dataVersion + 迁移、升级前快照和「恢复到更新前的数据」、备份带版本（太新的不导入）、申请持久存储、`tests/fixtures/` 兼容性测试
 - **v29（2026-10-30，待 iPhone 验收）**：打卡日历不再按学习量分深浅：打卡的日子都用主色填满，当天点过「再学 2 句」的日子右上角加小星星（打卡记录里 `more: true`）；图例改成已打卡 / 多学了 / 休息日；完成页本周格子同样规则
 - **v28（2026-10-30）**：打卡日历页顶部统计改成一张合并卡片（设计图 `docs/design/calendar-stats.png` 方案 B）：上面连续 / 累计 / 最长连续三列（连续断了显示「—」），下面休息卡横栏；整个月在 iPhone 17 Pro Max 上不用滚动就能看到
 - **v27（2026-10-30）**：休息卡改成三个小卡片图标 +「N/3」（日历页统计、首页提示统一用 `tokensHTML()`）；说明文字没存满时「每周一发 1 张」，存满时「已存满，用掉后才会继续发放」

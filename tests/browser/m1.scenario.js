@@ -32,7 +32,7 @@ module.exports = { name: "m1", async run(b) {
   await b.ev(`document.querySelector("#btnSettings").click()`); await b.sleep(800);
   const text = await b.ev(F.exportText);
   const obj = JSON.parse(text);
-  b.check("backup: v2，含 cards 和 meta，不含音频", obj.v === 2 && obj.cards.length === 3 && Array.isArray(obj.meta) && obj.songs.every(s => !("audio" in s)));
+  b.check("backup: v3（带 dataVersion），含 cards 和 meta，不含音频", obj.v === 3 && obj.dataVersion === 4 && obj.cards.length === 3 && Array.isArray(obj.meta) && obj.songs.every(s => !("audio" in s)));
   b.check("backup: 数量栏 2 首歌 · 3 个生词", (await b.ev(`document.querySelector("#settingsView").innerText`)).includes("2 首歌 · 3 个生词"));
   const restore = F.restoreText;
   await b.ev(F.WIPE); await b.nav("/");

@@ -16,6 +16,8 @@
 *.json
 !manifest.json
 !samples/*.json
+# 数据兼容测试的示例数据（编的歌名和句子，不含真实歌词）
+!tests/fixtures/*.json
 
 # 系统文件
 .DS_Store
