@@ -17,13 +17,13 @@ module.exports = { name: "settings", async run(b) {
   b.check("goal-section", txt.includes("每天新学几句") && (await b.ev(`[...document.querySelectorAll("#goalSeg button")].map(e => e.innerText.trim()).join()`)) === "2,4,6,自定义"
     && (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "4");
   b.check("groups", (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp-t")].map(e => e.innerText).join()`)) === "学习,外观,数据,关于"
-    && (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp .cell")].map(e => e.querySelector(".cell-n").innerText).join()`)) === "我的生词,皮肤,导出备份文件,从文件恢复,版本记录");
+    && (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp .cell")].map(e => e.querySelector(".cell-n").innerText).join()`)) === "我的生词,皮肤,导出备份文件,从文件恢复,版本记录,兑换码");
   b.check("rows-52", await b.ev(`[...document.querySelectorAll("#settingsView .cell, #settingsView .cell-head")].every(e => Math.round(e.getBoundingClientRect().height) === 52)`));
   b.check("rows-full-width", await b.ev(`[...document.querySelectorAll("#settingsView .sgrp")].every(g => [...g.children].every(c => Math.abs(c.getBoundingClientRect().width - g.getBoundingClientRect().width) < 1) && Math.abs(g.getBoundingClientRect().width - document.querySelector("#settingsView .set").clientWidth + 32) < 1)`));
   b.check("goal-seg-equal", await b.ev(`(() => { const r = [...document.querySelectorAll("#goalSeg .btn")].map(e => e.getBoundingClientRect()); return r.length === 4 && r.every(x => Math.abs(x.width - r[0].width) < 0.5 && x.height === 44); })()`));
   b.check("no-extra-notes", !txt.includes("每天按歌词顺序新学几句") && !txt.includes("备份文件包含") && !txt.includes("学过和加入的词") && !txt.includes("恢复到更新前的数据"));
   b.check("safari-tip", await b.ev(visible("#bkTip")) && (await b.ev(`document.querySelector("#bkTip").innerText`)) === "建议添加到主屏幕使用，数据更不容易丢失");
-  b.check("version-row", (await b.ev(`document.querySelector("#btnChangelog").innerText.replace(/\\s+/g, " ").trim()`)) === "版本记录 v0.34");
+  b.check("version-row", (await b.ev(`document.querySelector("#btnChangelog").innerText.replace(/\\s+/g, " ").trim()`)) === "版本记录 v0.35");
   b.check("backup-section", txt.includes("导出备份文件") && txt.includes("从文件恢复") && await b.ev(`!document.querySelector("#settingsView textarea") && document.querySelector("#bkFile").type === "file"`));
   b.check("never-backed-up", (await b.ev(`document.querySelector("#bkAge").innerText`)) === "还没备份过" && await b.ev(`document.querySelector("#bkAge").classList.contains("stale")`));
   b.check("settings-44px", await b.ev(`[...document.querySelectorAll("#settingsView .btn, #settingsView .cell")].filter(e => e.getClientRects().length).every(e => e.getBoundingClientRect().height >= 44)`));

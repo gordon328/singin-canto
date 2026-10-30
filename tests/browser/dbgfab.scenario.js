@@ -14,6 +14,7 @@ async function drag(b, from, to) {
 
 module.exports = { name: "dbgfab", async run(b) {
   await F.seed(b);
+  await b.ev(F.DEV_ON); await b.nav("/"); // 调试面板只在开发者模式下有效（v0.35）
   const W = await b.ev("innerWidth"), H = await b.ev("innerHeight");
   b.check("off-no-fab", !(await b.ev(shown("#dbgFab"))));
 

@@ -12,8 +12,8 @@
 
   // 数据格式版本：浏览器里是全局 DATA，Node 里 require
   const DATA = root.DATA || (typeof require === "function" ? require("./data.js") : null);
-  // 只属于这台设备的 meta：上次备份时间、这台设备的数据格式版本。不放进备份，恢复时也不覆盖
-  const DEVICE_ONLY = ["backup", "dataVersion"];
+  // 只属于这台设备的 meta：上次备份时间、这台设备的数据格式版本、开发者模式（免得恢复到别的设备上意外打开）。不放进备份，恢复时也不覆盖
+  const DEVICE_ONLY = ["backup", "dataVersion", "devMode"];
 
   // 备份内容：歌（去掉音频）、卡片、meta（"backup" 是这台设备上次备份的时间，不放进备份）。
   // 备份格式 v3 起记着数据格式版本 dataVersion 和 App 版本 appVersion，导入时按 dataVersion 先迁移再合并

@@ -37,3 +37,10 @@ test("ageLabel：没备份过、今天、昨天、7 天不提醒、8 天提醒",
   assert.deepEqual(BACKUP.ageLabel(at(2026, 10, 22, 23), now), { text: "上次备份：7 天前", stale: false });
   assert.deepEqual(BACKUP.ageLabel(at(2026, 10, 21, 8), now), { text: "上次备份：8 天前", stale: true });
 });
+
+test("开发者模式标记只属于这台设备：不放进备份；兑换记录要放进备份", () => {
+  const o = BACKUP.build({ songs: [], cards: [], meta: [{ key: "devMode", on: true }, { key: "redeemed", list: [{ hash: "a".repeat(64), at: "2026-10-31", rewards: ["dev"] }] }], now: 0 });
+  assert.ok(!o.meta.some(m => m.key === "devMode"));
+  assert.ok(o.meta.some(m => m.key === "redeemed"));
+  assert.ok(BACKUP.DEVICE_ONLY.includes("devMode"));
+});

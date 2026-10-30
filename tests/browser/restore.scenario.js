@@ -84,7 +84,7 @@ module.exports = { name: "restore", async run(b) {
   // 7. 调试面板里能看到完整的错误名和信息，有「恢复到更新前的数据」的位置
   await b.ev(breakPut(`v => v && v.key === "daily"`, "throw", "DataCloneError"));
   await b.ev(F.restoreText(text)); await b.ev(fixPut);
-  await b.ev(`localStorage.setItem("yc-debug", "1")`); await b.nav("/");
+  await b.ev(F.DEV_ON); await b.ev(`localStorage.setItem("yc-debug", "1")`); await b.nav("/");
   const dt = await b.ev(`document.querySelector("#dbgData").innerText`);
   b.check("dbg-errors " + dt.replace(/\n/g, " | "), dt.includes("最近的错误") && dt.includes("DataCloneError: 测试：故意出错") && dt.includes("恢复备份"));
   await b.ev(click("#dbgFab")); await b.sleep(300); await b.shot("restore-debug-panel");

@@ -1,0 +1,197 @@
+{
+  "app": "yuechang",
+  "v": 3,
+  "dataVersion": 6,
+  "appVersion": "v0.35",
+  "exported": "2026-10-31T09:00:00.000Z",
+  "songs": [
+    {
+      "id": "s1",
+      "title": "示例歌一",
+      "artist": "示例歌手",
+      "audioName": "a.mp3",
+      "duration": 30,
+      "lines": [
+        {
+          "t": 1,
+          "end": 4,
+          "text": "我哋去飲茶"
+        },
+        {
+          "t": 4,
+          "end": 7,
+          "text": "今日天氣好好"
+        },
+        {
+          "t": 7,
+          "end": 10,
+          "text": "落雨要帶遮"
+        },
+        {
+          "t": 10,
+          "end": 13,
+          "text": "巴士嚟喇"
+        },
+        {
+          "t": 13,
+          "end": 16,
+          "text": "聽日再見"
+        }
+      ],
+      "pack": {
+        "v": 3,
+        "summary": "编的大意。",
+        "imported": 2,
+        "fix": [],
+        "words": [
+          {
+            "w": "飲茶",
+            "jp": "jam2 caa4",
+            "zh": "喝早茶",
+            "tip": "提示",
+            "oral": false,
+            "key": true
+          },
+          {
+            "w": "天氣",
+            "jp": "tin1 hei3",
+            "zh": "天气",
+            "tip": "",
+            "oral": false
+          }
+        ]
+      },
+      "overrides": {
+        "0:0": "ngo5"
+      },
+      "created": 1761400000000,
+      "updated": 1761400000000,
+      "progress": {
+        "learned": [
+          0,
+          1
+        ],
+        "current": true
+      }
+    },
+    {
+      "id": "s2",
+      "title": "示例歌二",
+      "artist": "",
+      "audioName": "",
+      "duration": 0,
+      "lines": [
+        {
+          "t": 1,
+          "end": 4,
+          "text": "我哋去飲茶"
+        },
+        {
+          "t": 4,
+          "end": 7,
+          "text": "今日天氣好好"
+        }
+      ],
+      "pack": null,
+      "overrides": {},
+      "created": 1761400001000,
+      "updated": 1761400001000
+    }
+  ],
+  "cards": [
+    {
+      "w": "飲茶",
+      "jp": "jam2 caa4",
+      "zh": "喝早茶",
+      "tip": "",
+      "oral": false,
+      "sources": [
+        {
+          "songId": "s1",
+          "li": 0
+        }
+      ],
+      "known": false,
+      "srs": {
+        "due": 1761600000000,
+        "interval": 3,
+        "ease": 2.5,
+        "reps": 2,
+        "lapses": 0
+      },
+      "created": 1761500000000,
+      "updated": 1761500000000
+    }
+  ],
+  "meta": [
+    {
+      "key": "tones",
+      "setIndex": 2,
+      "date": "2026-10-27"
+    },
+    {
+      "key": "daily",
+      "goal": 6,
+      "date": "2026-10-28",
+      "newLines": 2,
+      "extra": 0,
+      "reviewed": 0,
+      "songId": "s1",
+      "done": [
+        0,
+        1
+      ],
+      "reviewedW": []
+    },
+    {
+      "key": "checkin",
+      "days": {
+        "2026-10-28": {
+          "type": "done"
+        },
+        "2026-10-29": {
+          "type": "done"
+        },
+        "2026-10-30": {
+          "type": "done",
+          "more": true
+        }
+      },
+      "restTokens": 1,
+      "lastTokenWeek": "2026-W44",
+      "lastProcessed": "2026-10-29",
+      "bestStreak": 3,
+      "unlocked": [
+        "lilac",
+        "night",
+        "mist"
+      ],
+      "theme": "night",
+      "unlockedInfo": {
+        "lilac": {
+          "by": "default"
+        },
+        "night": {
+          "by": "streak",
+          "at": "2026-10-30"
+        },
+        "mist": {
+          "by": "code",
+          "at": "2026-10-31"
+        }
+      }
+    },
+    {
+      "key": "redeemed",
+      "list": [
+        {
+          "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "at": "2026-10-31",
+          "rewards": [
+            "skin:mist"
+          ]
+        }
+      ]
+    }
+  ]
+}

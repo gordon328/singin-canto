@@ -8,13 +8,14 @@
      3  M4a（2026-10-28）：「每天新学几句」从 localStorage 的 prefs.goal 搬到 meta daily；歌曲加学习进度 progress
      4  v0.26（2026-10-30）：meta 加打卡记录 checkin（含休息卡）
      5  v0.33（2026-10-31）：打卡记录加 unlockedInfo（已解锁皮肤的来源和日期）、unseen（解锁了还没弹过窗的皮肤，没有就是空的）；unlocked 还是 id 的文字数组
+     6  v0.35（2026-10-31）：meta 加兑换记录 redeemed { list: [{ hash, at, rewards }] }（会随备份导出）；开发者模式 devMode 只在这台设备上，不导出
 
    迁移函数的输入输出都是 { songs, cards, meta, prefs }：
      songs/cards/meta 是数组（歌曲里不带音频），prefs 是 localStorage yc-prefs 的内容（备份文件里没有，是 null）。
    以后改数据结构：VERSION 加一，在 STEPS 里加一个「从上一版升到这一版」的函数，并在 tests/fixtures/ 加一份这一版的示例数据。 */
 (function (root) {
   "use strict";
-  const VERSION = 5;
+  const VERSION = 6;
 
   const STEPS = {
     // 1 → 2（M1）：加生词卡片和 meta，旧数据里没有就是空的
@@ -41,6 +42,8 @@
       });
       return { ...d, meta };
     },
+    // 5 → 6（v0.35）：兑换记录第一次兑换时才建，旧数据不用改
+    6(d) { return d; },
   };
 
   // 从 from 版一步步升到最新版。返回 { data, from, to, steps }；from 比最新还新、或不是整数时抛错

@@ -49,7 +49,7 @@ const home = async b => { await b.ev(click('#studyView [data-act="home"]')); awa
 
 module.exports = { name: "checkin", async run(b) {
   await F.seed(b);
-  await b.ev(`localStorage.setItem("yc-debug", "1")`);
+  await b.ev(F.DEV_ON); await b.ev(`localStorage.setItem("yc-debug", "1")`);
   await b.nav("/");
   b.check("first-day " + (await b.ev(streak)), (await b.ev(streak)) === "今天开始第一天" && await b.ev(flameIs("--muted")));
   const m0 = await b.ev(meta);
@@ -205,7 +205,10 @@ module.exports = { name: "checkin", async run(b) {
   const s0 = await b.ev(streak), k0 = await b.ev(meta);
   await b.ev(click("#btnSettings")); await b.sleep(900);
   const text = await b.ev(F.exportText);
+  // 清空就像换了新设备：开发者模式不在备份里，要重新打开，模拟日期才继续有效（v0.35）
+  const sim = await b.ev(`localStorage.getItem("yc-simdays")`);
   await b.ev(F.WIPE); await b.nav("/");
+  await b.ev(F.DEV_ON); await b.ev(`(localStorage.setItem("yc-debug", "1"), localStorage.setItem("yc-simdays", ${JSON.stringify(sim)}))`); await b.nav("/");
   b.check("wiped " + (await b.ev(streak)), (await b.ev(streak)) === "今天开始第一天");
   await b.ev(F.restoreText(text)); await b.nav("/");
   const k1 = await b.ev(meta);

@@ -3,12 +3,12 @@
    - 标准发音录音（audio/）：内容不会变，先用缓存，没有再联网下载并存起来。单独一个缓存，换版本不删
    - 歌词搜索（lrclib）等其他网站的请求：不缓存，照常联网
    每次改了要缓存的文件列表，把 VERSION 加一。 */
-const VERSION = "v0.34";
+const VERSION = "v0.35";
 const CACHE = "yuechang-" + VERSION;
 const VOICE_CACHE = "voice-hiujin-1";
 // 皮肤文件：按 skins/registry.js 的列表自动加进来，加新皮肤不用改这里
 importScripts("skins/registry.js");
-const SHELL = ["./", "./pack.js", "./data.js", "./CHANGELOG.md", "./srs.js", "./study.js", "./checkin.js", "./lessons.js", "./proof.js", "./gesture.js", "./backup.js", "./voice.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./skins/registry.js", "./skins/skin.js", "./skins/unlock-rules.js", ...self.SKIN_IDS.map(id => "./skins/" + id + ".js")];
+const SHELL = ["./", "./pack.js", "./data.js", "./CHANGELOG.md", "./srs.js", "./study.js", "./checkin.js", "./lessons.js", "./proof.js", "./gesture.js", "./backup.js", "./voice.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./skins/registry.js", "./skins/skin.js", "./skins/unlock-rules.js", "./skins/redeem.js", "./skins/codes.js", ...self.SKIN_IDS.map(id => "./skins/" + id + ".js")];
 
 self.addEventListener("install", e => {
   e.waitUntil((async () => {

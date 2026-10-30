@@ -83,3 +83,10 @@ const voiced = `window.__said.filter(x => x[0][0] === "♪").map(x => x[0].slice
 const spoken = `window.__said.filter(x => x[0][0] !== "♪" && x[0] !== " ")`;
 
 module.exports = { VOICE_REC, voiced, spoken, exportText, restoreText, silentWav, T1, T2, SEED_V1, idbGet, idbCount, WIPE, seed, openSong, tapChar, sheetText, tapAt, closeSheet };
+// 开发者模式（v0.35）：调试面板、模拟日期只在开发者模式下有效。测试里直接在数据库里打开（真机上用开发者兑换码）
+const DEV_ON = `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result;
+  db.transaction("meta", "readwrite").objectStore("meta").put({ key: "devMode", on: true }).onsuccess = () => { db.close(); res(); }; }; })`;
+// 测试用兑换码：只在页面里临时加进 SKIN_CODES（不是真的兑换码，仓库里没有它们的哈希）
+const addTestCode = (code, rewards) => `(async () => { SKIN_CODES.push({ hash: await REDEEM.sha256(REDEEM.normalize(${JSON.stringify(code)})), rewards: ${JSON.stringify(rewards)}, note: "测试" }); })()`;
+module.exports.DEV_ON = DEV_ON;
+module.exports.addTestCode = addTestCode;

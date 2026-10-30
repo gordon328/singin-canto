@@ -486,6 +486,19 @@ label.btn{overflow:hidden}
 .cell-goal .seg .btn{flex:1 1 0;min-width:0;height:44px;padding:0}
 .cell-goal .stepper{margin:0;padding:0 16px 16px}
 .sgrp-note{padding:8px 16px 0;font-size:13px;line-height:1.6;color:var(--muted)}
+/* 兑换码弹窗（设计规范 5.15）：输入框 + 提示（固定高度，出现提示时按钮不挪动）+ 兑换按钮 */
+.rd-msg{min-height:20px;font-size:14px;line-height:20px;color:var(--danger)}
+/* 开发者模式页面（设计规范 5.15）：开关、模拟日期、危险操作 */
+.sw{flex:none;position:relative;width:51px;height:31px;border-radius:16px;background:var(--rule);transition:background-color var(--dur) var(--ease)}
+.sw i{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:var(--surface);box-shadow:0 0 0 1px var(--field-border);transition:transform var(--dur) var(--ease)}
+.sw.on{background:var(--accent)}
+.sw.on i{transform:translateX(20px);box-shadow:none}
+.cell.danger{color:var(--danger)}
+.dev-sim{display:flex;flex-direction:column;gap:12px;padding:16px}
+.dev-sim .sim-lbl{font-size:15px;color:var(--ink)}
+.dev-sim .row{gap:8px}
+.dev-sim input{min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--field-border);border-radius:12px;padding:8px 12px}
+.dev-last{margin-top:24px}
 /* 设置 › 皮肤（设计规范 5.13）：每个皮肤一张卡片；正在用的主色描边；没解锁的预览半透明 */
 .skins{display:flex;flex-direction:column;gap:12px;padding-block:8px calc(32px + env(safe-area-inset-bottom,0px))}
 .skins-note{margin:0;padding:0 4px;font-size:15px;line-height:1.6;color:var(--ink-2)}
@@ -772,7 +785,7 @@ label.btn{overflow:hidden}
     <div class="tt"><b>设置</b></div>
   </div></div>
   <!-- 分组列表（设计规范 5.11）：组名在卡片上方；每行 52px，细线分隔；左边名称，右边当前值 + 箭头。
-       以后：「兑换码」放进关于；「开发者模式」在最下面单独一组，开启时才显示 -->
+       「开发者模式」在最下面单独一组，只有开启时才显示（renderSettings 里生成） -->
   <div class="wrap set">
     <div class="sgrp-t">学习</div>
     <div class="sgrp">
@@ -796,7 +809,9 @@ label.btn{overflow:hidden}
     <div class="sgrp-t">关于</div>
     <div class="sgrp">
       <button class="cell" type="button" id="btnChangelog"><span class="cell-n">版本记录</span><span class="cell-v"><span class="num" id="setVer"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
+      <button class="cell" type="button" id="btnRedeem"><span class="cell-n">兑换码</span><span class="cell-v"><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
     </div>
+    <div id="devGroup"></div>
   </div>
 </section>
 
@@ -842,6 +857,15 @@ label.btn{overflow:hidden}
     <p class="skins-note">皮肤只改变颜色，学习进度和设置都不受影响。</p>
     <div class="skins-list" id="skinsList"></div>
   </div>
+</section>
+
+<!-- DEV：开发者模式（设置页最下面进入，开发规格 7.10.5） -->
+<section id="devView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>开发者模式</b></div>
+  </div></div>
+  <div class="wrap set" id="devBody"></div>
 </section>
 
 <!-- CHANGELOG：版本记录（设置页进入，内容是 CHANGELOG.md） -->
@@ -894,6 +918,8 @@ label.btn{overflow:hidden}
 <script src="gesture.js"></script>
 <script src="data.js"></script>
 <script src="backup.js"></script>
+<script src="skins/redeem.js"></script>
+<script src="skins/codes.js"></script>
 <script src="voice.js"></script>
 <script>
 (function(){
@@ -979,8 +1005,8 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView","changelogView","skinsView"];
-const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2,changelogView:2,skinsView:2};
+const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView","changelogView","skinsView","devView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2,changelogView:2,skinsView:2,devView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
@@ -1062,6 +1088,7 @@ window.addEventListener("popstate",e=>{
   if(st.view==="calendarView"){renderCalendar();show("calendarView",anim);return}
   if(st.view==="changelogView"){renderChangelog();show("changelogView",anim);return}
   if(st.view==="skinsView"){renderSkins();show("skinsView",anim);return}
+  if(st.view==="devView"){if(!devOn){history.replaceState({view:"settingsView"},"");renderSettings();show("settingsView",anim);return}renderDev();show("devView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
   // 回到首页：停掉播放，放开音频文件占的内存
@@ -1083,17 +1110,19 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.34";
+const APP_VERSION="v0.35";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
-try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
+// 开发者模式（开发规格 7.10.5）：调试面板、模拟日期只在开发者模式下有效。真的记录在 meta devMode；localStorage yc-dev 是启动时就能读的副本，读完数据库后 syncDev() 以数据库为准
+let devOn=false;try{devOn=localStorage.getItem("yc-dev")==="1"}catch(e){}
+try{dbg.on=devOn&&localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
 // 模拟日期会把打卡、复习、学习进度按模拟的日子写进数据库，所以主屏幕 App（开发者的真实数据）里不能用，只能在 Safari 里用
 const simAllowed=!navigator.standalone;
 let simDays=0;
-try{if(dbg.on&&simAllowed)simDays=parseInt(localStorage.getItem("yc-simdays"),10)||0}catch(e){}
+try{if(devOn&&simAllowed)simDays=parseInt(localStorage.getItem("yc-simdays"),10)||0}catch(e){}
 function appNow(){return Date.now()+simDays*86400000}
 function setSimDays(n){
-  simDays=dbg.on&&simAllowed?n:0;
+  simDays=devOn&&simAllowed?n:0;
   try{if(simDays)localStorage.setItem("yc-simdays",String(simDays));else localStorage.removeItem("yc-simdays")}catch(e){}
   renderSim();onDayChange();
 }
@@ -1219,13 +1248,31 @@ function dbgNote(type){if(dbg.on)dbgPush(type,"")}
   dbgPush(type,p&&p!==e.target?`${e.target.tagName.toLowerCase()} ∈ ${descEl(p)}`:descEl(e.target));
 },{passive:true,capture:true}));
 $("#appVer").textContent="版本 "+APP_VERSION;
+// 连点 3 下版本号开关调试面板：只在开发者模式下有效
 $("#appVer").addEventListener("click",e=>{
+  if(!devOn)return;
   dbg.taps=e.timeStamp-dbg.tapAt<600?dbg.taps+1:1;dbg.tapAt=e.timeStamp;
   if(dbg.taps<3)return;
-  dbg.taps=0;dbg.on=!dbg.on;dbg.log=[];dbg.last=null;dbg.ret=null;
-  try{localStorage.setItem("yc-debug",dbg.on?"1":"0")}catch(e){}
-  dbg.open=false;renderDbgShell();renderDbg();if(dbg.on)renderSim();else setSimDays(0);toast(dbg.on?"调试面板已打开（右边的小圆按钮）":"调试面板已关闭");
+  dbg.taps=0;setDebug(!dbg.on);toast(dbg.on?"调试面板已打开（右边的小圆按钮）":"调试面板已关闭");
 });
+// 打开 / 关掉调试面板（版本号、开发者页面的开关）。关掉时模拟日期回到真实日期
+function setDebug(on){
+  dbg.on=!!on&&devOn;dbg.log=[];dbg.last=null;dbg.ret=null;
+  try{localStorage.setItem("yc-debug",dbg.on?"1":"0")}catch(e){}
+  dbg.open=false;renderDbgShell();renderDbg();if(dbg.on)renderSim();else setSimDays(0);
+}
+// 读完数据库：以 meta devMode 为准。不是开发者模式就关掉调试面板、模拟日期
+function syncDev(){
+  devOn=!!(metaRecs.get("devMode")&&metaRecs.get("devMode").on);
+  try{
+    if(devOn){localStorage.setItem("yc-dev","1");dbg.on=localStorage.getItem("yc-debug")==="1";simDays=simAllowed?parseInt(localStorage.getItem("yc-simdays"),10)||0:0}
+    else{["yc-dev","yc-debug","yc-simdays"].forEach(k=>localStorage.removeItem(k));dbg.on=false;simDays=0}
+  }catch(e){if(!devOn){dbg.on=false;simDays=0}}
+}
+async function setDevMode(on){
+  const r={key:"devMode",on:!!on,at:Date.now()};metaRecs.set("devMode",r);await DB.put(r,"meta");
+  syncDev();if(!on)setSimDays(0);dbg.open=false;renderDbgShell();renderDbg();renderSim();
+}
 
 
 /* ---------- speech ---------- */
@@ -2311,6 +2358,7 @@ function renderSettings(){
   goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
   renderBackupCard();
   $("#setVer").textContent=APP_VERSION;
+  $("#devGroup").innerHTML=devOn?`<div class="sgrp-t">开发者</div><div class="sgrp"><button class="cell" type="button" id="devRow"><span class="cell-n">开发者模式</span><span class="cell-v"><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button></div>`:"";
   $("#skinName").textContent=(typeof SKIN_DEFS==="object"&&SKIN_DEFS[document.documentElement.dataset.skin]||{}).name||"";
 }
 /* ---------- 皮肤页（设计规范 5.13）：卡片和预览都按皮肤文件里的颜色画，组件不认识任何皮肤 ---------- */
@@ -2385,10 +2433,10 @@ function showUnlocks(){
   const id=ids[0],d=SKIN_DEFS[id];
   saveCheckin({...rec,unseen:ids.slice(1)});
   if(!d||!rec.unlocked.includes(id)){showUnlocks();return}
-  const rule=UNLOCK.RULES[d.unlock.type];
+  const rule=UNLOCK.RULES[d.unlock.type],byCode=(rec.unlockedInfo||{})[id]&&rec.unlockedInfo[id].by==="code";
   openSheet(`<div class="unlock" data-skin-id="${esc(id)}">
-    <div class="unlock-why">${esc(rule.reached(d.unlock.value))}</div>
-    <h3 class="unlock-title">解锁新皮肤「${esc(d.name)}」</h3>
+    <div class="unlock-why">${byCode?`解锁新皮肤「${esc(d.name)}」`:esc(rule.reached(d.unlock.value))}</div>
+    <h3 class="unlock-title">${byCode?"兑换成功":`解锁新皮肤「${esc(d.name)}」`}</h3>
     ${skinPreview(d,"large")}
     <p class="unlock-intro">${esc(d.intro)}</p>
     <button class="btn primary block" type="button" data-unlock="use">立即使用</button>
@@ -2411,6 +2459,102 @@ $("#skinsList").addEventListener("click",async e=>{
   renderSkins();
 });
 $("#skinRow").addEventListener("click",()=>{if(navPending)return;openSkinsPage();go("skinsView")});
+
+/* ---------- 兑换码（开发规格 7.10.4）：只比对哈希，兑换码原文不在代码里 ---------- */
+function openRedeem(){
+  openSheet(`<h3>兑换码</h3>
+    <input type="text" id="rdIn" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="CANTO-XXXX-XXXX-XXXX" aria-label="兑换码">
+    <div class="rd-msg" id="rdMsg" role="status"></div>
+    <button class="btn primary block" type="button" id="rdGo">兑换</button>`);
+  $("#rdIn").focus(); // 点按钮的同一时刻弹出键盘
+}
+let redeeming=false;
+async function doRedeem(){
+  const inp=$("#rdIn");if(!inp||redeeming)return;
+  const say=t=>{const m=$("#rdMsg");if(m)m.textContent=t},n=REDEEM.normalize(inp.value);
+  if(!n){say(REDEEM.MESSAGES.empty);return}
+  redeeming=true;
+  try{
+    const hash=await REDEEM.sha256(n),entry=REDEEM.find(typeof SKIN_CODES==="object"?SKIN_CODES:[],hash);
+    const red=metaRecs.get("redeemed"),list=red&&Array.isArray(red.list)?red.list:[];
+    const r=REDEEM.plan(entry,{unlocked:getCheckin().unlocked,devMode:devOn,redeemed:list.map(x=>x.hash),skinIds:Object.keys(SKIN_DEFS)});
+    if(r.status!=="ok"){say(REDEEM.MESSAGES[r.status]);return}
+    const today=SRS.today(appNow());let rec=getCheckin();
+    for(const id of r.skins)rec=CHECKIN.unlock(rec,id,"code",today);
+    if(r.skins.length)await saveCheckin({...rec,unseen:[...new Set([...(rec.unseen||[]),...r.skins])]});
+    const rr={key:"redeemed",list:[...list.filter(x=>x.hash!==hash),{hash,at:today,rewards:entry.rewards}]};
+    metaRecs.set("redeemed",rr);await DB.put(rr,"meta");
+    if(r.dev)await setDevMode(true);
+    closeSheet();renderSettings();
+    if(r.dev)toast("开发者模式已开启：在设置页最下面",4000);
+    if(r.skins.length)showUnlocks(); // 等兑换框关掉再弹「兑换成功」
+  }catch(e){logErr("兑换",e);say("兑换出错了："+errText(e))}
+  finally{redeeming=false}
+}
+$("#btnRedeem").addEventListener("click",openRedeem);
+$("#sheetBody").addEventListener("input",e=>{
+  if(e.target.id!=="rdIn")return;
+  const i=e.target,p=i.selectionStart,up=i.value.toUpperCase();
+  if(up!==i.value){i.value=up;try{i.setSelectionRange(p,p)}catch(_){}}
+  const m=$("#rdMsg");if(m)m.textContent="";
+});
+$("#sheetBody").addEventListener("keydown",e=>{if(e.target.id==="rdIn"&&e.key==="Enter"){e.preventDefault();doRedeem()}});
+$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("#rdGo"))doRedeem()});
+
+/* ---------- 开发者模式页面（开发规格 7.10.5、设计规范 5.15）：每个会改数据的操作都先确认 ---------- */
+$("#devGroup").addEventListener("click",e=>{if(e.target.closest("#devRow")&&!navPending){renderDev();go("devView")}});
+function renderDev(){
+  const ci=getCheckin(),day=SRS.today(appNow());
+  const sim=simAllowed?`<span class="sim-lbl">模拟日期 <b class="num">${day}</b>（真实 ${simDays>=0?"+":""}${simDays} 天）</span>
+      <div class="row"><button class="btn soft small" type="button" data-sim="minus">−1 天</button><button class="btn soft small" type="button" data-sim="plus">+1 天</button><button class="btn soft small" type="button" data-sim="reset">回到今天</button></div>
+      <input type="date" class="sim-date" value="${day}" aria-label="选择模拟日期">`
+    :'<span class="sim-lbl">模拟日期会改动打卡和复习数据，只能在 Safari 里用：先在这里导出备份，再在 Safari 里打开网址、从备份恢复</span>';
+  $("#devBody").innerHTML=`
+    <div class="sgrp-t">调试</div>
+    <div class="sgrp"><button class="cell" type="button" id="devDebug" role="switch" aria-checked="${dbg.on}"><span class="cell-n">调试面板</span><span class="sw${dbg.on?" on":""}" aria-hidden="true"><i></i></span></button></div>
+    <div class="sgrp-note">也可以连点 3 下首页底部的版本号开关</div>
+    <div class="sgrp-t">模拟日期</div>
+    <div class="sgrp"><div class="dev-sim">${sim}</div></div>
+    <div class="sgrp-t">皮肤</div>
+    <div class="sgrp"><button class="cell" type="button" data-dev="unlockAll"><span class="cell-n">解锁全部皮肤</span></button><button class="cell" type="button" data-dev="relock"><span class="cell-n">恢复按条件解锁</span></button></div>
+    <div class="sgrp-t">打卡</div>
+    <div class="sgrp"><button class="cell" type="button" data-dev="resetToday"><span class="cell-n">重置今日打卡</span></button><button class="cell" type="button" data-dev="clearTokens"><span class="cell-n">清空休息卡</span><span class="cell-v">现在 ${ci.restTokens} 张</span></button></div>
+    <div class="sgrp dev-last"><button class="cell danger" type="button" data-dev="off"><span class="cell-n">关闭开发者模式</span></button></div>`;
+}
+const DEV_ASK={
+  unlockAll:{title:"解锁全部皮肤？",body:"所有皮肤都变成已解锁（来源记为开发者模式）。可以用「恢复按条件解锁」改回来。",ok:"解锁"},
+  relock:{title:"恢复按条件解锁？",body:"不满足解锁条件的皮肤会重新锁上，用兑换码解锁的保留。正在用的皮肤被锁上时换回丁香。",ok:"恢复"},
+  resetToday:{title:"重置今日打卡？",body:"今天的打卡记录会删掉。今天学过的句子和复习进度不受影响。",ok:"重置"},
+  clearTokens:{title:"清空休息卡？",body:"手里的休息卡会全部清掉。",ok:"清空"},
+  off:{title:"关闭开发者模式？",body:"调试面板和模拟日期会关掉，日期回到真实日期。以后用开发者兑换码可以再打开。",ok:"关闭"},
+};
+async function devAction(a){
+  if(!await confirmSheet({...DEV_ASK[a],danger:a!=="unlockAll"}))return;
+  const today=SRS.today(appNow());let rec=getCheckin();
+  if(a==="unlockAll"){for(const id of Object.keys(SKIN_DEFS))rec=CHECKIN.unlock(rec,id,"dev",today);await saveCheckin(rec);toast("已解锁全部皮肤")}
+  else if(a==="relock"){
+    // 留下：默认皮肤、兑换码解锁的、现在满足条件的、不认识的皮肤（以后删掉的皮肤，记录保留）
+    const ctx=skinCtx(),info=rec.unlockedInfo||{};
+    const keep=id=>{const d=SKIN_DEFS[id];if(!d)return true;if(d.unlock.type==="default"||(info[id]&&info[id].by==="code"))return true;const r=UNLOCK.RULES[d.unlock.type];return !!r&&r.done(ctx,d.unlock.value)};
+    const unlocked=rec.unlocked.filter(keep),ui={};for(const id of unlocked)if(info[id])ui[id]=info[id];
+    await saveCheckin({...rec,unlocked,unlockedInfo:ui,unseen:(rec.unseen||[]).filter(id=>unlocked.includes(id)),theme:unlocked.includes(rec.theme)?rec.theme:SKIN.pick(null,unlocked,SKIN_DEFS)});
+    syncSkin();toast("已恢复按条件解锁");
+  }
+  else if(a==="resetToday"){const days={...rec.days};delete days[today];await saveCheckin({...rec,days});toast("今日打卡已重置")}
+  else if(a==="clearTokens"){await saveCheckin({...rec,restTokens:0});toast("休息卡已清空")}
+  else if(a==="off"){await setDevMode(false);renderSettings();toast("开发者模式已关闭");goBack();return}
+  renderDev();
+}
+$("#devBody").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.id==="devDebug"){setDebug(!dbg.on);renderDev();return}
+  if(b.dataset.sim){setSimDays(b.dataset.sim==="minus"?simDays-1:b.dataset.sim==="plus"?simDays+1:0);renderDev();return}
+  if(b.dataset.dev)devAction(b.dataset.dev);
+});
+$("#devBody").addEventListener("change",e=>{
+  if(!e.target.classList.contains("sim-date")||!/^\d{4}-\d{2}-\d{2}$/.test(e.target.value))return;
+  setSimDays(simDays+dayNum(e.target.value)-dayNum(SRS.today(appNow())));renderDev();
+});
 
 /* ---------- 版本记录：显示 CHANGELOG.md（设置页「关于」进入，DEPTH 2） ---------- */
 // 只认几种写法：## 版本标题、### 小标题、- 列表、含 ⚠️ 的行醒目显示、**粗体**。# 大标题不显示（顶栏已经有）
@@ -2514,6 +2658,10 @@ async function restoreBackup(obj){
     if(m.key==="daily")W.meta.push(STUDY.mergeDaily(metaRecs.get("daily"),m,today));
     // 打卡：这台设备还没打过卡（新设备、清空过）就直接用备份里的，不然新记录送的 1 张休息卡会被算进去
     else if(m.key==="checkin"){const loc=getCheckin();W.meta.push(CHECKIN.normalize(Object.keys(loc.days).length?CHECKIN.merge(loc,m):{...m,...CHECKIN.mergeUnlocked(loc,m),unseen:loc.unseen||[]},today))}
+    // 兑换记录：按哈希合并，同一个码留兑换得早的
+    else if(m.key==="redeemed"){const a=metaRecs.get("redeemed"),list=[...(a&&Array.isArray(a.list)?a.list:[])];
+      for(const x of Array.isArray(m.list)?m.list:[]){if(!x||typeof x.hash!=="string")continue;const i=list.findIndex(y=>y.hash===x.hash);if(i<0)list.push(x);else if((x.at||"")<(list[i].at||""))list[i]=x}
+      W.meta.push({key:"redeemed",list})}
     else if(!BACKUP.DEVICE_ONLY.includes(m.key)&&!metaRecs.has(m.key))W.meta.push(m)}
   // 新设备从备份恢复：这份备份就是"上次备份"
   const exp=Date.parse(obj.exported);
@@ -2788,6 +2936,7 @@ history.replaceState({view:"home"},"");
   cards=new Map((await DB.all("cards")).map(c=>[c.w,c]));
   metaRecs=new Map((await DB.all("meta")).map(m=>[m.key,m]));
   await upgradeData();
+  syncDev();
   if(!metaRecs.has("daily"))await saveDaily(getDaily());
   // 申请持久存储：手机空间紧张时浏览器不会自动清掉 App 的数据
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}

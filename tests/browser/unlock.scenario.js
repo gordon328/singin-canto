@@ -22,7 +22,7 @@ const heroBg = `getComputedStyle(document.querySelector("#sheetBody .skin-prev .
 
 module.exports = { name: "unlock", async run(b) {
   await F.seed(b);
-  await b.ev(`localStorage.setItem("yc-debug", "1")`); await b.nav("/");
+  await b.ev(F.DEV_ON); await b.ev(`localStorage.setItem("yc-debug", "1")`); await b.nav("/");
   b.check("no-popup-at-start", (await b.ev(sheet)) === "");
 
   // 第 1 天：学完了第一首歌 → 晨雾；点「以后再说」

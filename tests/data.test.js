@@ -106,3 +106,11 @@ test("第 5 版：打卡记录补上 unlockedInfo，其他不动", () => {
   const r2 = DATA.migrate({ ...fx, meta: fx.meta.filter(m => m.key !== "checkin") }, 4).data;
   assert.ok(!r2.meta.some(m => m.key === "checkin"), "没有打卡记录就不建");
 });
+
+test("第 6 版：兑换记录 redeemed（新记录，没有就是空的），旧数据不用改", () => {
+  assert.equal(DATA.VERSION >= 6, true);
+  const fx = load("data-v6.json");
+  const r = fx.meta.find(m => m.key === "redeemed");
+  assert.ok(r && Array.isArray(r.list) && r.list.every(x => /^[0-9a-f]{64}$/.test(x.hash)));
+  assert.deepEqual(DATA.migrate(load("data-v5.json"), 5).data.meta, load("data-v5.json").meta);
+});

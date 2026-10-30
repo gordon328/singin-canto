@@ -12,7 +12,7 @@ module.exports = { name: "simdate", async run(b) {
   const now = Date.now();
   // 一张现在到期、一张两天后到期：模拟 +2 天后两张都到期
   await b.ev(putCards([mk("風褸", "fung1 lau1", now - 1000), mk("街", "gaai1", now + 2 * 86400e3 - 3600e3)]));
-  await b.ev(`localStorage.setItem("yc-debug", "1")`);
+  await b.ev(F.DEV_ON); await b.ev(`localStorage.setItem("yc-debug", "1")`);
   await b.nav("/");
   const today = await b.ev(real);
   b.check("sim-controls", await b.ev(`["simMinus", "simPlus", "simReset", "simDate"].every(id => !!document.getElementById(id))`)
@@ -36,7 +36,8 @@ module.exports = { name: "simdate", async run(b) {
   // 版本号点三下关掉调试面板：模拟日期清零，那一行消失
   await b.ev(`(() => { const v = document.querySelector("#appVer"); for (let i = 0; i < 3; i++) v.click(); })()`); await b.sleep(300);
   b.check("sim-off-resets", (await b.ev(`localStorage.getItem("yc-simdays")`)) === null && (await b.ev(`document.querySelector("#dbgSim").hidden`)) && (await b.ev(dueNum)) === 1);
-  // 关着面板时，就算 localStorage 里有天数也不生效
+  // 不是开发者模式时，就算 localStorage 里有天数也不生效（v0.35 起模拟日期跟着开发者模式走）
+  await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; db.transaction("meta", "readwrite").objectStore("meta").put({ key: "devMode", on: false }).onsuccess = () => { db.close(); res(); }; }; })`);
   await b.ev(`localStorage.setItem("yc-simdays", "5")`); await b.nav("/");
   b.check("sim-ignored-when-off", (await b.ev(dueNum)) === 1);
   b.check("simdate: 页面没有报错", b.errors.length === 0);
