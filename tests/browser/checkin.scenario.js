@@ -96,6 +96,11 @@ module.exports = { name: "checkin", async run(b) {
   const m3 = await b.ev(meta);
   b.check("break-streak " + (await b.ev(streak)) + " " + JSON.stringify([t0, m3]), m3.restTokens >= t0 && Object.values(m3.days).filter(x => x.type === "rest").length === 1
     && (await b.ev(streak)) === "今天重新开始 · 累计 2 天" && !(await b.ev(streak)).includes("连续 0"));
+  // 日历统计里「连续」也显示「—」，不显示 0
+  await b.ev(click("#streak")); await b.sleep(900);
+  const dash = await b.ev(`document.querySelector("#calBody .cal-num.now").innerText.replace(/\\s+/g, "")`);
+  b.check("cal-streak-dash " + dash, dash === "连续—");
+  await b.ev(`history.back()`); await b.sleep(900);
   await finishDay(b); await home(b);
   b.check("restart " + (await b.ev(streak)), (await b.ev(streak)) === "连续 1 天 · 累计 3 天");
 
@@ -118,11 +123,29 @@ module.exports = { name: "checkin", async run(b) {
   await b.nav("/");
   await b.ev(click("#streak")); await b.sleep(900);
   b.check("cal-open", (await b.ev(`history.state.view`)) === "calendarView" && !(await b.ev(`document.querySelector("#calendarView").hidden`)));
-  const stats = await b.ev(`[...document.querySelectorAll("#calBody .cal-stat")].map(e => e.innerText.replace(/\\s+/g, " ").trim())`);
+  // 统计卡片（设计图方案 B）：一张卡片，上面三列（连续 / 累计 / 最长连续），下面休息卡横栏
+  const nums = await b.ev(`[...document.querySelectorAll("#calBody .cal-num")].map(e => e.innerText.replace(/\\s+/g, ""))`);
   const ck = await b.ev(meta);
-  b.check("cal-stats " + JSON.stringify(stats), stats.length === 4 && stats[0].startsWith("连续") && stats[1].startsWith("累计 4") && stats[2].startsWith("最长连续")
-    && stats[3].replace(/\s+/g, "") === "休息卡" + ck.restTokens + "/3" + (ck.restTokens >= 3 ? "已存满，用掉后才会继续发放" : "每周一发1张")
-    && (await b.ev(`document.querySelectorAll("#calBody .cal-stat .tokens svg.on").length`)) === ck.restTokens);
+  const tokenBar = await b.ev(`document.querySelector("#calBody .cal-tokens").innerText.replace(/\\s+/g, "")`);
+  b.check("cal-stats " + JSON.stringify([nums, tokenBar]), nums.length === 3 && /^连续\d+天$/.test(nums[0]) && nums[1] === "累计4天" && /^最长连续\d+天$/.test(nums[2])
+    && tokenBar === "休息卡" + ck.restTokens + "/3" + (ck.restTokens >= 3 ? "已存满，用掉后才会继续发放" : "每周一发1张")
+    && (await b.ev(`document.querySelectorAll("#calBody .cal-tokens .tk i.on").length`)) === ck.restTokens
+    && (await b.ev(`document.querySelectorAll("#calBody .cal-tokens .tk i").length`)) === 3);
+  // 样式：一张卡片圆角 24、只有阴影没有边框；三列一样宽一样高，中间 1px 竖线（高倍屏上浏览器会把 1px 换算成更细的物理像素）；「连续」的数字是主色；图标 14×18 圆角 4
+  const look = await b.ev(`(() => { const c = document.querySelector("#calBody .cal-stats"), s = getComputedStyle(c), cols = [...c.querySelectorAll(".cal-num")].map(e => e.getBoundingClientRect());
+    const color = v => { const p = document.createElement("span"); p.style.color = "var(" + v + ")"; document.body.append(p); const x = getComputedStyle(p).color; p.remove(); return x; };
+    const ic = c.querySelector(".tk i"), is = getComputedStyle(ic), bar = getComputedStyle(c.querySelector(".cal-tokens")), nums = getComputedStyle(c.querySelector(".cal-nums"));
+    return { radius: s.borderTopLeftRadius, border: s.borderTopWidth, shadow: s.boxShadow !== "none", widths: cols.map(r => Math.round(r.width)), heights: cols.map(r => Math.round(r.height)),
+      line: getComputedStyle(c.querySelectorAll(".cal-num")[1]).borderLeftWidth, accent: getComputedStyle(c.querySelector(".cal-num.now b")).color === color("--accent"),
+      ink: getComputedStyle(c.querySelectorAll(".cal-num b")[1]).color === color("--ink"), icon: [Math.round(ic.getBoundingClientRect().width), Math.round(ic.getBoundingClientRect().height), is.borderTopLeftRadius],
+      barPad: bar.padding, barLine: bar.borderTopWidth, numsPad: nums.paddingTop + " " + nums.paddingBottom }; })()`);
+  b.check("cal-stats-look " + JSON.stringify(look), look.radius === "24px" && look.border === "0px" && look.shadow && new Set(look.widths).size === 1 && new Set(look.heights).size === 1
+    && parseFloat(look.line) > 0 && parseFloat(look.line) <= 1 && look.accent && look.ink && look.icon.join() === "14,18,4px" && look.barPad === "12px 16px" && parseFloat(look.barLine) > 0 && parseFloat(look.barLine) <= 1 && look.numsPad === "16px 16px");
+  // 卡片左右和月历对齐；整个月不用滚动就能看到（iPhone 17 Pro Max 440×956）
+  await b.viewport(440, 956); await b.sleep(300);
+  const fit = await b.ev(`(() => { const c = document.querySelector("#calBody .cal-stats").getBoundingClientRect(), g = document.querySelector("#calGrid").getBoundingClientRect();
+    return { l: [Math.round(c.left), Math.round(g.left)], r: [Math.round(c.right), Math.round(g.right)], bottom: Math.round(g.bottom), h: innerHeight, sw: document.documentElement.scrollWidth, w: innerWidth }; })()`);
+  b.check("cal-fit " + JSON.stringify(fit), fit.l[0] === fit.l[1] && fit.r[0] === fit.r[1] && fit.bottom <= fit.h && fit.sw <= fit.w);
   const today = await b.ev(`document.querySelector("#calBody .cal-day.is-today").dataset.day`);
   b.check("cal-head", (await b.ev(`[...document.querySelectorAll("#calBody .cal-head span")].map(e => e.innerText).join(" ")`)) === "一 二 三 四 五 六 日");
   const cell = d => `(() => { const e = document.querySelector('#calGrid [data-day="' + ${JSON.stringify(d)} + '"]'); if (!e) return null; const s = getComputedStyle(e);
@@ -171,8 +194,8 @@ module.exports = { name: "checkin", async run(b) {
   await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const st = db.transaction("meta", "readwrite").objectStore("meta");
     st.get("checkin").onsuccess = e => { st.put(Object.assign(e.target.result, { restTokens: 3 })).onsuccess = () => { db.close(); res(); }; }; }; })`);
   await b.nav("/"); await b.ev(click("#streak")); await b.sleep(900);
-  const full = await b.ev(`document.querySelectorAll("#calBody .cal-stat")[3].innerText.replace(/\\s+/g, "")`);
-  b.check("tokens-full " + full, full === "休息卡3/3已存满，用掉后才会继续发放" && (await b.ev(`document.querySelectorAll("#calBody .cal-stat .tokens svg.on").length`)) === 3);
+  const full = await b.ev(`document.querySelector("#calBody .cal-tokens").innerText.replace(/\\s+/g, "")`);
+  b.check("tokens-full " + full, full === "休息卡3/3已存满，用掉后才会继续发放" && (await b.ev(`document.querySelectorAll("#calBody .cal-tokens .tk i.on").length`)) === 3);
   await b.shot("checkin-tokens-full");
   await b.ev(`history.back()`); await b.sleep(900);
 

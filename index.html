@@ -210,9 +210,6 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .tokens svg{flex:none;fill:none;stroke:var(--accent);stroke-width:1.5}
 .tokens svg.on{fill:var(--accent)}
 .tokens b{margin-left:4px;font-weight:700;color:var(--ink)}
-.cal-stat .tokens{gap:4px}
-.cal-stat .tokens svg{width:15px;height:20px}
-.cal-stat .tokens b{font-size:28px;line-height:1.2;margin-left:8px}
 /* 日历格子：首页日历页和完成页的本周共用。颜色深浅 = 当天新学的词 + 复习的词 */
 .cal-day{aspect-ratio:1;max-width:100%;border-radius:12px;background:var(--rule);display:grid;place-items:center;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .cal-day[data-lv="1"]{background:color-mix(in srgb,var(--accent) 25%,transparent)}
@@ -224,12 +221,23 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 @keyframes calFill{from{transform:scale(.6)}to{transform:scale(1)}}
 /* 日历页：上面四格统计，下面月历直接放在页面上（不放卡片里，窄屏上每格也能有 44px） */
 .cal{display:flex;flex-direction:column;gap:16px;padding-block:8px calc(32px + env(safe-area-inset-bottom,0px))}
-.cal-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.cal-stat{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1)}
-.cal-stat .lbl{font-size:13px;color:var(--muted)}
-.cal-stat b{font-size:28px;font-weight:700;line-height:1.2}
-.cal-stat b small{font-size:15px;font-weight:600;margin-left:4px}
-.cal-stat .sub{font-size:12px;line-height:1.5;color:var(--muted)}
+/* 统计卡片（2026-10-30 改，设计图 docs/design/calendar-stats.png 方案 B）：上面三列数字，下面一条休息卡横栏。
+   分隔线比 --rule 再浅一点（和卡片底色混合），以后换皮肤也跟着变 */
+.cal-stats{--cal-line:color-mix(in srgb,var(--rule) 55%,var(--surface));border-radius:24px;background:var(--surface);box-shadow:var(--shadow-1);overflow:hidden}
+.cal-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding-block:16px}
+.cal-num{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;text-align:center}
+.cal-num+.cal-num{border-left:1px solid var(--cal-line)}
+.cal-num .lbl{font-size:12px;line-height:1.4;color:var(--muted)}
+.cal-num b{font-size:28px;font-weight:700;line-height:1.15;color:var(--ink)}
+.cal-num b small{font-family:var(--font-cjk);font-size:13px;font-weight:500;margin-left:4px;color:var(--ink)}
+.cal-num.now b{color:var(--accent)}
+.cal-tokens{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--cal-line);font-size:13px}
+.cal-tokens .lbl{font-weight:700;color:var(--ink)}
+.cal-tokens .tk{display:flex;gap:4px}
+.cal-tokens .tk i{width:14px;height:18px;border-radius:4px;border:2px solid color-mix(in srgb,var(--accent) 30%,var(--surface))}
+.cal-tokens .tk i.on{background:var(--accent);border-color:var(--accent)}
+.cal-tokens .n{color:var(--muted)}
+.cal-tokens .sub{margin-left:auto;font-size:12px;color:var(--muted);text-align:right}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
 .cal-nav b{font-size:17px}
 .cal-nav .btn:disabled{opacity:.35}
@@ -900,7 +908,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v27";
+const APP_VERSION="v28";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
@@ -1100,9 +1108,13 @@ function renderCalendar(){
     const e=rec.days[d],rest=e&&e.type==="rest";
     return `<button class="cal-day${rest?" rest":""}${d===day?" is-today":""}${d===calSel?" sel":""}" type="button" data-day="${d}" data-lv="${CHECKIN.level(e)}"${d>day?" disabled":""} aria-label="${+d.slice(5,7)} 月 ${+d.slice(8)} 日 ${esc(CHECKIN.detail(e))}">${rest?"休":+d.slice(8)}</button>`}).join("");
   const sel=calSel&&rec.days[calSel],selLabel=calSel?`${+calSel.slice(5,7)} 月 ${+calSel.slice(8)} 日 · ${CHECKIN.detail(sel)}`:"点某一天，看那天学了多少";
-  const stat=(lbl,n,unit)=>`<div class="cal-stat"><span class="lbl">${lbl}</span><b class="num">${n}<small>${unit}</small></b></div>`;
-  const tk=rec.restTokens,tokenStat=`<div class="cal-stat"><span class="lbl">休息卡</span>${tokensHTML(tk)}<span class="sub">${tk>=TOKEN_MAX?"已存满，用掉后才会继续发放":"每周一发 1 张"}</span></div>`;
-  $("#calBody").innerHTML=`<div class="cal-stats">${stat("连续",CHECKIN.streak(rec,day),"天")}${stat("累计",CHECKIN.total(rec),"天")}${stat("最长连续",CHECKIN.best(rec,day),"天")}${tokenStat}</div>
+  // 连续断了、今天还没打卡时显示「—」（和首页「今天重新开始」一样，不显示 0）
+  const n=CHECKIN.streak(rec,day),tk=rec.restTokens;
+  const num=(lbl,v,cls="")=>`<div class="cal-num${cls}"><span class="lbl">${lbl}</span><b class="num">${v===null?"—":`${v}<small>天</small>`}</b></div>`;
+  const stats=`<div class="cal-stats"><div class="cal-nums">${num("连续",n||null," now")}${num("累计",CHECKIN.total(rec))}${num("最长连续",CHECKIN.best(rec,day))}</div>
+    <div class="cal-tokens" role="group" aria-label="休息卡 ${tk}/${TOKEN_MAX}"><span class="lbl">休息卡</span><span class="tk" aria-hidden="true">${Array.from({length:TOKEN_MAX},(_,i)=>`<i class="${i<tk?"on":""}"></i>`).join("")}</span><span class="n num">${tk}/${TOKEN_MAX}</span>
+    <span class="sub">${tk>=TOKEN_MAX?"已存满，用掉后才会继续发放":"每周一发 1 张"}</span></div></div>`;
+  $("#calBody").innerHTML=`${stats}
     <div class="cal-nav"><button class="btn soft icon" type="button" id="calPrev" aria-label="上个月"${calMonth<=lo?" disabled":""}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <b id="calTitle">${y} 年 ${m} 月</b>
       <button class="btn soft icon" type="button" id="calNext" aria-label="下个月"${calMonth>=hi?" disabled":""}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button></div>
