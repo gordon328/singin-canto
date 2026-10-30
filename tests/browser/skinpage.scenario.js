@@ -15,7 +15,7 @@ module.exports = { name: "skinpage", async run(b) {
   const d0 = await b.ev(day(0)), d1 = await b.ev(day(-1));
   await b.ev(setCheckin(`({ days: { ${JSON.stringify(d1)}: { type: "done" }, ${JSON.stringify(d0)}: { type: "done" } }, bestStreak: 2, lastProcessed: ${JSON.stringify(d1)} })`));
   await b.nav("/"); await b.ev(click("#btnSettings")); await b.sleep(800);
-  b.check("groups", (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp-t")].map(e => e.innerText).join()`)) === "学习,外观,数据,关于");
+  b.check("groups", (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp-t")].map(e => e.innerText).join()`)) === "学习,外观,数据,主屏幕,关于");
   b.check("entry-row " + (await b.ev(text("#skinRow"))), (await b.ev(text("#skinRow"))) === "皮肤 丁香");
   const h0 = await b.ev("history.length");
   await b.ev(click("#skinRow")); await b.sleep(900);

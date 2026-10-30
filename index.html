@@ -57,7 +57,12 @@ function applySkin(id,opt={}){
 .skin-fade,.skin-fade *:not(.sheet),.skin-fade *::before,.skin-fade *::after{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease,box-shadow .3s ease!important}
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+/* 启动画面（v0.38，设计规范 5.17）：读数据期间盖住页面，颜色是当前皮肤（<head> 里第一帧前就套好了），读完就淡出 0.3 秒，没有最短显示时间 */
+.splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--bg);color:var(--ink);
+  font-size:20px;font-weight:700;transition:opacity .3s ease}
+.splash img{width:88px;height:88px;border-radius:20px}
+.splash.out{opacity:0;pointer-events:none}
 /* 保险：就算哪个元素超出屏幕，页面也不能横着滚（找到超出的元素要先修它） */
 html,body{overflow-x:clip}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font-cjk);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
@@ -499,6 +504,18 @@ label.btn{overflow:hidden}
 .cell-goal .seg .btn{flex:1 1 0;min-width:0;height:44px;padding:0}
 .cell-goal .stepper{margin:0;padding:0 16px 16px}
 .sgrp-note{padding:8px 16px 0;font-size:13px;line-height:1.6;color:var(--muted)}
+.tip-link{display:block;width:100%;min-height:44px;margin:0;border:0;background:none;font:inherit;font-size:13px;line-height:1.6;text-align:left;color:var(--accent);cursor:pointer;-webkit-tap-highlight-color:transparent}
+/* 添加到主屏幕教程（v0.38，设计规范 5.17）：底部弹窗（只有按钮，没有输入框），左右翻的步骤，每步一张截图 + 一句说明 */
+.a2-track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.a2-track::-webkit-scrollbar{display:none}
+.a2-step{flex:0 0 100%;scroll-snap-align:start;display:flex;flex-direction:column;gap:12px}
+.a2-shot{position:relative;display:grid;place-items:center;height:240px;border-radius:16px;background:var(--bg);border:1px dashed var(--field-border);overflow:hidden;color:var(--muted);font-size:13px}
+.a2-shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--bg)}
+.a2-text{margin:0;font-size:15px;line-height:1.6;color:var(--ink)}
+.a2-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.a2-dots{display:flex;gap:8px}
+.a2-dots i{width:8px;height:8px;border-radius:4px;background:var(--rule);transition:width var(--dur) var(--ease),background-color var(--dur) var(--ease)}
+.a2-dots i.on{width:20px;background:var(--accent)}
 /* 兑换码弹窗（设计规范 5.15）：输入框 + 提示（固定高度，出现提示时按钮不挪动）+ 兑换按钮 */
 .rd-msg{min-height:20px;font-size:14px;line-height:20px;color:var(--danger)}
 .rd-note{margin:0;padding:0 4px}
@@ -658,6 +675,7 @@ label.btn{overflow:hidden}
 </style>
 </head>
 <body>
+<div id="splash" class="splash" aria-hidden="true"><img src="icons/icon-192.png" alt=""><div>唱学粤语</div></div>
 
 <audio id="au" preload="auto" playsinline></audio>
 
@@ -819,7 +837,8 @@ label.btn{overflow:hidden}
       <button class="cell" type="button" id="bkExport"><span class="cell-n">导出备份文件</span><span class="cell-v"><span id="bkAge"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
       <label class="cell" for="bkFile"><span class="cell-n">从文件恢复</span><span class="cell-v"><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span><input id="bkFile" type="file" accept=".json,application/json"></label>
     </div>
-    <div class="sgrp-note" id="bkTip" hidden>建议添加到主屏幕使用，数据更不容易丢失</div>
+    <button class="sgrp-note tip-link" type="button" id="bkTip" hidden>建议添加到主屏幕使用，数据更不容易丢失</button>
+    <div id="a2hsGroup"></div>
     <div class="sgrp-t">关于</div>
     <div class="sgrp">
       <button class="cell" type="button" id="btnChangelog"><span class="cell-n">版本记录</span><span class="cell-v"><span class="num" id="setVer"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
@@ -1152,7 +1171,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.37";
+const APP_VERSION="v0.38";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 // 开发者模式（开发规格 7.10.5）：调试面板、模拟日期只在开发者模式下有效。真的记录在 meta devMode；localStorage yc-dev 是启动时就能读的副本，读完数据库后 syncDev() 以数据库为准
 let devOn=false;try{devOn=localStorage.getItem("yc-dev")==="1"}catch(e){}
@@ -2516,6 +2535,63 @@ $("#skinsList").addEventListener("click",async e=>{
 });
 $("#skinRow").addEventListener("click",()=>{if(navPending)return;openSkinsPage();go("skinsView")});
 
+/* ---------- 启动画面：数据读完就淡出（减弱动态效果时直接去掉） ---------- */
+function hideSplash(){
+  const sp=$("#splash");if(!sp)return;
+  if(reduceMotion()){sp.remove();return}
+  sp.classList.add("out");setTimeout(()=>sp.remove(),320);
+}
+setTimeout(hideSplash,8000); // 保险：万一启动出错，8 秒后也不再挡着
+
+/* ---------- 添加到主屏幕教程（设计规范 5.17）：只在 iPhone Safari、不是从主屏幕打开时第一次自动弹出 ---------- */
+// 截图放在 docs/design/a2hs/stepN.png（开发者提供）；还没有时显示「截图待补充」
+const A2HS_STEPS=[
+  {text:"点 Safari 底部的分享按钮（方框加向上的箭头）。"},
+  {text:"往下滑，点「添加到主屏幕」。"},
+  {text:"点右上角的「添加」。主屏幕上就多了唱学粤语的图标，以后都从这个图标打开。"},
+  {text:"Safari 和主屏幕 App 的数据是分开的。如果已经在 Safari 里导入过歌，请先在这里导出备份，再到主屏幕 App 的设置里恢复（音频需要重新选择）",exportBtn:true},
+];
+function isIOSSafari(){
+  const ua=navigator.userAgent||"";
+  const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  return ios&&/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|DuckDuckGo/.test(ua);
+}
+function maybeA2hs(){if(isIOSSafari()&&!isStandalone()&&prefs.a2hs!==false)setTimeout(()=>{if(curView==="home"&&$("#sheet").hidden)openA2hs()},600)}
+function openA2hs(){
+  openSheet(`<div class="a2">
+    <h3>添加到主屏幕</h3>
+    <p class="note" style="margin:0">从主屏幕图标打开，像 App 一样全屏使用，数据也更不容易丢失。</p>
+    <div class="a2-track">${A2HS_STEPS.map((st,i)=>`<div class="a2-step">
+      <div class="a2-shot"><span>截图待补充（第 ${i+1} 步）</span><img src="docs/design/a2hs/step${i+1}.png" alt="第 ${i+1} 步截图"></div>
+      <p class="a2-text"><b class="num">${i+1}.</b> ${esc(st.text)}</p>
+      ${st.exportBtn?'<button class="btn soft block" type="button" data-a2="export">现在导出备份</button>':""}
+    </div>`).join("")}</div>
+    <div class="a2-nav"><span class="a2-dots">${A2HS_STEPS.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</span><button class="btn text small" type="button" data-a2="next">下一步</button></div>
+    <button class="btn primary block" type="button" data-a2="ok">我知道了</button>
+    <button class="btn text block" type="button" data-a2="web">继续用网页</button>
+  </div>`);
+  // 截图还没有：去掉坏图，露出「截图待补充」
+  $("#sheetBody").querySelectorAll(".a2-shot img").forEach(img=>img.addEventListener("error",()=>img.remove()));
+  const tr=$("#sheetBody .a2-track");tr.addEventListener("scroll",a2Dots,{passive:true});
+}
+function a2Step(){const tr=$("#sheetBody .a2-track");return tr?Math.round(tr.scrollLeft/(tr.clientWidth+16)):0}
+function a2Dots(){
+  const i=a2Step();document.querySelectorAll("#sheetBody .a2-dots i").forEach((d,k)=>d.classList.toggle("on",k===i));
+  const nx=$("#sheetBody [data-a2='next']");if(nx)nx.style.visibility=i>=A2HS_STEPS.length-1?"hidden":"";
+}
+$("#sheetBody").addEventListener("click",e=>{
+  const b=e.target.closest("[data-a2]");if(!b)return;
+  const a=b.dataset.a2;
+  if(a==="next"){const tr=$("#sheetBody .a2-track");tr.scrollTo({left:(a2Step()+1)*(tr.clientWidth+16),behavior:reduceMotion()?"auto":"smooth"});setTimeout(a2Dots,450);return}
+  if(a==="export"){exportBackup();return} // 分享面板要在点按的同一时刻调出来
+  prefs.a2hs=false;savePrefs();closeSheet();if(curView==="settingsView")renderSettings(); // 我知道了 / 继续用网页：不再自动弹出
+});
+$("#bkTip").addEventListener("click",openA2hs);
+$("#a2hsGroup").addEventListener("click",e=>{
+  if(e.target.closest("#a2hsOpen")){openA2hs();return}
+  if(e.target.closest("#a2hsSw")){prefs.a2hs=prefs.a2hs===false;savePrefs();renderSettings()}
+});
+
 /* ---------- 兑换码（开发规格 7.10.4）：只比对哈希，兑换码原文不在代码里 ---------- */
 // iPhone 只在手指点按的那一刻允许弹出键盘，切页要晚一点才完成：点的时候先让一个看不见的临时输入框拿到焦点（键盘弹出来），
 // 页面滑进来后再把焦点交给真的输入框（键盘不会收起）
@@ -2659,6 +2735,10 @@ function renderBackupCard(){
   el.textContent=age.text.replace("上次备份：","上次：").replace("还没有备份过","还没备份过");
   el.classList.toggle("stale",age.stale&&songs.length>0);
   $("#bkTip").hidden=isStandalone();
+  // 主屏幕组：只在网页里显示（主屏幕模式下没意义）
+  $("#a2hsGroup").innerHTML=isStandalone()?"":`<div class="sgrp-t">主屏幕</div><div class="sgrp">
+    <button class="cell" type="button" id="a2hsSw" role="switch" aria-checked="${prefs.a2hs!==false}"><span class="cell-n">提示添加到主屏幕</span><span class="sw${prefs.a2hs!==false?" on":""}" aria-hidden="true"><i></i></span></button>
+    <button class="cell" type="button" id="a2hsOpen"><span class="cell-n">查看教程</span><span class="cell-v"><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button></div>`;
 }
 const isStandalone=()=>!!navigator.standalone||matchMedia("(display-mode: standalone)").matches;
 $("#bkExport").addEventListener("click",exportBackup);
@@ -3007,6 +3087,7 @@ history.replaceState({view:"home"},"");
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}
   processCheckin();syncSkin();booted=true;checkUnlocks();
   renderHome();renderDbgShell();renderDbg();renderSim();
+  hideSplash();maybeA2hs();
   setTimeout(()=>prefetchVoice([...LESSONS.TONE_SETS.flatMap(t=>[1,2,3,4,5,6].map(k=>t.syl+k)),...[...cards.values()].map(c=>c.jp)]),3000);
 })();
 // iOS 切到后台再回来，声音会被暂停：下一次点按时恢复
