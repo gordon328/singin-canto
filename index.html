@@ -502,6 +502,13 @@ label.btn{overflow:hidden}
 .skin-pill.on{background:var(--accent);color:var(--on-accent)}
 .skin-pill.off{background:var(--surface-press);color:var(--muted)}
 /* 皮肤预览：颜色来自预览元素上的 --p-* 变量（skinPreview 按皮肤颜色写进去），不用图片 */
+/* 解锁弹窗（设计规范 5.13） */
+.unlock{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.unlock-why{font-size:13px;font-weight:700;color:var(--accent)}
+.sheet .unlock-title{margin:0;font-size:24px;font-weight:700;line-height:1.3;color:var(--ink)}
+.unlock .skin-prev{margin:8px 0}
+.unlock-intro{margin:0 0 8px;font-size:15px;line-height:1.6;color:var(--ink-2)}
+.unlock .btn{width:100%}
 .skin-prev{flex:none;display:flex;flex-direction:column;gap:4px;width:64px;height:88px;padding:8px;border-radius:16px;background:var(--p-bg);box-shadow:0 0 0 1px var(--rule)}
 .skin-prev i{display:block}
 .p-title{width:45%;height:8px;border-radius:4px;background:var(--p-surface)}
@@ -981,7 +988,7 @@ function show(id,dir){
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
   clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
-  pageButtons();renderDbg();
+  pageButtons();renderDbg();if(id==="home")showUnlocks(); // 学习中间解锁的皮肤，回到首页再弹
   const BARS=".player,.study-foot";
   document.querySelectorAll(BARS).forEach(p=>p.classList.remove("bar-in"));
   const bars=to.querySelectorAll(BARS),barIn=()=>bars.forEach(x=>x.classList.add("bar-in"));
@@ -2006,13 +2013,15 @@ songMenu.addEventListener("click",async e=>{
 // 弹出层不使用暗幕（设计规范 5.6）。所有弹窗都有拖动条；modal：确认类弹窗，点外面不关，往下拖关闭等于取消
 let sheetTimer=0,sheetModal=false;
 const sheetOpen=()=>$("#sheet").classList.contains("open");
-function openSheet(html,{modal=false}={}){
-  const sh=$("#sheet");clearTimeout(sheetTimer);sheetModal=modal;
+let sheetOnClose=null;
+function openSheet(html,{modal=false,onClose=null}={}){
+  const sh=$("#sheet");clearTimeout(sheetTimer);sheetModal=modal;sheetOnClose=onClose;
   $("#sheetBody").innerHTML=`<div class="grab"></div>`+html;
   if(sh.hidden||!sh.classList.contains("open")){stopSpring();sh.hidden=false;sh.scrollTop=0;sh.style.transform="";sh.style.transitionDuration="";void sh.offsetHeight;sh.classList.add("open")}
 }
 function closeSheet(){
   if(confirmDone)confirmDone(false);
+  if(sheetOnClose){const f=sheetOnClose;sheetOnClose=null;setTimeout(f,360)}
   const sh=$("#sheet");
   document.querySelectorAll(".c.sel").forEach(x=>x.classList.remove("sel"));
   if(sh.hidden)return;
@@ -2314,6 +2323,40 @@ function renderSkins(){
     return `<button class="skin-card${use?" current":""}${have?"":" locked"}" type="button" data-skin-id="${esc(d.id)}">${skinPreview(d)}<span class="skin-main"><span class="skin-head"><b class="skin-name">${esc(d.name)}</b><span class="skin-mode">${MODE_TEXT[d.modes]}</span></span>${cond}</span>${pill}</button>`;
   }).join("");
 }
+/* ---------- 解锁皮肤（开发规格 7.9.5.4、7.10.3） ---------- */
+// 检查所有皮肤的解锁条件（启动、完成页打卡动画之后、恢复备份后）：新达成的记进打卡记录（来源、日期），排队弹窗
+let unlockQueue=[];
+async function checkUnlocks(){
+  let rec=getCheckin();const today=SRS.today(appNow());
+  const fresh=UNLOCK.newlyUnlocked(SKIN_DEFS,skinCtx(),rec.unlocked);
+  if(!fresh.length)return;
+  for(const u of fresh)rec=CHECKIN.unlock(rec,u.id,u.by,today);
+  await saveCheckin(rec);
+  unlockQueue.push(...fresh.map(u=>u.id));
+  showUnlocks();
+}
+// 一次只弹一个，关掉后弹下一个。已经有别的弹窗时等它关掉；学词、整句中间不弹，回到首页或完成页再弹
+function showUnlocks(){
+  if(!unlockQueue.length)return;
+  if(!$("#sheet").hidden){setTimeout(showUnlocks,400);return}
+  if(curView==="studyView"&&!$("#stBody .st-done"))return;
+  const id=unlockQueue.shift(),d=SKIN_DEFS[id];if(!d){showUnlocks();return}
+  const rule=UNLOCK.RULES[d.unlock.type];
+  openSheet(`<div class="unlock" data-skin-id="${esc(id)}">
+    <div class="unlock-why">${esc(rule.reached(d.unlock.value))}</div>
+    <h3 class="unlock-title">解锁新皮肤「${esc(d.name)}」</h3>
+    ${skinPreview(d,"large")}
+    <p class="unlock-intro">${esc(d.intro)}</p>
+    <button class="btn primary block" type="button" data-unlock="use">立即使用</button>
+    <button class="btn text block" type="button" data-unlock="later">以后再说</button>
+  </div>`,{onClose:showUnlocks});
+}
+$("#sheetBody").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-unlock]");if(!b)return;
+  const id=b.closest(".unlock").dataset.skinId;
+  if(b.dataset.unlock==="use")await useSkin(id);
+  closeSheet();
+});
 // 换成某个已解锁的皮肤：颜色 0.3 秒过渡，记到打卡记录的 theme
 async function useSkin(id){applySkin(id,{animate:true});await saveCheckin({...getCheckin(),theme:id})}
 $("#skinsList").addEventListener("click",async e=>{
@@ -2403,6 +2446,7 @@ async function restoreFromFile(f){
   renderSettings();
   if(res.problems.length){logErr("恢复后核对",new Error(res.problems.join("；")));toast("恢复完了，但核对时发现不一致："+res.problems[0]+"。请告诉开发者",8000);return}
   toast(`已恢复 ${res.n} 首歌、${cards.size} 个生词，核对无误`,4000);
+  checkUnlocks();
 }
 // 恢复备份：先在内存里算好要写的所有记录，再用一个事务写进数据库——要么全部成功，要么本机一点不改（失败时抛出真正的错误）。
 // 写完从数据库读回来核对：备份里的每首歌、每个生词、每个打卡日子、每天几句都在
@@ -2435,7 +2479,7 @@ async function restoreBackup(obj){
   for(const [ex,m] of songPlan){if(ex)Object.assign(ex,m);else songs.push({...m,audio:null})}
   cards=new Map(mergedCards.map(c=>[c.w,c]));
   for(const m of W.meta)metaRecs.set(m.key,m);
-  processCheckin();renderHome();
+  processCheckin();syncSkin();renderHome(); // 新设备直接用备份里的打卡记录，正在用的皮肤也跟着换
   return {n:valid.length,problems:DB.ok?await verifyRestore(obj):[]};
 }
 // 从数据库读回来，和备份文件比数量
@@ -2620,6 +2664,8 @@ function renderDone(){
   // 第一次打卡：0.3 秒后今天的格子弹簧放大填色，再把连续天数往上翻
   if(anim){const st=study;setTimeout(()=>{if(study!==st)return;const t=$("#stBody .st-week .cal-day.is-today");if(t){const e=rec.days[day];t.dataset.st=CHECKIN.dayState(e);if(e.more)t.insertAdjacentHTML("beforeend",DAY_STAR);t.classList.add("fill")}
     setTimeout(()=>$("#stBody .st-streak .flip")?.classList.add("go"),300)},300)}
+  // 打卡动画放完再检查解锁（学会了一首歌、连续天数够了）
+  {const st=study;setTimeout(()=>{if(study===st)checkUnlocks()},anim?1100:0)}
 }
 async function lineLearned(){
   stopStudyAudio();
@@ -2700,7 +2746,7 @@ history.replaceState({view:"home"},"");
   if(!metaRecs.has("daily"))await saveDaily(getDaily());
   // 申请持久存储：手机空间紧张时浏览器不会自动清掉 App 的数据
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}
-  processCheckin();syncSkin();booted=true;
+  processCheckin();syncSkin();booted=true;checkUnlocks();
   renderHome();renderDbgShell();renderDbg();renderSim();
   setTimeout(()=>prefetchVoice([...LESSONS.TONE_SETS.flatMap(t=>[1,2,3,4,5,6].map(k=>t.syl+k)),...[...cards.values()].map(c=>c.jp)]),3000);
 })();
