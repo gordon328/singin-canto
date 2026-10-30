@@ -310,6 +310,8 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 /* 调试面板打开时，首页最下面多一行「模拟日期」（测打卡跨天用） */
 .dbg-sim{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:24px;padding:12px 16px;border-radius:18px;background:var(--surface);font-size:13px;color:var(--ink-2)}
 .dbg-sim .lbl{flex-basis:100%}
+.dbg-sim + .dbg-sim{margin-top:8px}
+.dbg-err{flex-basis:100%;margin:0;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:12px;line-height:1.5;color:var(--ink)}
 .dbg-sim input{min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:8px 12px}
 .song{display:flex;align-items:center;gap:12px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
@@ -458,6 +460,24 @@ label.btn{overflow:hidden}
 .filebox input[type=file],label.btn input[type=file]{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
 .filebox .btn{flex:none;white-space:nowrap}
 .note{font-size:13px;color:var(--muted);line-height:1.6}
+/* 设置页：分组列表（设计规范 5.11） */
+.set{padding-block:8px calc(32px + env(safe-area-inset-bottom,0px))}
+.sgrp-t{margin:24px 0 8px;padding:0 16px;font-size:13px;font-weight:600;color:var(--muted)}
+.set > .sgrp-t:first-child{margin-top:8px}
+.sgrp{background:var(--surface);border-radius:22px;box-shadow:var(--shadow-1);overflow:hidden}
+.sgrp > * + *{position:relative}
+.sgrp > * + *::before{content:"";position:absolute;left:16px;right:0;top:0;height:1px;background:var(--rule)}
+.cell,.cell-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;height:52px;padding:0 16px;margin:0;border:0;border-radius:0;background:transparent;font:inherit;font-size:16px;color:var(--ink);text-align:left;-webkit-tap-highlight-color:transparent}
+.cell{cursor:pointer;overflow:hidden;transition:background-color var(--dur) var(--ease)}
+.cell.is-pressed{background:var(--surface-press)}
+.cell-n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell-v{display:flex;align-items:center;gap:8px;flex-shrink:0;font-size:15px;color:var(--muted)}
+.cell-v .stale{color:var(--danger);font-weight:600}
+.cell input[type=file]{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
+.cell-goal .seg{padding:0 16px 16px}
+.cell-goal .seg .btn{flex:1 1 0;min-width:0;height:44px;padding:0}
+.cell-goal .stepper{margin:0;padding:0 16px 16px}
+.sgrp-note{padding:8px 16px 0;font-size:13px;line-height:1.6;color:var(--muted)}
 /* 版本记录（CHANGELOG.md）：每个版本一张卡片 */
 .cl h3{margin:0;font-size:17px;font-weight:700;color:var(--ink)}
 .cl h4{margin:4px 0 0;font-size:15px;font-weight:600;color:var(--ink-2)}
@@ -580,6 +600,7 @@ label.btn{overflow:hidden}
     <div id="homeNote"></div>
     <div class="songs" id="songs"></div>
     <div class="dbg-sim" id="dbgSim" hidden></div>
+    <div class="dbg-sim" id="dbgData" hidden></div>
     <div class="ver num" id="appVer"></div>
   </div>
   <button class="btn danger-fill bottom bottom-bar" id="btnDelSel" type="button" hidden>删除（0）</button>
@@ -701,16 +722,28 @@ label.btn{overflow:hidden}
     <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
     <div class="tt"><b>设置</b></div>
   </div></div>
-  <div class="wrap form">
-    <div class="card field">
-      <div class="label">每天新学几句</div>
-      <div class="seg" id="goalSeg"></div>
-      <div class="stepper" id="goalStep" hidden><button class="btn soft icon" id="goalMinus" type="button" aria-label="少一句">−</button><span id="goalNum" class="num"></span><span class="note">句</span><button class="btn soft icon" id="goalPlus" type="button" aria-label="多一句">+</button></div>
-      <div class="note">每天按歌词顺序新学几句，复习的词不算在里面。</div>
+  <!-- 分组列表（设计规范 5.11）：组名在卡片上方；每行 52px，细线分隔；左边名称，右边当前值 + 箭头。
+       以后：「外观」（皮肤）放在学习和数据之间；「兑换码」放进关于；「开发者模式」在最下面单独一组，开启时才显示 -->
+  <div class="wrap set">
+    <div class="sgrp-t">学习</div>
+    <div class="sgrp">
+      <div class="cell-goal">
+        <div class="cell-head"><span class="cell-n">每天新学几句</span></div>
+        <div class="seg" id="goalSeg"></div>
+        <div class="stepper" id="goalStep" hidden><button class="btn soft icon" id="goalMinus" type="button" aria-label="少一句">−</button><span id="goalNum" class="num"></span><span class="note">句</span><button class="btn soft icon" id="goalPlus" type="button" aria-label="多一句">+</button></div>
+      </div>
+      <button class="cell" type="button" id="wordsRow"><span class="cell-n">我的生词</span><span class="cell-v"><span class="num" id="wordsN"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
     </div>
-    <div class="card field" id="wordsCard"></div>
-    <div class="card field" id="backupCard"></div>
-    <div class="card field" id="aboutCard"><div class="label">关于</div><button class="btn soft block" type="button" id="btnChangelog">版本记录</button><div class="note" id="setVer"></div></div>
+    <div class="sgrp-t">数据</div>
+    <div class="sgrp">
+      <button class="cell" type="button" id="bkExport"><span class="cell-n">导出备份文件</span><span class="cell-v"><span id="bkAge"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
+      <label class="cell" for="bkFile"><span class="cell-n">从文件恢复</span><span class="cell-v"><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span><input id="bkFile" type="file" accept=".json,application/json"></label>
+    </div>
+    <div class="sgrp-note" id="bkTip" hidden>建议添加到主屏幕使用，数据更不容易丢失</div>
+    <div class="sgrp-t">关于</div>
+    <div class="sgrp">
+      <button class="cell" type="button" id="btnChangelog"><span class="cell-n">版本记录</span><span class="cell-v"><span class="num" id="setVer"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
+    </div>
   </div>
 </section>
 
@@ -802,6 +835,22 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 let toastT;
 function toast(msg,ms=2600){const el=$("#toast");el.textContent=msg;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,ms)}
 
+/* ---------- 出错记录：调试面板里显示完整的错误名和信息（localStorage yc-errlog，最近 20 条） ---------- */
+function logErr(where,e){
+  const r={t:new Date().toLocaleString(),where,name:(e&&e.name)||"Error",msg:(e&&e.message)||String(e)};
+  try{const a=JSON.parse(localStorage.getItem("yc-errlog")||"[]");a.push(r);localStorage.setItem("yc-errlog",JSON.stringify(a.slice(-20)))}catch(_){}
+  try{renderSim()}catch(_){}
+  return r;
+}
+// 给人看的原因：只有 QuotaExceededError 才说空间不够，其他按实际错误说，后面带错误名
+function errText(e){
+  const n=(e&&e.name)||"Error";
+  const why={QuotaExceededError:"手机存储空间不够",InvalidStateError:"和数据库的连接断开了，请把 App 关掉重新打开",UnknownError:"浏览器数据库出错了，请把 App 关掉重新打开再试",
+    DataCloneError:"有一部分数据没法保存",VersionError:"数据库版本对不上",TransactionInactiveError:"保存超时了",AbortError:"保存被中断了",NotFoundError:"数据库里少了一张表"}[n]||"出了点问题";
+  return `${why}（错误代码：${n}）`;
+}
+function saveFailed(where,e){logErr(where,e);toast("保存失败："+errText(e),8000)}
+
 /* ---------- storage (IndexedDB, falls back to memory) ---------- */
 // songs + cards（记忆卡片）+ meta（杂项）+ snapshot（数据格式升级前的快照）。升级只加表，绝不删表、清空表（docs/数据兼容规则.md）
 // 打开时不写死版本号：先按现有版本打开，缺表才把版本加一补上。这样以后回退到旧代码也不会因为版本号对不上打不开
@@ -814,14 +863,35 @@ const DB={db:null,mem:{songs:new Map(),cards:new Map(),meta:new Map(),snapshot:n
       if(Object.keys(STORES).some(n=>!db.objectStoreNames.contains(n))){const v=db.version+1;db.close();go(v);return}
       this.db=db;db.onversionchange=()=>db.close();this.ok=true;res()};r.onerror=()=>res();
     r.onblocked=()=>toast("请先关闭其他打开着的唱学粤语页面",6000)}catch(e){res()}};go(0)})},
-  // 一次写进很多条（同一个事务：要么全写进去，要么一条都不写）。d = {songs, cards, meta, snapshot}
-  putAll(d){if(!this.ok)return Promise.reject(new Error("数据库没打开"));return new Promise((res,rej)=>{try{const names=Object.keys(d).filter(n=>STORES[n]&&d[n].length);if(!names.length){res();return}
-    const tx=this.db.transaction(names,"readwrite");for(const n of names)for(const o of d[n])tx.objectStore(n).put(o);
-    tx.oncomplete=()=>res();tx.onerror=tx.onabort=()=>rej(tx.error||new Error("写入失败"))}catch(e){rej(e)}})},
+  // 写数据：同一个事务，要么全写进去，要么一条都不写。d = {songs, cards, meta, snapshot}（数组）。失败时 reject 真正的错误
+  // 歌曲：数据库里已经有这首歌就用数据库里的音频——内存里的音频在 iPhone 切到后台后会失效，写回去浏览器会拒绝（v0.30「保存失败」）。
+  //   只有 opt.newAudio（编辑歌曲换了音频）才写内存里的音频；新歌用自己带的音频
+  // 连接断了（iPhone 切后台后常见）：重新打开数据库再试一次
+  async write(d,opt={}){
+    if(!this.ok)throw new DOMException("数据库没有打开","InvalidStateError");
+    try{return await this._write(d,opt)}
+    catch(e){if(!["InvalidStateError","UnknownError","TransactionInactiveError"].includes(e&&e.name))throw e;logErr("写入失败，重新打开数据库再试",e);await this.reopen();return this._write(d,opt)}
+  },
+  _write(d,opt){return new Promise((res,rej)=>{
+    const names=Object.keys(d).filter(n=>STORES[n]&&d[n]&&d[n].length);if(!names.length){res();return}
+    let err=null,tx;const fail=e=>{err=err||e};
+    try{tx=this.db.transaction(names,"readwrite");
+      const put=(n,o)=>{const r=tx.objectStore(n).put(o);r.onerror=()=>fail(r.error)};
+      for(const n of names)for(const o of d[n]){
+        if(n!=="songs"||opt.newAudio){put(n,o);continue}
+        const g=tx.objectStore("songs").get(o.id);g.onerror=()=>fail(g.error);
+        g.onsuccess=()=>{try{put("songs",{...o,audio:g.result?(g.result.audio??null):(o.audio??null)})}catch(e){fail(e);try{tx.abort()}catch(_){}}};
+      }
+    }catch(e){try{tx&&tx.abort()}catch(_){}rej(e);return}
+    tx.oncomplete=()=>res();tx.onabort=()=>rej(err||tx.error||new DOMException("写入没有完成","AbortError"));
+  })},
+  reopen(){try{this.db&&this.db.close()}catch(e){}this.ok=false;this.db=null;return this.open()},
   _st(store,m){return this.db.transaction(store,m).objectStore(store)},
   fresh(key,store="songs"){if(!this.ok)return Promise.resolve(null);return new Promise(res=>{try{const r=this._st(store,"readonly").get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null)}catch(e){res(null)}})},
   all(store="songs"){const mem=this.mem[store];if(!this.ok)return Promise.resolve([...mem.values()]);return new Promise(res=>{try{const r=this._st(store,"readonly").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([...mem.values()])}catch(e){res([...mem.values()])}})},
-  put(o,store="songs"){this.mem[store].set(o[STORES[store]],o);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st(store,"readwrite").put(o);r.onsuccess=()=>res();r.onerror=()=>{toast("保存失败：手机存储空间可能不够");res()}}catch(e){res()}})},
+  // 存一条（内存先更新）。失败时按真正的原因提示，返回 false
+  async put(o,store="songs",opt={}){this.mem[store].set(o[STORES[store]],o);if(!this.ok)return true;
+    try{await this.write({[store]:[o]},opt);return true}catch(e){saveFailed("保存（"+store+"）",e);return false}},
   del(key,store="songs"){this.mem[store].delete(key);if(!this.ok)return Promise.resolve();return new Promise(res=>{try{const r=this._st(store,"readwrite").delete(key);r.onsuccess=()=>res();r.onerror=()=>res()}catch(e){res()}})}
 };
 
@@ -862,7 +932,7 @@ function show(id,dir){
   navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating");barIn()},340);
 }
 // 按下效果用 JS 控制（不用 CSS :active，iPhone 上切页回来 :active 会卡住）：手指按下加 .is-pressed，抬起、取消、移出、滚动时立刻去掉
-const PRESSABLE=".btn,.tones .key,.song,.ib,.res,.streak,.cal-grid .cal-day";
+const PRESSABLE=".btn,.tones .key,.song,.ib,.res,.streak,.cal-grid .cal-day,.sgrp .cell";
 let pressedEl=null;
 function clearPressed(){document.querySelectorAll(".is-pressed").forEach(e=>e.classList.remove("is-pressed"));pressedEl=null}
 document.addEventListener("pointerdown",e=>{
@@ -936,7 +1006,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.30";
+const APP_VERSION="v0.31";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
@@ -953,7 +1023,22 @@ function setSimDays(n){
 // 日期变了（模拟日期、第二天切回 App）：处理休息卡，刷新首页
 function onDayChange(){processCheckin();if(curView==="home")renderHome()}
 const dayNum=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/86400000;
+// 调试面板「数据」：数据格式版本、升级前快照（手动恢复，以后挪进开发者模式）、最近的错误（完整的错误名和信息）
+function renderDbgData(){
+  const box=$("#dbgData");box.hidden=!dbg.on;if(box.hidden){box.innerHTML="";return}
+  let log=[];try{log=JSON.parse(localStorage.getItem("yc-errlog")||"[]")}catch(e){}
+  box.innerHTML=`<span class="lbl"><b>数据</b> · 数据格式第 ${metaRecs.get("dataVersion")?.v??"?"} 版 · ${DB.ok?"数据库正常":"数据库没打开（只存在内存里）"}</span>
+    ${snapInfo?`<span class="lbl">升级前快照：${esc(snapLabel(snapInfo))}</span><button class="btn soft small" type="button" id="dbgSnap">恢复到更新前的数据</button>`:'<span class="lbl">没有升级前快照</span>'}
+    <span class="lbl"><b>最近的错误</b>（${log.length} 条）</span>
+    ${log.length?`<pre class="dbg-err" id="dbgErr">${log.slice().reverse().map(r=>esc(`${r.t} · ${r.where}\n  ${r.name}: ${r.msg}`)).join("\n")}</pre><button class="btn soft small" type="button" id="dbgErrClear">清空错误记录</button>`:""}`;
+}
+$("#dbgData").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.id==="dbgSnap")restoreSnapshot();
+  else if(b.id==="dbgErrClear"){try{localStorage.removeItem("yc-errlog")}catch(_){}renderDbgData()}
+});
 function renderSim(){
+  renderDbgData();
   const box=$("#dbgSim");box.hidden=!dbg.on;if(box.hidden){box.innerHTML="";return}
   const day=SRS.today(appNow());
   if(!simAllowed){box.innerHTML='<span class="lbl">模拟日期会改动打卡和复习数据，只能在 Safari 里用：先在这里导出备份，再在 Safari 里打开网址、从备份恢复</span>';return}
@@ -1750,11 +1835,12 @@ async function saveProof(){
   s.lines=r.lines;s.overrides=r.overrides;
   s.progress={...STUDY.progressOf(s),learned:r.learned};
   s.title=$("#prTitle").value.trim()||"未命名";s.artist=$("#prArtist").value.trim();
+  const newAudio=!!proof.newAudio;
   if(proof.newAudio){s.audio=proof.newAudio.blob;s.audioName=proof.newAudio.name;s.duration=proof.newAudio.dur}
   s.updated=appNow();
   // 错别字更正已经写进歌词里了，清空它，免得又把你改回来的字改掉
   if(s.pack&&Array.isArray(s.pack.fix)&&s.pack.fix.length)s.pack={...s.pack,fix:[]};
-  await DB.put(s);
+  await DB.put(s,"songs",{newAudio});
   for(const c of cards.values()){
     if(!c.sources.some(x=>x.songId===s.id))continue;
     const seen=new Set(),src=[];
@@ -2002,9 +2088,9 @@ function renderGoal(){
   $("#goalMinus").disabled=g<=STUDY.GOAL_MIN;$("#goalPlus").disabled=g>=STUDY.GOAL_MAX;
 }
 /* ---------- 我的生词（规格 6.3） ---------- */
-function renderWordsCard(){$("#wordsCard").innerHTML=`<div class="label">生词</div><button class="btn soft block" type="button" data-words>我的生词（${cards.size}）</button><div class="note">学过和加入的词都在这里：能听发音、标记已认识、删除。</div>`}
+function renderWordsCard(){$("#wordsN").textContent=cards.size}
 // 每次从设置页进来：筛选回到「全部」，清空搜索，不在选择模式
-$("#wordsCard").addEventListener("click",e=>{if(e.target.closest("[data-words]")){wTab="all";wQuery="";$("#wQ").value="";wSelMode=false;wSel.clear();renderWords();go("wordsView")}});
+$("#wordsRow").addEventListener("click",()=>{if(navPending)return;wTab="all";wQuery="";$("#wQ").value="";wSelMode=false;wSel.clear();renderWords();go("wordsView")});
 const W_TABS=[["all","全部"],["learning","学习中"],["known","已认识"],["due","今天到期"]];
 const CHECK_SVG='<span class="check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>';
 let wTab="all",wQuery="",wSelMode=false,wPendingDel=null;
@@ -2109,7 +2195,7 @@ function renderSettings(){
   renderWordsCard();
   goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
   renderBackupCard();
-  $("#setVer").textContent="版本 "+APP_VERSION;
+  $("#setVer").textContent=APP_VERSION;
 }
 /* ---------- 版本记录：显示 CHANGELOG.md（设置页「关于」进入，DEPTH 2） ---------- */
 // 只认几种写法：## 版本标题、### 小标题、- 列表、含 ⚠️ 的行醒目显示、**粗体**。# 大标题不显示（顶栏已经有）
@@ -2143,21 +2229,16 @@ $("#btnChangelog").addEventListener("click",()=>{if(navPending)return;renderChan
 
 /* ---------- 备份文件（规格 3.5）：导出用分享面板（存到「文件」），恢复用文件选择器 ---------- */
 // meta "backup"：这台设备上次导出备份的时间（不放进备份文件）
+// 「导出备份文件」右边：上次：今天 / N 天前；超过 7 天用提醒颜色。只有在 Safari 里打开时，「数据」组下面提示添加到主屏幕
 function renderBackupCard(){
-  const age=BACKUP.ageLabel(metaRecs.get("backup")?.at,appNow());
-  $("#backupCard").innerHTML=`
-    <div class="label">备份与恢复</div>
-    <p class="note" style="margin:0">备份文件包含歌词、时间轴、词汇包、改过的读音和生词卡片，不含音频。可以存到「文件」App 或隔空投送到别的设备。</p>
-    <div class="row"><button class="btn primary" type="button" id="bkExport">导出备份文件</button><span class="note">${songs.length} 首歌 · ${cards.size} 个生词</span></div>
-    <div class="note${age.stale&&songs.length?" stale":""}" id="bkAge">${age.text}</div>
-    <div class="row"><label class="btn soft" for="bkFile">从文件恢复<input id="bkFile" type="file" accept=".json,application/json"></label><span id="bkMsg" class="note"></span></div>
-    ${snapInfo?`<div class="row"><button class="btn soft" type="button" id="bkSnap">恢复到更新前的数据</button></div><div class="note" id="bkSnapNote">${esc(snapLabel(snapInfo))}</div>`:""}
-    <div class="note" id="bkTip">建议从主屏幕图标打开 App，并定期导出备份</div>
-  `;
-  if(snapInfo)$("#bkSnap").addEventListener("click",restoreSnapshot);
-  $("#bkExport").addEventListener("click",exportBackup);
-  $("#bkFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)restoreFromFile(f)});
+  const age=BACKUP.ageLabel(metaRecs.get("backup")?.at,appNow()),el=$("#bkAge");
+  el.textContent=age.text.replace("上次备份：","上次：").replace("还没有备份过","还没备份过");
+  el.classList.toggle("stale",age.stale&&songs.length>0);
+  $("#bkTip").hidden=isStandalone();
 }
+const isStandalone=()=>!!navigator.standalone||matchMedia("(display-mode: standalone)").matches;
+$("#bkExport").addEventListener("click",exportBackup);
+$("#bkFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)restoreFromFile(f)});
 function markBackup(at){const r={key:"backup",at};metaRecs.set("backup",r);return DB.put(r,"meta")}
 // 分享面板要在点按钮的同一时刻调出来，所以前面不能 await
 async function exportBackup(){
@@ -2176,51 +2257,81 @@ function downloadFile(file){
   const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=file.name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
 }
+// 恢复结果和出错都用弹出提示（不留在页面上）
 async function restoreFromFile(f){
-  const msg=t=>{const m=$("#bkMsg");if(m)m.innerHTML=t};
-  msg("");
-  if(f.size>50*1024*1024){msg('<span class="err">文件太大，不像唱学粤语的备份文件</span>');return}
-  let text;try{text=await f.text()}catch(e){msg('<span class="err">读不出这个文件，请再选一次</span>');return}
+  const fail=t=>toast(t,6000);
+  if(f.size>50*1024*1024){fail("文件太大，不像唱学粤语的备份文件");return}
+  let text;try{text=await f.text()}catch(e){logErr("读备份文件",e);fail("读不出这个文件，请再选一次");return}
   const r=BACKUP.parse(text);
-  if(!r.ok){msg(`<span class="err">${esc(r.err)}</span>`);return}
+  if(!r.ok){fail(r.err);return}
   // 旧版本的备份：先升到现在的数据格式，再和本机数据合并
-  let obj;try{obj=DATA.upgradeBackup(r.obj)}catch(e){msg('<span class="err">这个备份的格式升级失败，没有导入。请把备份文件发给开发者看看</span>');return}
+  let obj;try{obj=DATA.upgradeBackup(r.obj)}catch(e){logErr("备份格式升级",e);fail("这个备份的格式升级失败，没有导入。请把备份文件发给开发者看看");return}
   const sm=BACKUP.summary(obj);
   if(!await confirmSheet({title:"从这个备份恢复？",ok:"恢复",danger:false,
     body:`备份日期：${sm.date||"未知"} · ${sm.songs} 首歌 · ${sm.cards} 张卡片。会和本机的数据合并，不会删掉本机已有的歌和生词。备份里没有音频。`}))return;
-  const n=await restoreBackup(obj);
-  renderBackupCard();msg(`<span class="ok">已恢复 ${n} 首歌、${cards.size} 个生词</span>`);
+  let res;
+  try{res=await restoreBackup(obj)}
+  catch(e){logErr("恢复备份",e);renderSettings();toast("恢复失败，本机数据没有改动："+errText(e),8000);return}
+  renderSettings();
+  if(res.problems.length){logErr("恢复后核对",new Error(res.problems.join("；")));toast("恢复完了，但核对时发现不一致："+res.problems[0]+"。请告诉开发者",8000);return}
+  toast(`已恢复 ${res.n} 首歌、${cards.size} 个生词，核对无误`,4000);
 }
+// 恢复备份：先在内存里算好要写的所有记录，再用一个事务写进数据库——要么全部成功，要么本机一点不改（失败时抛出真正的错误）。
+// 写完从数据库读回来核对：备份里的每首歌、每个生词、每个打卡日子、每天几句都在
 async function restoreBackup(obj){
   await commitDelete(); // 先把还能撤销的删除真正做完，免得稍后把刚恢复的歌又删掉
-  let n=0;
-  // 同一时间只有一首"正在学"：本机已经有的话，备份里新加的歌不标正在学
-  const hasCurrent=songs.some(x=>STUDY.progressOf(x).current);
-  for(const s of obj.songs){if(!s||!s.id||!Array.isArray(s.lines))continue;const ex=songs.find(x=>x.id===s.id);const merged={...s,audio:ex?ex.audio:null};
-    if(ex)merged.progress=STUDY.mergeProgress(ex.progress,s.progress,merged.lines.length);else if(hasCurrent)merged.progress={...STUDY.progressOf(merged),current:false};
-    await DB.put(merged);if(ex)Object.assign(ex,merged);else songs.push(merged);n++}
-  const merged=SRS.mergeCards([...cards.values()],obj.cards,appNow());
-  for(const c of merged)await DB.put(c,"cards");
-  cards=new Map(merged.map(c=>[c.w,c]));
-  // meta：daily 用备份里的每天几句（今天的计数留本机的）；其他只恢复本机还没有的记录
-  if(Array.isArray(obj.meta))for(const m of obj.meta){if(!m||typeof m.key!=="string")continue;
-    if(m.key==="daily")await saveDaily(STUDY.mergeDaily(metaRecs.get("daily"),m,SRS.today(appNow())));
+  const today=SRS.today(appNow()),same=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
+  const W={songs:[],cards:[],meta:[]};
+  // 歌：同一时间只有一首"正在学"，本机已经有的话，备份里新加的歌不标正在学。和本机一模一样的歌不用重写
+  const hasCurrent=songs.some(x=>STUDY.progressOf(x).current),valid=obj.songs.filter(s=>s&&s.id&&Array.isArray(s.lines));
+  const songPlan=[];
+  for(const s of valid){const ex=songs.find(x=>x.id===s.id);const m={...stripAudio(s)};
+    if(ex)m.progress=STUDY.mergeProgress(ex.progress,s.progress,m.lines.length);else if(hasCurrent)m.progress={...STUDY.progressOf(m),current:false};
+    // 比较时进度按读出来的样子比（旧歌没有 progress 字段和空进度算一样）
+    const norm=x=>({...stripAudio(x),progress:STUDY.progressOf(x)});
+    if(!ex||!same(norm(ex),norm(m))){W.songs.push(m);songPlan.push([ex,m])}}
+  // 生词：合并后有变化的才写
+  const mergedCards=SRS.mergeCards([...cards.values()],obj.cards,appNow());
+  for(const c of mergedCards)if(!same(cards.get(c.w),c))W.cards.push(c);
+  // meta：daily 用备份里的每天几句（今天的计数留本机的）；打卡合并；其他只恢复本机还没有的记录
+  for(const m of Array.isArray(obj.meta)?obj.meta:[]){if(!m||typeof m.key!=="string")continue;
+    if(m.key==="daily")W.meta.push(STUDY.mergeDaily(metaRecs.get("daily"),m,today));
     // 打卡：这台设备还没打过卡（新设备、清空过）就直接用备份里的，不然新记录送的 1 张休息卡会被算进去
-    else if(m.key==="checkin"){const loc=getCheckin();await saveCheckin(CHECKIN.normalize(Object.keys(loc.days).length?CHECKIN.merge(loc,m):m,SRS.today(appNow())))}
-    else if(!BACKUP.DEVICE_ONLY.includes(m.key)&&!metaRecs.has(m.key)){await DB.put(m,"meta");metaRecs.set(m.key,m)}}
+    else if(m.key==="checkin"){const loc=getCheckin();W.meta.push(CHECKIN.normalize(Object.keys(loc.days).length?CHECKIN.merge(loc,m):m,today))}
+    else if(!BACKUP.DEVICE_ONLY.includes(m.key)&&!metaRecs.has(m.key))W.meta.push(m)}
   // 新设备从备份恢复：这份备份就是"上次备份"
-  const ex=Date.parse(obj.exported);
-  if(!metaRecs.get("backup")&&isFinite(ex))await markBackup(ex);
+  const exp=Date.parse(obj.exported);
+  if(!metaRecs.get("backup")&&isFinite(exp))W.meta.push({key:"backup",at:exp});
+  if(DB.ok)await DB.write(W);
+  // 数据库写成功了，再更新内存
+  for(const [ex,m] of songPlan){if(ex)Object.assign(ex,m);else songs.push({...m,audio:null})}
+  cards=new Map(mergedCards.map(c=>[c.w,c]));
+  for(const m of W.meta)metaRecs.set(m.key,m);
   processCheckin();renderHome();
-  return n;
+  return {n:valid.length,problems:DB.ok?await verifyRestore(obj):[]};
+}
+// 从数据库读回来，和备份文件比数量
+async function verifyRestore(obj){
+  const p=[],dbSongs=await DB.all(),dbCards=new Set((await DB.all("cards")).map(c=>c.w)),dbMeta=new Map((await DB.all("meta")).map(m=>[m.key,m]));
+  const want=obj.songs.filter(s=>s&&s.id&&Array.isArray(s.lines));
+  const miss=want.filter(s=>{const d=dbSongs.find(x=>x.id===s.id);return !d||!Array.isArray(d.lines)||d.lines.length!==s.lines.length});
+  if(miss.length)p.push(`有 ${miss.length} 首歌没恢复完整`);
+  const wc=new Set((obj.cards||[]).filter(c=>c&&c.w).map(c=>c.w)),mc=[...wc].filter(w=>!dbCards.has(w));
+  if(mc.length)p.push(`有 ${mc.length} 个生词没恢复`);
+  const ci=(obj.meta||[]).find(m=>m&&m.key==="checkin");
+  if(ci&&ci.days){const have=dbMeta.get("checkin")?.days||{};const md=Object.keys(ci.days).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)&&!have[k]);if(md.length)p.push(`有 ${md.length} 天打卡记录没恢复`)}
+  const dy=(obj.meta||[]).find(m=>m&&m.key==="daily");
+  if(dy&&STUDY.goalOf(dy)!==STUDY.goalOf(dbMeta.get("daily")))p.push("「每天新学几句」没恢复");
+  return p;
 }
 
 /* ---------- 数据格式升级（docs/数据兼容规则.md）：meta dataVersion，迁移前存快照 ---------- */
-// snapshot 表里只有一条 "last"：最近一次升级前的全部数据（不含音频）。snapInfo 是它的说明（不含数据），有快照才显示「恢复到更新前的数据」
+// snapshot 表里只有一条 "last"：最近一次升级前的全部数据（不含音频）。snapInfo 是它的说明（不含数据）。
+// 升级失败自动用它恢复；手动「恢复到更新前的数据」只在调试面板里（以后放进开发者模式）
 let snapInfo=null;
 const stripAudio=s=>{const o={...s};delete o.audio;return o};
 function readPrefs(){try{return JSON.parse(localStorage.getItem("yc-prefs")||"{}")||{}}catch(e){return {}}}
-function snapLabel(i){const d=new Date(i.at);return `${d.getMonth()+1}月${d.getDate()}日更新到 ${i.app||"新版本"} 前自动保存的数据。更新后新加的歌和生词会保留`}
+function snapLabel(i){const d=new Date(i.at);return `${d.getMonth()+1}月${d.getDate()}日更新到 ${i.app||"新版本"} 前（数据格式 ${i.from} → ${i.to}）`}
 // 没记 dataVersion 的老数据：打开前一张表都没有 = 新装；只有 songs 表 = 第一阶段（1）；有 meta 表 = M1 以后（2）
 function storedVersion(){
   const r=metaRecs.get("dataVersion");if(r&&Number.isInteger(r.v))return r.v;
@@ -2236,30 +2347,30 @@ async function upgradeData(){
   if(from===DATA.VERSION){if(!metaRecs.has("dataVersion")){metaRecs.set("dataVersion",mark);await DB.put(mark,"meta")}return}
   const before={songs:songs.map(stripAudio),cards:[...cards.values()],meta:[...metaRecs.values()],prefs:readPrefs()};
   const snap={key:"last",at:Date.now(),from,to:DATA.VERSION,app:APP_VERSION,data:before};
-  try{await DB.putAll({snapshot:[snap]})}catch(e){toast("手机存储空间不够，没能保存更新前的数据，这次先不升级数据格式",6000);return}
+  try{await DB.write({snapshot:[snap]})}catch(e){logErr("保存升级前快照",e);toast("没能保存更新前的数据，这次先不升级数据格式："+errText(e),8000);return}
   try{
     const out=DATA.migrate(JSON.parse(JSON.stringify(before)),from).data;
-    const audio=new Map(songs.map(s=>[s.id,s.audio]));
-    await DB.putAll({songs:out.songs.map(s=>({...s,audio:audio.get(s.id)??null})),cards:out.cards,meta:[...out.meta.filter(m=>m&&m.key!=="dataVersion"),mark]});
+    await DB.write({songs:out.songs,cards:out.cards,meta:[...out.meta.filter(m=>m&&m.key!=="dataVersion"),mark]});
     if(out.prefs){Object.assign(prefs,out.prefs);savePrefs()}
   }catch(e){
-    await putSnapshot(snap,from);
+    logErr("升级数据格式",e);
+    try{await putSnapshot(snap,from)}catch(e2){logErr("升级失败后恢复快照",e2)}
     toast("更新数据格式时出了问题，已经恢复到更新前的数据。可以正常使用，请告诉开发者",8000);
   }
   await reloadData();
 }
-// 把快照写回去：快照里有的歌、卡片、meta 用快照的（歌保留现在的音频），快照里没有的（更新后新加的）留着。dataVersion 回到快照那一版
+// 把快照写回去（一个事务）：快照里有的歌、卡片、meta 用快照的（歌保留数据库里的音频），快照里没有的（更新后新加的）留着。dataVersion 回到快照那一版
 async function putSnapshot(snap,from){
-  const d=snap.data,audio=new Map(songs.map(s=>[s.id,s.audio]));
-  await DB.putAll({songs:d.songs.map(s=>({...s,audio:audio.get(s.id)??null})),cards:d.cards,meta:[...d.meta.filter(m=>m&&m.key!=="dataVersion"),{key:"dataVersion",v:from}]});
+  const d=snap.data;
+  await DB.write({songs:d.songs,cards:d.cards,meta:[...d.meta.filter(m=>m&&m.key!=="dataVersion"),{key:"dataVersion",v:from}]});
   try{localStorage.setItem("yc-prefs",JSON.stringify(d.prefs||{}))}catch(e){}
 }
 async function restoreSnapshot(){
-  const snap=await DB.fresh("last","snapshot");if(!snap){snapInfo=null;renderBackupCard();return}
+  const snap=await DB.fresh("last","snapshot");if(!snap){snapInfo=null;renderSim();return}
   if(!await confirmSheet({title:"恢复到更新前的数据？",ok:"恢复",danger:false,
-    body:`会把歌、生词和学习记录换回 ${snapLabel(snap).replace(/。.*/,"")}。更新后新加的歌和生词会保留。恢复后 App 会重新打开。`}))return;
+    body:`会把歌、生词和学习记录换回 ${snapLabel(snap)} 自动保存的数据。更新后新加的歌和生词会保留。恢复后 App 会重新打开。`}))return;
   await commitDelete();
-  try{await putSnapshot(snap,snap.from)}catch(e){toast("恢复失败：手机存储空间可能不够",6000);return}
+  try{await putSnapshot(snap,snap.from)}catch(e){logErr("恢复快照",e);toast("恢复失败，数据没有改动："+errText(e),8000);return}
   location.reload(); // 重新打开时按现在的规则再升级一次
 }
 

@@ -33,7 +33,7 @@ module.exports = { name: "m1", async run(b) {
   const text = await b.ev(F.exportText);
   const obj = JSON.parse(text);
   b.check("backup: v3（带 dataVersion），含 cards 和 meta，不含音频", obj.v === 3 && obj.dataVersion === 4 && obj.cards.length === 3 && Array.isArray(obj.meta) && obj.songs.every(s => !("audio" in s)));
-  b.check("backup: 数量栏 2 首歌 · 3 个生词", (await b.ev(`document.querySelector("#settingsView").innerText`)).includes("2 首歌 · 3 个生词"));
+  b.check("settings: 我的生词 3", (await b.ev(`document.querySelector("#wordsN").innerText`)) === "3");
   const restore = F.restoreText;
   await b.ev(F.WIPE); await b.nav("/");
   b.check("backup: 新设备恢复", (await b.ev(restore(text))).includes("已恢复 2 首歌、3 个生词") && (await b.ev(F.idbCount("cards"))) === 3);

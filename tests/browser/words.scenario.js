@@ -15,8 +15,8 @@ module.exports = { name: "words", async run(b) {
   await b.nav("/");
   await b.ev(RECORD);
   await b.ev(click("#btnSettings")); await b.sleep(800);
-  b.check("entry", (await b.ev(`document.querySelector("#wordsCard").innerText`)).includes("我的生词（3）"));
-  await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
+  b.check("entry", (await b.ev(`document.querySelector("#wordsN").innerText`)) === "3");
+  await b.ev(click("#wordsRow")); await b.sleep(800);
   b.check("enter", await b.ev(visible("#wordsView")) && (await b.ev("history.state.view")) === "wordsView");
   const r = await b.ev(rows);
   b.check("list", r.length === 3 && r[0].includes("風褸") && r[0].includes("fung1 lau1") && r[0].includes("风衣") && r[0].includes("今天复习")
@@ -46,22 +46,22 @@ module.exports = { name: "words", async run(b) {
   b.check("delete", !(await b.ev(F.idbGet("cards", "知"))) && (await b.ev(rows)).length === 2 && (await b.ev(`document.querySelector("#sheet").hidden`)));
 
   await b.ev(click("#wordsView [data-back]")); await b.sleep(900);
-  b.check("back", await b.ev(visible("#settingsView")) && (await b.ev(`document.querySelector("#wordsCard").innerText`)).includes("我的生词（2）"));
-  await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
+  b.check("back", await b.ev(visible("#settingsView")) && (await b.ev(`document.querySelector("#wordsN").innerText`)) === "2");
+  await b.ev(click("#wordsRow")); await b.sleep(800);
   await b.ev("history.back()"); await b.sleep(900);
   b.check("swipe-back", await b.ev(visible("#settingsView")));
 
   // 从备份恢复的卡可能没有 known 字段：排序不能乱（要复习的在前，已认识的在后）
   const noKnown = { ...mk("早", "zou2", "早", Date.now() + 86400e3) }; delete noKnown.known;
   await b.ev(putCards([noKnown]));
-  await b.nav("/"); await b.ev(click("#btnSettings")); await b.sleep(800); await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
+  await b.nav("/"); await b.ev(click("#btnSettings")); await b.sleep(800); await b.ev(click("#wordsRow")); await b.sleep(800);
   const r2 = await b.ev(rows);
   b.check("sort-missing-known", r2.length === 3 && r2[0].includes("風褸") && r2[1].includes("早") && r2[2].includes("已认识"));
 
   // 没有生词
   await b.nav("/__blank"); await b.ev(F.WIPE); await b.ev(F.SEED_V1); await b.nav("/");
   await b.ev(click("#btnSettings")); await b.sleep(800);
-  await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
+  await b.ev(click("#wordsRow")); await b.sleep(800);
   b.check("empty", (await b.ev(`document.querySelector("#wordsView").innerText`)).includes("还没有生词"));
   b.check("no-errors", b.errors.length === 0);
 } };

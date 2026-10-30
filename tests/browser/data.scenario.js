@@ -3,6 +3,8 @@
 const fs = require("fs"), path = require("path");
 const F = require("./fixtures.js");
 const DATA = require("../../data.js");
+// 现在的 App 版本号（index.html 的 APP_VERSION）
+const APP = /const APP_VERSION="([^"]+)"/.exec(fs.readFileSync(path.join(__dirname, "../../index.html"), "utf8"))[1];
 const FX = path.join(__dirname, "..", "fixtures");
 const fx = f => JSON.parse(fs.readFileSync(path.join(FX, f), "utf8"));
 const fxText = f => fs.readFileSync(path.join(FX, f), "utf8");
@@ -53,7 +55,7 @@ module.exports = { name: "data", async run(b) {
     b.check(`${name}-upgraded`, dv && dv.v === DATA.VERSION);
     b.check(`${name}-kept`, await kept(b, d));
     b.check(`${name}-home-shows-songs`, (await b.ev(`document.querySelectorAll("#songs .song").length`)) === d.songs.length);
-    b.check(`${name}-snapshot`, !!snap && snap.from === from && snap.to === DATA.VERSION && snap.app === "v0.30"
+    b.check(`${name}-snapshot`, !!snap && snap.from === from && snap.to === DATA.VERSION && snap.app === APP
       && snap.data.songs.length === d.songs.length && snap.data.songs.every(s => !("audio" in s)) && same(snap.data.prefs, d.prefs || {}));
     b.check(`${name}-prefs-kept`, same(await b.ev(`JSON.parse(localStorage.getItem("yc-prefs"))`), { ...(d.prefs || {}) }));
     b.check(`${name}-stores`, same(await b.ev(stores), ["cards", "meta", "snapshot", "songs"]));
@@ -63,29 +65,32 @@ module.exports = { name: "data", async run(b) {
     b.check("v2-goal-moved", (await b.ev(F.idbGet("meta", "daily")))?.goal === 6);
     await b.ev(click("#btnSettings")); await b.sleep(800);
     b.check("v2-goal-shown", (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "6");
-    const txt = await b.ev(`document.querySelector("#backupCard").innerText`);
-    b.check("snapshot-button", await b.ev(visible("#bkSnap")) && txt.includes("更新到 v0.30 前自动保存的数据"));
-    b.check("persist-tip", txt.includes("建议从主屏幕图标打开 App，并定期导出备份"));
-    await b.shot("data-settings");
+    // 「恢复到更新前的数据」不给普通用户：设置页没有，只在调试面板里
+    b.check("no-snapshot-in-settings", !(await b.ev(`!!document.querySelector("#bkSnap")`)) && !(await b.ev(`document.querySelector("#settingsView").innerText`)).includes("恢复到更新前"));
+    b.check("dbg-off-no-snapshot", !(await b.ev(visible("#dbgData"))));
 
     // ---- 恢复到更新前的数据：快照里的记录换回来，更新后新加的保留 ----
     await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const tx = db.transaction(["cards", "songs"], "readwrite");
       tx.objectStore("cards").put({ ...${JSON.stringify(d.cards[0])}, zh: "改过了" }); tx.objectStore("songs").put({ id: "new1", title: "更新后新加的歌", artist: "", lines: [{ t: 1, end: 2, text: "新歌一句" }], pack: null, overrides: {}, audio: null, created: 1, updated: 1 });
       tx.oncomplete = () => { db.close(); res(); }; }; })`);
-    await b.nav("/"); await b.ev(click("#btnSettings")); await b.sleep(800);
-    await b.ev(click("#bkSnap")); await b.sleep(500);
+    await b.ev(`localStorage.setItem("yc-debug", "1")`); await b.nav("/");
+    const dt = await b.ev(`document.querySelector("#dbgData").innerText`);
+    b.check("dbg-snapshot " + dt.replace(/\n/g, " "), await b.ev(visible("#dbgSnap")) && dt.includes(`更新到 ${APP} 前（数据格式 2 → ${DATA.VERSION}）`) && dt.includes(`数据格式第 ${DATA.VERSION} 版`));
+    await b.shot("data-debug-panel");
+    await b.ev(click("#dbgSnap")); await b.sleep(500);
     b.check("snapshot-confirm", (await b.ev(F.sheetText)).includes("恢复到更新前的数据"));
     await b.ev(`document.querySelector('#sheetBody [data-confirm="ok"]').click()`); await b.sleep(3000); // 恢复后 App 会重新打开
     b.check("snapshot-restored-card", (await b.ev(F.idbGet("cards", d.cards[0].w)))?.zh === d.cards[0].zh);
     b.check("snapshot-keeps-new", !!(await b.ev(F.idbGet("songs", "new1"))));
     b.check("snapshot-reupgraded", (await b.ev(F.idbGet("meta", "dataVersion")))?.v === DATA.VERSION && (await b.ev(`document.querySelectorAll("#songs .song").length`)) === 3);
+    await b.ev(`localStorage.removeItem("yc-debug")`);
   }
 
   // ---- 新装：直接是最新格式，没有快照，不显示恢复按钮 ----
   await b.nav("/__blank"); await b.ev(`(localStorage.clear(), ${F.WIPE})`); await b.nav("/");
   b.check("fresh-version", (await b.ev(F.idbGet("meta", "dataVersion")))?.v === DATA.VERSION && !(await b.ev(F.idbGet("snapshot", "last"))));
   await b.ev(click("#btnSettings")); await b.sleep(800);
-  b.check("fresh-no-snapshot-button", !(await b.ev(`!!document.querySelector("#bkSnap")`)) && (await b.ev(`document.querySelector("#backupCard").innerText`)).includes("建议从主屏幕图标打开 App"));
+  b.check("fresh-safari-tip", (await b.ev(`document.querySelector("#bkTip").innerText`)) === "建议添加到主屏幕使用，数据更不容易丢失" && await b.ev(visible("#bkTip")));
 
   // ---- 每一种旧备份都能导入（先迁移再合并）----
   for (const f of ["backup-v1.json", "backup-v2-m1.json", "backup-v2-m4.json", "backup-v2-v029.json", "backup-v3.json"]) {
@@ -103,7 +108,7 @@ module.exports = { name: "data", async run(b) {
     && await b.ev(`document.querySelector("#sheet").hidden`) && (await b.ev(idbAll("songs"))).length === 2);
   // 导出的备份带 dataVersion 和 App 版本
   const out = JSON.parse(await b.ev(F.exportText));
-  b.check("export-has-versions", out.dataVersion === DATA.VERSION && out.appVersion === "v0.30" && !out.meta.some(m => m.key === "dataVersion"));
+  b.check("export-has-versions", out.dataVersion === DATA.VERSION && out.appVersion === APP && !out.meta.some(m => m.key === "dataVersion"));
 
   // ---- 升级失败：自动用快照恢复，提示开发者 ----
   const hook = await b.send("Page.addScriptToEvaluateOnNewDocument", { source: `(() => { let D; Object.defineProperty(self, "DATA", { configurable: true,
@@ -115,14 +120,14 @@ module.exports = { name: "data", async run(b) {
 
   // ---- 版本号和版本记录页 ----
   await b.nav("/");
-  b.check("home-version", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 v0.30");
+  b.check("home-version", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 " + APP);
   await b.ev(click("#btnSettings")); await b.sleep(800);
-  b.check("settings-version", (await b.ev(`document.querySelector("#setVer").innerText`)) === "版本 v0.30");
+  b.check("settings-version", (await b.ev(`document.querySelector("#setVer").innerText`)) === APP);
   const h0 = await b.ev("history.length");
   await b.ev(click("#btnChangelog")); await b.sleep(1000);
   const cl = await b.ev(`document.querySelector("#clBody").innerText`);
   b.check("changelog-page", await b.ev(visible("#changelogView")) && (await b.ev("history.length")) === h0 + 1 && (await b.ev("history.state.view")) === "changelogView");
-  b.check("changelog-content", cl.includes("v0.30") && cl.includes("v0.29") && cl.includes("第一阶段") && (await b.ev(`document.querySelectorAll("#clBody .card").length`)) > 10
+  b.check("changelog-content", cl.includes(APP) && cl.includes("v0.29") && cl.includes("第一阶段") && (await b.ev(`document.querySelectorAll("#clBody .card").length`)) > 10
     && (await b.ev(`document.querySelectorAll("#clBody .cl-warn").length`)) >= 3 && !cl.includes("# 更新记录"));
   b.check("changelog-no-overflow", await b.ev(`document.documentElement.scrollWidth <= innerWidth`));
   await b.shot("changelog-light");

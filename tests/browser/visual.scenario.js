@@ -50,7 +50,7 @@ module.exports = { name: "visual", async run(b) {
   await b.nav("/");
 
   await b.ev(click("#btnSettings")); await b.sleep(900); await page("settings");
-  await b.ev(click("#wordsCard [data-words]")); await b.sleep(900); await page("words");
+  await b.ev(click("#wordsRow")); await b.sleep(900); await page("words");
   await b.ev(click("#wSelect")); await b.sleep(300); await b.ev(click(".wrow")); await b.sleep(300); await page("words-select");
   await b.ev(click("#wDone")); await b.sleep(300);
   await b.ev(click(".wrow")); await b.sleep(700); await page("sheet-wordcard");

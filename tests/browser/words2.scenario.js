@@ -23,7 +23,7 @@ module.exports = { name: "words2", async run(b) {
     mk("我", "ngo5", "我", now - 5000, true), mk("你", "nei5", "你", 0, true)]));
   await b.nav("/");
   await b.ev(click("#btnSettings")); await b.sleep(800);
-  await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
+  await b.ev(click("#wordsRow")); await b.sleep(800);
 
   b.check("tabs " + (await b.ev(tabs)), (await b.ev(tabs)) === "全部5|学习中3|已认识2|今天到期2" && (await b.ev(tabOn)) === "all");
   b.check("search-visible", await b.ev(visible("#wQ")) && (await b.ev(`document.querySelector("#wQ").type`)) === "search"
@@ -121,9 +121,9 @@ module.exports = { name: "words2", async run(b) {
   await b.ev(click("#wSelect")); await b.ev(tap("知")); await b.ev(click('#wAct [data-wact="del"]')); await b.sleep(400);
   await b.ev(click('[data-confirm="ok"]')); await b.sleep(400);
   await b.ev("history.back()"); await b.sleep(900);
-  b.check("committed-on-leave", !(await b.ev(F.idbGet("cards", "知"))) && (await b.ev(`document.querySelector("#wordsCard").innerText`)).includes("我的生词（3）"));
+  b.check("committed-on-leave", !(await b.ev(F.idbGet("cards", "知"))) && (await b.ev(`document.querySelector("#wordsN").innerText`)) === "3");
   // 重新进来：回到「全部」、搜索清空、不在选择模式
-  await b.ev(click("#wordsCard [data-words]")); await b.sleep(800);
+  await b.ev(click("#wordsRow")); await b.sleep(800);
   b.check("fresh-entry", (await b.ev(tabOn)) === "all" && (await b.ev(`document.querySelector("#wQ").value`)) === "" && await b.ev(visible("#wSelect")) && !(await b.ev(visible("#wAct"))));
   b.check("no-errors", b.errors.length === 0);
 } };

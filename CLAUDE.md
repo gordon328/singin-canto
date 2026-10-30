@@ -46,7 +46,7 @@
   - 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以**顶部附近不能有带颜色的 fixed 元素**（`#topTint` 已去掉）。**弹出层不使用暗幕**（M3.12，设计规范 5.6）：底部弹窗 `openSheet(html, {modal})` 只靠 `--shadow-sheet` 阴影；点外面关闭（document 上的 pointerdown/pointerup 判断，移动超过 10px 算滚动，紧跟的 click 吞掉）；所有弹窗都有拖动条、统一间距（设计规范 5.6）；`modal: true` 的确认类弹窗（`confirmSheet`、未保存提示）点外面不关，往下拖关闭等于取消
   - 歌曲页「⋯」是下拉小菜单 `#songMenu`（设计规范 5.9）：放在吸顶顶栏 `.bar .wrap` 里，absolute，`openMenu()`/`closeMenu(now)`，切页时 `show()` 直接收起
   - 每日学习：首页 `#today` 卡片（`renderToday()`）→ 学习页 `studyView`（DEPTH 1，`startStudy()`/`studyNext()`/`renderStudy()`，学词 `renderWord`、整句 `renderLine`、完成 `renderDone`）。**进度每一步立刻存**（「会读了」建卡、「这句会了」标 learned + `daily.newLines/done`），不另存"学到哪"，下次进来用 `STUDY.nextLine` + 排除已有卡片算出断开的地方。原唱用 `playStudyLine(loop)` / `playLineOf(song, li, loop)`（0.8×，`tick()` 里按 `study.stopAt` 停或循环）。**复习**（M5）是学习页的第一段 `phase: "review"`（`renderReview`、`gradeCard`）：`STUDY.reviewQueue` 到期早的先、最多 50 张，「忘了」的卡这一轮最后再出一次（`STUDY.afterGrade`），每张卡评完立刻存 `srs` 和 `daily.reviewed`；`startStudy({reviewOnly})` 只复习、复习完到完成页。「我的生词」`wordsView`（设置页进入，DEPTH 2，`renderWords`、`openWordCard`；筛选标签 + 搜索 + 多选，底部「标为认识 / 取消认识 / 删除」，删除走 `deleteWords(ws)`，5 秒内可撤销，`commitWordDel()` 才真正删数据库（5 秒后、离开这页、切后台））正在学的歌：`STUDY.currentSong`，`setCurrentSong(id)`；存歌用 `saveSong(s)`（原地更新 `songs` 里的对象）
-  - 设置页 `settingsView`：首页右上角齿轮进入；「每天新学几句」2/4/6/自定义（自定义展开「− 数字 +」，1–20；存 meta `daily.goal`，默认 4；旧的 `prefs.goal` 启动时搬过去）+ 备份与恢复（`renderSettings()`）
+  - 设置页 `settingsView`（设计规范 5.11，v0.31 起是分组列表 `.sgrp` / `.cell`，行高 52px）：首页右上角齿轮进入。学习组：「每天新学几句」2/4/6/自定义（自定义展开「− 数字 +」，1–20；存 meta `daily.goal`，默认 4）、我的生词 `#wordsRow`；数据组：导出备份文件 `#bkExport`（右边 `#bkAge`「上次：今天」）、从文件恢复（`#bkFile`）、只在 Safari 打开时显示 `#bkTip`；关于组：版本记录 `#btnChangelog`。`renderSettings()`。导出、恢复结果用 toast。注意 `.grp` 是歌词换行用的 class，设置页别用
   - 声调键帽（设计规范 5.2）：`.tones .key` 里两层 `.key-base`（声调色，不动）和 `.key-face`（按下时只有它下移 4px）
 - 自动粤拼：`to-jyutping@3.1.1`（CanCLID，BSD-2），本地副本 `vendor/to-jyutping.js`（授权在 `vendor/to-jyutping.LICENSE`），全局变量 `ToJyutping`
   - `getJyutpingList(text)` 返回 `[字, 粤拼|null][]`
@@ -104,7 +104,8 @@
 - **v23（2026-10-30）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
 - **v24（2026-10-30）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒；有录音时不再显示「系统朗读可能读错」。iPhone 验收通过
 - **v25（2026-10-30）**：开发者听过决定多字词保持录音连读；整句「标准慢读」也改成逐字录音（停 0.3 秒，有音节没录音时整句退回系统朗读）。2026-10-30 iPhone 验收通过
-- **v0.30（2026-10-30，待 iPhone 验收）**：版本号改成 v0.xx、git 标签、CHANGELOG.md 和设置页「版本记录」；数据兼容：dataVersion + 迁移、升级前快照和「恢复到更新前的数据」、备份带版本（太新的不导入）、申请持久存储、`tests/fixtures/` 兼容性测试
+- **v0.31（2026-10-31，待 iPhone 验收）**：修 v0.30「从文件恢复」同时提示「已恢复」和「保存失败：空间不够」——写歌曲时改用数据库里的音频（内存里的音频切后台后会失效），`DB.write()` 一个事务全有或全无、连接断了重开再试、按真正错误原因提示（`errText`）、恢复后核对数量（`verifyRestore`）、错误记录 `yc-errlog` 在调试面板「数据」里；「恢复到更新前的数据」挪进调试面板；设置页改成分组列表
+- **v0.30（2026-10-30）**：版本号改成 v0.xx、git 标签、CHANGELOG.md 和设置页「版本记录」；数据兼容：dataVersion + 迁移、升级前快照和「恢复到更新前的数据」、备份带版本（太新的不导入）、申请持久存储、`tests/fixtures/` 兼容性测试
 - **v29（2026-10-30，待 iPhone 验收）**：打卡日历不再按学习量分深浅：打卡的日子都用主色填满，当天点过「再学 2 句」的日子右上角加小星星（打卡记录里 `more: true`）；图例改成已打卡 / 多学了 / 休息日；完成页本周格子同样规则
 - **v28（2026-10-30）**：打卡日历页顶部统计改成一张合并卡片（设计图 `docs/design/calendar-stats.png` 方案 B）：上面连续 / 累计 / 最长连续三列（连续断了显示「—」），下面休息卡横栏；整个月在 iPhone 17 Pro Max 上不用滚动就能看到
 - **v27（2026-10-30）**：休息卡改成三个小卡片图标 +「N/3」（日历页统计、首页提示统一用 `tokensHTML()`）；说明文字没存满时「每周一发 1 张」，存满时「已存满，用掉后才会继续发放」

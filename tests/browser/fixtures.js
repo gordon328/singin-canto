@@ -58,14 +58,15 @@ async function closeSheet(b) { await tapAt(b, 215, 90); await b.sleep(450); }
 // 备份文件（设置页要已经打开）。exportText：把分享面板换成假的，点「导出备份文件」，返回文件里的文字
 const exportText = `(async () => { let got = null; navigator.canShare = () => true; navigator.share = async d => { got = d.files[0]; };
   document.querySelector("#bkExport").click(); await new Promise(r => setTimeout(r, 300)); window.__bkFile = got; return got ? await got.text() : null; })()`;
-// restoreText：把文字当成选中的 .json 文件交给「从文件恢复」，confirm 为真时点「恢复」；返回提示文字
+// restoreText：把文字当成选中的 .json 文件交给「从文件恢复」，confirm 为真时点「恢复」；返回弹出提示的文字
 const restoreText = (text, confirm = true) => `(async () => { if (document.querySelector("#settingsView").hidden) { document.querySelector("#btnSettings").click(); await new Promise(r => setTimeout(r, 800)); }
+  const t = document.querySelector("#toast"); t.hidden = true; t.textContent = "";
   const inp = document.querySelector("#bkFile"), dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(text)}], "备份.json", { type: "application/json" }));
   inp.files = dt.files; inp.dispatchEvent(new Event("change")); await new Promise(r => setTimeout(r, 500));
-  // 点了「恢复」后等到出现结果提示（恢复写完数据库才会显示），最多等 5 秒；机器忙的时候固定等 0.9 秒不一定够
-  const ok = document.querySelector('#sheetBody [data-confirm="${confirm ? "ok" : "cancel"}"]'); if (ok) { ok.click(); await new Promise(r => setTimeout(r, 900));
-    for (let i = 0; i < 40 && ${confirm ? "true" : "false"} && !document.querySelector("#bkMsg").innerText.trim(); i++) await new Promise(r => setTimeout(r, 100)); }
-  return document.querySelector("#bkMsg").innerText; })()`;
+  // 点了「恢复」后等到出现结果提示（恢复写完数据库、核对完才会显示），最多等 5 秒
+  const ok = document.querySelector('#sheetBody [data-confirm="${confirm ? "ok" : "cancel"}"]'); if (ok) { ok.click(); await new Promise(r => setTimeout(r, 300));
+    for (let i = 0; i < 50 && ${confirm ? "true" : "false"} && (t.hidden || !t.textContent.trim()); i++) await new Promise(r => setTimeout(r, 100)); }
+  return t.hidden ? "" : t.textContent; })()`;
 
 // VOICE_REC：录下标准发音录音播了哪些音节。fetch → 解码 → 播放一路带着文件名，每播一个音节往 window.__said 里放 ["♪音节", 开始时间, 长度]
 // （和系统朗读的 [文字, 语速] 放在一起，按先后顺序）。voiced：取出播过的音节
