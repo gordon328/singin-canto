@@ -21,7 +21,12 @@ module.exports = { name: "skinpage", async run(b) {
   await b.ev(click("#skinRow")); await b.sleep(900);
   b.check("page", await b.ev(visible("#skinsView")) && (await b.ev("history.state.view")) === "skinsView" && (await b.ev("history.length")) === h0 + 1);
   b.check("intro", (await b.ev(text("#skinsView .skins-note"))) === "皮肤只改变颜色，学习进度和设置都不受影响。");
-  b.check("three-cards-in-order", (await b.ev(`[...document.querySelectorAll("#skinsView .skin-card")].map(e => e.dataset.skinId).join()`)) === "lilac,night,mist");
+  // 两组：已拥有、未解锁；每组按 order 排；小标题和设置页分组一样（12px、--muted）
+  const groups = `[...document.querySelectorAll("#skinsList .skins-group")].map(g => g.dataset.group + ":" + [...g.querySelectorAll(".skin-card")].map(e => e.dataset.skinId).join("|")).join(" ")`;
+  b.check("groups-owned-locked " + (await b.ev(groups)), (await b.ev(groups)) === "owned:lilac locked:night|mist");
+  b.check("group-titles", (await b.ev(`[...document.querySelectorAll("#skinsList .sgrp-t")].map(e => e.innerText).join()`)) === "已拥有,未解锁"
+    && await b.ev(`(() => { const t = getComputedStyle(document.querySelector("#skinsList .sgrp-t")), s = getComputedStyle(document.querySelector("#settingsView .sgrp-t"));
+      return t.fontSize === "12px" && s.fontSize === "12px" && t.color === s.color && t.fontWeight === s.fontWeight; })()`));
   // 丁香：使用中
   const lilac = await b.ev(text(card("lilac")));
   b.check("lilac-in-use " + lilac, lilac.includes("丁香") && lilac.includes("跟随系统深浅色") && lilac.includes("默认皮肤") && lilac.includes("使用中")
@@ -46,7 +51,17 @@ module.exports = { name: "skinpage", async run(b) {
 
   // 晨雾解锁后：「学会第一首歌 · 已解锁」（主色）+「使用」；点了切换
   await b.ev(setCheckin(`({ unlocked: ["lilac", "mist"], unlockedInfo: { lilac: { by: "default" }, mist: { by: "songs", at: ${JSON.stringify(d0)} } } })`));
-  await openSkins(b);
+  // 解锁后第一次打开皮肤页：晨雾先在「未解锁」里，然后移到「已拥有」，有位置过渡动画
+  await b.nav("/"); await b.ev(click("#btnSettings")); await b.sleep(800); await b.ev(click("#skinRow")); await b.sleep(300);
+  b.check("moves-from-locked " + (await b.ev(groups)), (await b.ev(groups)) === "owned:lilac locked:night|mist");
+  await b.sleep(450);
+  b.check("moves-to-owned-animated " + (await b.ev(groups)), (await b.ev(groups)) === "owned:lilac|mist locked:night"
+    && (await b.ev(`document.querySelector(${JSON.stringify(card("mist"))}).getAnimations().length`)) > 0);
+  await b.sleep(700);
+  await b.shot("skins-page-grouped");
+  // 再打开就不再动
+  await b.ev("history.back()"); await b.sleep(900); await b.ev(click("#skinRow")); await b.sleep(1300);
+  b.check("no-move-next-time", (await b.ev(groups)) === "owned:lilac|mist locked:night" && (await b.ev(`document.querySelector(${JSON.stringify(card("mist"))}).getAnimations().length`)) === 0);
   const mist = await b.ev(text(card("mist")));
   b.check("mist-unlocked-label " + mist, mist.includes("学会第一首歌 · 已解锁") && mist.includes("使用") && !mist.includes("使用中"));
   b.check("unlocked-label-accent", (await b.ev(`getComputedStyle(document.querySelector(${JSON.stringify(card("mist") + " .skin-cond")})).color`))

@@ -6,6 +6,8 @@
   const REQUIRED = ["bg", "surface", "surfacePress", "ink", "ink2", "muted", "rule", "accent", "accentPress", "accentSoft", "onAccent",
     "inverse", "onInverse", "danger", "heroTile", "heroBtn", "heroBtnInk", "songTiles", "tones", "shadowStrength"];
   const MODES = ["auto", "light-only", "dark-only"];
+  // 输入框边框用哪个颜色（不另加必填变量）：要对卡片底色和输入框底色（bg）都 ≥ 3:1，颜色检查会查
+  const FIELD_BORDER = "muted";
 
   // 驼峰 → CSS 变量名：surfacePress → --surface-press，ink2 → --ink-2，heroBtnInk → --hero-btn-ink
   const varName = k => "--" + k.replace(/([A-Z])/g, "-$1").replace(/(\d+)/g, "-$1").toLowerCase();
@@ -21,6 +23,7 @@
     c.tones.forEach((t, i) => out.push(`--t${i + 1}:${t}`));
     c.songTiles.forEach(([bg, ink], i) => out.push(`--sq${i + 1}-bg:${bg}`, `--sq${i + 1}-ink:${ink}`));
     out.push(`--sq-count:${c.songTiles.length}`);
+    out.push(`--field-border:var(--${FIELD_BORDER})`);
     out.push(`--seg-current:${c.segCurrent || "color-mix(in srgb, var(--accent) 45%, var(--surface))"}`);
     // 阴影：强度 0 用明暗差代替阴影（深色）；大于 0 用 ink 色的阴影
     const s = +c.shadowStrength || 0;
@@ -81,6 +84,11 @@
         const r = contrast(c[a], c[b]);
         if (r < min) p.push(`${at}: ${a}/${b} ${r.toFixed(2)} < ${min}`);
       }
+      // 输入框：卡片里的输入框底色是 bg，直接放在页面上的是 surface；边框对两者都要看得清
+      for (const b of ["surface", "bg"]) if (HEX.test(c[FIELD_BORDER] || "") && HEX.test(c[b] || "")) {
+        const r = contrast(c[FIELD_BORDER], c[b]);
+        if (r < 3) p.push(`${at}: 输入框边框（${FIELD_BORDER}）/${b} ${r.toFixed(2)} < 3`);
+      }
       if (HEX.test(c.surface || "") && Array.isArray(c.tones)) c.tones.forEach((t, i) => {
         if (!HEX.test(t)) p.push(`${at}: 声调 ${i + 1} 要写成 #RRGGBB`);
         else if (contrast(t, c.surface) < 3) p.push(`${at}: 声调 ${i + 1}/surface ${contrast(t, c.surface).toFixed(2)} < 3`);
@@ -94,7 +102,7 @@
     return id && defs[id] && (unlocked || []).includes(id) ? id : "lilac";
   }
 
-  const SKIN = { REQUIRED, MODES, varName, cssVars, stylesheet, colorsFor, contrast, check, pick };
+  const SKIN = { REQUIRED, MODES, FIELD_BORDER, varName, cssVars, stylesheet, colorsFor, contrast, check, pick };
   root.SKIN = SKIN;
   if (typeof module !== "undefined" && module.exports) module.exports = SKIN;
 })(typeof self !== "undefined" ? self : globalThis);

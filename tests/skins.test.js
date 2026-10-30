@@ -95,3 +95,14 @@ test("夜曲和晨雾的颜色和规格一样", () => {
   assert.equal(mist.light.accent, "#1F7A6B"); assert.equal(mist.dark.accent, "#4FB8A5"); assert.equal(mist.dark.bg, "#111816");
   assert.deepEqual(mist.light.tones, ["#D14B45", "#C9761F", "#2E8F52", "#3A6FD0", "#8455CF", "#16808F"]);
 });
+
+test("输入框边框（--field-border）对卡片底色和输入框底色都 ≥ 3:1", () => {
+  for (const d of defs) for (const m of sets(d)) {
+    const c = d[m], border = c[SKIN.FIELD_BORDER];
+    assert.ok(SKIN.contrast(border, c.surface) >= 3, `${d.id} ${m} 边框/卡片 ${SKIN.contrast(border, c.surface).toFixed(2)}`);
+    assert.ok(SKIN.contrast(border, c.bg) >= 3, `${d.id} ${m} 边框/输入框底色 ${SKIN.contrast(border, c.bg).toFixed(2)}`);
+    assert.ok(SKIN.cssVars(c).includes(`--field-border:var(--${SKIN.FIELD_BORDER})`));
+  }
+  const bad = { ...defs[0], light: { ...defs[0].light, [SKIN.FIELD_BORDER]: "#F0F0F0" } };
+  assert.ok(SKIN.check(bad).some(x => x.includes("输入框边框")), "check 能发现输入框边框看不清");
+});

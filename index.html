@@ -91,12 +91,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .btn:disabled{opacity:.45;cursor:default;transform:none}
 .muted{color:var(--muted)}
 .label{font-size:13px;color:var(--muted);font-weight:600}
-input[type=text],input[type=search],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:0;border-radius:14px;
-  padding:12px 16px;box-shadow:var(--shadow-1),inset 0 0 0 1px var(--rule)}
-input[type=text]:focus,input[type=search]:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
+/* 输入框（设计规范 5.14，所有皮肤一样）：底色和所在卡片明显不同——卡片里用 --bg，直接放在页面上的用 --surface（.on-page）；
+   1px 边框 --field-border（皮肤引擎给，对卡片和 --bg 都 ≥ 3:1，有颜色检查）；点进去边框变 1.5px 主色（1px 边框 + 0.5px 内描边，大小不变） */
+input[type=text],input[type=search],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--field-border);border-radius:14px;
+  padding:11px 15px;box-shadow:none;transition:border-color var(--dur-fast) var(--ease)}
+input[type=text]:focus,input[type=search]:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 .5px var(--accent)}
+.on-page input[type=text],.on-page input[type=search]{background:var(--surface)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 /* 输入框固定 7 行高，超出的在框里滚动；clip-path 保证文字不会画到框外（iPhone 上见过露出半行） */
-textarea{display:block;height:calc(1.6em * 7 + 24px);padding:12px 16px;resize:none;overflow-y:auto;line-height:1.6;clip-path:inset(0 round 14px)}
-textarea:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+textarea{display:block;height:calc(1.6em * 7 + 24px);padding:11px 15px;resize:none;overflow-y:auto;line-height:1.6;clip-path:inset(0 round 14px)}
 svg{display:block}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{transition-property:opacity!important;animation:none!important;scroll-behavior:auto!important}
@@ -319,7 +322,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .dbg-sim{flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-radius:18px;background:var(--bg);font-size:13px;color:var(--ink-2)}
 .dbg-sim .lbl{flex-basis:100%}
 .dbg-err{flex-basis:100%;margin:0;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:12px;line-height:1.5;color:var(--ink)}
-.dbg-sim input{min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:8px 12px}
+.dbg-sim input{min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--field-border);border-radius:12px;padding:8px 12px}
 .song{display:flex;align-items:center;gap:12px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
   cursor:pointer;transition:transform var(--dur-fast) var(--ease),background-color var(--dur-fast) var(--ease)}
 .song.is-pressed{transform:scale(.98);background:var(--surface-press)}
@@ -467,7 +470,7 @@ label.btn{overflow:hidden}
 .note{font-size:13px;color:var(--muted);line-height:1.6}
 /* 设置页：分组列表（设计规范 5.11） */
 .set{padding-block:8px calc(32px + env(safe-area-inset-bottom,0px))}
-.sgrp-t{margin:24px 0 8px;padding:0 16px;font-size:13px;font-weight:600;color:var(--muted)}
+.sgrp-t{margin:24px 0 8px;padding:0 16px;font-size:12px;font-weight:600;color:var(--muted)}
 .set > .sgrp-t:first-child{margin-top:8px}
 .sgrp{background:var(--surface);border-radius:22px;box-shadow:var(--shadow-1);overflow:hidden}
 .sgrp > * + *{position:relative}
@@ -486,7 +489,9 @@ label.btn{overflow:hidden}
 /* 设置 › 皮肤（设计规范 5.13）：每个皮肤一张卡片；正在用的主色描边；没解锁的预览半透明 */
 .skins{display:flex;flex-direction:column;gap:12px;padding-block:8px calc(32px + env(safe-area-inset-bottom,0px))}
 .skins-note{margin:0;padding:0 4px;font-size:15px;line-height:1.6;color:var(--ink-2)}
-.skins-list{display:flex;flex-direction:column;gap:12px}
+.skins-list{display:flex;flex-direction:column}
+.skins-list > .skins-sec:first-child .sgrp-t{margin-top:4px}
+.skins-group{display:flex;flex-direction:column;gap:12px}
 .skin-card{display:flex;align-items:center;gap:16px;width:100%;padding:16px;margin:0;border:2px solid transparent;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);
   font:inherit;color:var(--ink);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color var(--dur) var(--ease)}
 .skin-card.current{border-color:var(--accent)}
@@ -805,7 +810,7 @@ label.btn{overflow:hidden}
     <button class="btn soft small" id="wDone" type="button" hidden>完成</button>
   </div></div>
   <div class="wrap">
-    <div class="wtools" id="wTools" hidden>
+    <div class="wtools on-page" id="wTools" hidden>
       <input type="search" id="wQ" placeholder="搜汉字、粤拼或意思" enterkeyhint="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="搜索生词">
       <div class="wtabs" id="wTabs" role="group" aria-label="筛选"></div>
     </div>
@@ -1078,7 +1083,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.33";
+const APP_VERSION="v0.34";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
@@ -2318,9 +2323,13 @@ function skinPreview(def,size="small"){
   return `<span class="skin-prev ${size}" style="${esc(v)}" aria-hidden="true">${size==="large"?'<i class="p-title"></i>':""}<i class="p-hero"></i><span class="p-tones">${c.tones.map((_,i)=>`<i class="p-tone" style="--p-t:var(--p-t${i+1})"></i>`).join("")}</span><i class="p-card"></i><i class="p-card"></i></span>`;
 }
 function skinCtx(){return UNLOCK.context({checkin:getCheckin(),songs,cards:[...cards.values()],today:SRS.today(appNow())})}
-function renderSkins(){
+// 两组：「已拥有」在上、「未解锁」在下，每组都按皮肤的 order 固定排序（不按解锁时间），位置稳定。
+// asLocked：这些已经解锁的先放在「未解锁」里（刚解锁、还没在这页看过的，等一下再移过去）
+function renderSkins({asLocked=[]}={}){
   const ci=getCheckin(),cur=document.documentElement.dataset.skin,ctx=skinCtx();
-  $("#skinsList").innerHTML=Object.values(SKIN_DEFS).sort((a,b)=>a.order-b.order).map(d=>{
+  const all=Object.values(SKIN_DEFS).sort((a,b)=>a.order-b.order);
+  const owned=all.filter(d=>ci.unlocked.includes(d.id)&&!asLocked.includes(d.id)),locked=all.filter(d=>!owned.includes(d));
+  const card=d=>{
     const rule=UNLOCK.RULES[d.unlock.type],v=d.unlock.value,have=ci.unlocked.includes(d.id),use=d.id===cur;
     let cond;
     if(d.unlock.type==="default")cond=`<span class="skin-cond">${esc(rule.label(v))}</span>`;
@@ -2328,7 +2337,30 @@ function renderSkins(){
     else{const p=rule.progress(ctx,v);cond=`<span class="skin-cond">${esc(rule.label(v))}</span>`+(p?`<span class="skin-prog"><span class="skin-bar"><i style="width:${(p.cur/p.max*100).toFixed(1)}%"></i></span><span class="num">${p.cur}/${p.max}</span></span>`:"")}
     const pill=use?'<span class="skin-pill on">使用中 ✓</span>':have?'<span class="skin-pill">使用</span>':'<span class="skin-pill off">未解锁</span>';
     return `<button class="skin-card${use?" current":""}${have?"":" locked"}" type="button" data-skin-id="${esc(d.id)}">${skinPreview(d)}<span class="skin-main"><span class="skin-head"><b class="skin-name">${esc(d.name)}</b><span class="skin-mode">${MODE_TEXT[d.modes]}</span></span>${cond}</span>${pill}</button>`;
-  }).join("");
+  };
+  const sec=(title,group,list)=>list.length?`<section class="skins-sec"><div class="sgrp-t">${title}</div><div class="skins-group" data-group="${group}">${list.map(card).join("")}</div></section>`:"";
+  $("#skinsList").innerHTML=sec("已拥有","owned",owned)+sec("未解锁","locked",locked);
+}
+// 进皮肤页：上次看过这页之后新解锁的皮肤，先在「未解锁」里，页面滑进来后移到「已拥有」（位置过渡动画）。
+// 看过哪些记在 localStorage yc-skins-owned（只是显示用，丢了就不播动画）
+let skinsMoveT=0;
+function openSkinsPage(){
+  const ci=getCheckin();let seen=null;
+  try{seen=JSON.parse(localStorage.getItem("yc-skins-owned"))}catch(e){}
+  const fresh=Array.isArray(seen)?ci.unlocked.filter(id=>!seen.includes(id)&&SKIN_DEFS[id]):[];
+  clearTimeout(skinsMoveT);
+  renderSkins({asLocked:fresh});
+  try{localStorage.setItem("yc-skins-owned",JSON.stringify(ci.unlocked))}catch(e){}
+  if(fresh.length)skinsMoveT=setTimeout(()=>{if(curView==="skinsView")flipSkins(()=>renderSkins())},500);
+}
+// 重新排好后，每张卡片从原来的位置滑到新位置（减弱动态效果时直接换）
+function flipSkins(render){
+  const top=()=>new Map([...document.querySelectorAll("#skinsList .skin-card")].map(e=>[e.dataset.skinId,e.getBoundingClientRect().top]));
+  const before=top();render();if(reduceMotion())return;
+  document.querySelectorAll("#skinsList .skin-card").forEach(e=>{
+    const t=before.get(e.dataset.skinId);if(t==null)return;const dy=t-e.getBoundingClientRect().top;if(Math.abs(dy)<1)return;
+    e.animate([{transform:`translateY(${dy}px)`},{transform:"none"}],{duration:450,easing:"cubic-bezier(.2,.8,.2,1)"});
+  });
 }
 /* ---------- 解锁皮肤（开发规格 7.9.5.4、7.10.3） ---------- */
 // 检查所有皮肤的解锁条件（启动、回到首页、完成页打卡动画之后、恢复备份后）：新达成的记进打卡记录（来源、日期），
@@ -2378,7 +2410,7 @@ $("#skinsList").addEventListener("click",async e=>{
   if(id!==document.documentElement.dataset.skin)await useSkin(id);
   renderSkins();
 });
-$("#skinRow").addEventListener("click",()=>{if(navPending)return;renderSkins();go("skinsView")});
+$("#skinRow").addEventListener("click",()=>{if(navPending)return;openSkinsPage();go("skinsView")});
 
 /* ---------- 版本记录：显示 CHANGELOG.md（设置页「关于」进入，DEPTH 2） ---------- */
 // 只认几种写法：## 版本标题、### 小标题、- 列表、含 ⚠️ 的行醒目显示、**粗体**。# 大标题不显示（顶栏已经有）
