@@ -56,6 +56,16 @@ module.exports = { name: "visual", async run(b) {
   await b.ev(click(".wrow")); await b.sleep(700); await page("sheet-wordcard");
   await b.nav("/");
 
+  // 打卡日历：前 10 天有打卡（学习量各不相同）和一个休息日
+  await b.ev(`new Promise(res => { const day = SRS.today(Date.now()), days = {};
+    [[-1, 50], [-2, 20], [-3, 0], [-4, 8], [-5, 30], [-6, 45], [-8, 12], [-9, 3], [-10, 18]].forEach(([k, n]) => { days[CHECKIN.addDays(day, k)] = n ? { type: "done", reviewed: n, newLines: 2, newWords: 0 } : { type: "rest" }; });
+    const rec = { ...CHECKIN.fresh(day), days, lastProcessed: CHECKIN.addDays(day, -1), bestStreak: 6 };
+    const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; db.transaction("meta", "readwrite").objectStore("meta").put(rec).onsuccess = () => { db.close(); res(); }; }; })`);
+  await b.nav("/"); await page("home-streak");
+  await b.ev(click("#streak")); await b.sleep(900); await page("calendar");
+  await b.ev(`document.querySelector("#calGrid .cal-day[data-lv='3']").click()`); await page("calendar-detail");
+  await b.nav("/");
+
   await b.ev(`window.speechSynthesis.speak = () => {}`);
   await b.ev(click('#today [data-today="start"]')); await b.sleep(1000); await page("study");
   b.check("visual: 页面没有报错", b.errors.length === 0);

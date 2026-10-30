@@ -104,6 +104,53 @@ module.exports = { name: "checkin", async run(b) {
   b.check("resume-next-day " + (await b.ev(streak)) + " " + (await b.ev(`[getComputedStyle(document.querySelector("#streak .flame")).color, document.querySelector("#streak").className]`)), await b.ev(flameIs("--muted")) && /^连续 \d+ 天 · 累计 4 天$/.test(await b.ev(streak)));
   await b.ev(`Date.now = window.__realNow`);
 
+  // 日历页：点首页那一行进入
+  await b.nav("/");
+  await b.ev(click("#streak")); await b.sleep(900);
+  b.check("cal-open", (await b.ev(`history.state.view`)) === "calendarView" && !(await b.ev(`document.querySelector("#calendarView").hidden`)));
+  const stats = await b.ev(`[...document.querySelectorAll("#calBody .cal-stat")].map(e => e.innerText.replace(/\\s+/g, " ").trim())`);
+  const ck = await b.ev(meta);
+  b.check("cal-stats " + JSON.stringify(stats), stats.length === 4 && stats[0].startsWith("连续") && stats[1].startsWith("累计 4") && stats[2].startsWith("最长连续")
+    && stats[3].includes("休息卡 ×" + ck.restTokens) && stats[3].includes("每周一发 1 张，最多存 3 张"));
+  const today = await b.ev(`document.querySelector("#calBody .cal-day.today").dataset.day`);
+  b.check("cal-head", (await b.ev(`[...document.querySelectorAll("#calBody .cal-head span")].map(e => e.innerText).join(" ")`)) === "一 二 三 四 五 六 日");
+  const cell = d => `(() => { const e = document.querySelector('#calGrid [data-day="' + ${JSON.stringify(d)} + '"]'); if (!e) return null; const s = getComputedStyle(e);
+    return { lv: e.dataset.lv, rest: e.classList.contains("rest"), text: e.innerText.trim(), border: s.borderTopStyle, outline: s.outlineWidth + " " + s.outlineStyle }; })()`;
+  const ct = await b.ev(cell(today));
+  b.check("cal-today " + JSON.stringify(ct), ct.outline === "2px solid" && +ct.lv >= 1);
+  // 跳到最早那个月，找打卡日和休息日
+  for (let i = 0; i < 3; i++) if (!(await b.ev(`document.querySelector("#calPrev").disabled`))) { await b.ev(click("#calPrev")); await b.sleep(150); }
+  const days = Object.keys(ck.days).sort(), doneDay = days.find(k => ck.days[k].type === "done"), restDay2 = days.find(k => ck.days[k].type === "rest");
+  const title = await b.ev(`document.querySelector("#calTitle").innerText`);
+  b.check("cal-earliest " + title, title === `${+doneDay.slice(0, 4)} 年 ${+doneDay.slice(5, 7)} 月` && await b.ev(`document.querySelector("#calPrev").disabled`));
+  const cr = await b.ev(cell(restDay2));
+  // 休息日可能在下个月：不在这个月就往后翻
+  if (!cr) { await b.ev(click("#calNext")); await b.sleep(150); }
+  const cr2 = await b.ev(cell(restDay2));
+  b.check("cal-rest " + JSON.stringify(cr2), !!cr2 && cr2.rest && cr2.text === "休" && cr2.border === "dashed" && cr2.lv === "0");
+  await b.ev(`document.querySelector('#calGrid [data-day="${restDay2}"]').click()`); await b.sleep(150);
+  b.check("cal-detail-rest", (await b.ev(`document.querySelector("#calDetail").innerText`)).endsWith("休息日"));
+  if (!(await b.ev(cell(doneDay)))) { await b.ev(click("#calPrev")); await b.sleep(150); }
+  await b.ev(`document.querySelector('#calGrid [data-day="${doneDay}"]').click()`); await b.sleep(150);
+  b.check("cal-detail-done " + (await b.ev(`document.querySelector("#calDetail").innerText`)), /复习 \d+ 个词 · 新学 \d+ 句、\d+ 个词$/.test(await b.ev(`document.querySelector("#calDetail").innerText`))
+    && (await b.ev(`document.querySelector('#calGrid [data-day="${doneDay}"]').classList.contains("sel")`)));
+  // 翻回本月；本月不能再往后
+  for (let i = 0; i < 3; i++) if (!(await b.ev(`document.querySelector("#calNext").disabled`))) { await b.ev(click("#calNext")); await b.sleep(150); }
+  b.check("cal-no-future", await b.ev(`document.querySelector("#calNext").disabled`) && !!(await b.ev(`document.querySelector("#calGrid .cal-day.today")`))
+    && await b.ev(`[...document.querySelectorAll("#calGrid [data-day]")].filter(e => e.dataset.day > ${JSON.stringify(today)}).every(e => e.disabled)`));
+  // 左右滑：往右滑看上个月（最早那个月和本月不同时才会动）
+  const t1 = await b.ev(`document.querySelector("#calTitle").innerText`), g = await b.ev(`(() => { const r = document.querySelector("#calGrid").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  await b.touch("touchStart", g[0] - 60, g[1]); for (let i = 1; i <= 4; i++) { await b.touch("touchMove", g[0] - 60 + i * 30, g[1] + 2); await b.sleep(20); } await b.touch("touchEnd"); await b.sleep(200);
+  const t2 = await b.ev(`document.querySelector("#calTitle").innerText`);
+  b.check("cal-swipe " + JSON.stringify([t1, t2]), title === t1 ? t2 === t1 : t2 !== t1);
+  await b.touch("touchStart", g[0] + 60, g[1]); for (let i = 1; i <= 4; i++) { await b.touch("touchMove", g[0] + 60 - i * 30, g[1] + 2); await b.sleep(20); } await b.touch("touchEnd"); await b.sleep(200);
+  b.check("cal-swipe-back", (await b.ev(`document.querySelector("#calTitle").innerText`)) === t1);
+  b.check("cal-legend", (await b.ev(`document.querySelectorAll("#calBody .cal-legend .cal-day[data-lv]").length`)) === 4 && !!(await b.ev(`document.querySelector("#calBody .cal-legend .cal-day.rest")`)));
+  b.check("cal-44px", await b.ev(`[...document.querySelectorAll("#calendarView button")].filter(e => e.getClientRects().length).every(e => e.getBoundingClientRect().height >= 44)`));
+  await b.shot("checkin-calendar-light");
+  await b.ev(click("#calendarView [data-back]")); await b.sleep(900);
+  b.check("cal-back", (await b.ev(`history.state.view`)) === "home");
+
   // 导出备份 → 清空 → 恢复：打卡记录和休息卡都在
   await b.nav("/");
   const s0 = await b.ev(streak), k0 = await b.ev(meta);
