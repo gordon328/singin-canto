@@ -15,7 +15,9 @@
 <script>
 // 换皮肤：设 <html data-skin>、顶部状态栏颜色（theme-color）、记到 localStorage。animate：颜色 0.3 秒过渡（减弱动态效果时不过渡）
 function applySkin(id,opt={}){
-  if(!SKIN_DEFS[id])id="lilac";
+  if(typeof SKIN==="undefined"||typeof SKIN_DEFS!=="object")return null; // 皮肤文件没加载到（刚更新时断网）：不报错
+  if(!SKIN_DEFS[id])id=SKIN_DEFS.lilac?"lilac":Object.keys(SKIN_DEFS)[0];
+  if(!id)return null;
   const root=document.documentElement,d=SKIN_DEFS[id];
   clearTimeout(applySkin.t);root.classList.remove("skin-fade");
   if(opt.animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches){root.classList.add("skin-fade");applySkin.t=setTimeout(()=>root.classList.remove("skin-fade"),300)}
@@ -25,7 +27,8 @@ function applySkin(id,opt={}){
   try{localStorage.setItem("yc-skin",id)}catch(e){}
   return id;
 }
-(()=>{const st=document.createElement("style");st.id="skinCss";st.textContent=SKIN.stylesheet(SKIN_DEFS);document.head.appendChild(st);
+(()=>{if(typeof SKIN==="undefined"||typeof SKIN_DEFS!=="object")return;
+  const st=document.createElement("style");st.id="skinCss";st.textContent=SKIN.stylesheet(SKIN_DEFS);document.head.appendChild(st);
   let id=null;try{id=localStorage.getItem("yc-skin")}catch(e){}
   applySkin(id);
 })();
@@ -50,8 +53,8 @@ function applySkin(id,opt={}){
   /* 统一的弹簧（设计规范 6.1）：由 gesture.js 的 GESTURE.springLinear() 算出来，改了要一起改（有测试核对） */
   --dur-spring:400ms; --spring:linear(0, 0.043, 0.149, 0.289, 0.441, 0.589, 0.723, 0.836, 0.926, 0.993, 1.039, 1.067, 1.081, 1.083, 1.079, 1.069, 1.057, 1.044, 1.032, 1.021, 1.012, 1.005, 1, 0.996, 0.994, 0.993, 0.993, 0.994, 0.994, 0.995, 0.996, 0.997, 1);
 }
-/* 换皮肤时颜色 0.3 秒过渡（applySkin 加上 .skin-fade，300ms 后去掉） */
-.skin-fade,.skin-fade *,.skin-fade *::before,.skin-fade *::after{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease,box-shadow .3s ease!important}
+/* 换皮肤时颜色 0.3 秒过渡（applySkin 加上 .skin-fade，300ms 后去掉）。底部弹窗本身不加，免得盖掉它滑下去的动画 */
+.skin-fade,.skin-fade *:not(.sheet),.skin-fade *::before,.skin-fade *::after{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease,box-shadow .3s ease!important}
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -988,7 +991,7 @@ function show(id,dir){
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
   clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
-  pageButtons();renderDbg();if(id==="home")showUnlocks(); // 学习中间解锁的皮肤，回到首页再弹
+  pageButtons();renderDbg();if(id==="home"&&booted)checkUnlocks(); // 回到首页检查解锁（学习中间解锁的、完成页很快离开的，在这里弹）
   const BARS=".player,.study-foot";
   document.querySelectorAll(BARS).forEach(p=>p.classList.remove("bar-in"));
   const bars=to.querySelectorAll(BARS),barIn=()=>bars.forEach(x=>x.classList.add("bar-in"));
@@ -1282,7 +1285,11 @@ function saveTones(rec){metaRecs.set("tones",rec);DB.put(rec,"meta")}
 function getDaily(){return STUDY.dailyFor(metaRecs.get("daily"),SRS.today(appNow()))}
 // 打卡记录（meta checkin，开发规格 7.9.4）；规则在 checkin.js
 // 当前皮肤记在 meta checkin.theme（localStorage yc-skin 只是让首屏颜色对的副本）。皮肤不存在或没解锁就显示丁香，记录不改
-function syncSkin(){const c=getCheckin(),id=SKIN.pick(c.theme,c.unlocked,SKIN_DEFS);if(document.documentElement.dataset.skin!==id||localStorage.getItem("yc-skin")!==id)applySkin(id)}
+function syncSkin(){
+  if(typeof SKIN==="undefined"||typeof SKIN_DEFS!=="object")return;
+  const c=getCheckin(),id=SKIN.pick(c.theme,c.unlocked,SKIN_DEFS);let ls=null;try{ls=localStorage.getItem("yc-skin")}catch(e){}
+  if(document.documentElement.dataset.skin!==id||ls!==id)applySkin(id);
+}
 function getCheckin(){return CHECKIN.normalize(metaRecs.get("checkin"),SRS.today(appNow()))}
 function saveCheckin(rec){metaRecs.set("checkin",rec);return DB.put(rec,"meta")}
 // 启动、第二天切回、改模拟日期时：发休息卡、补上漏打卡的日子。用了休息卡就在首页提示一次（离开首页就消失）
@@ -2299,7 +2306,7 @@ function renderSettings(){
   goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
   renderBackupCard();
   $("#setVer").textContent=APP_VERSION;
-  $("#skinName").textContent=SKIN_DEFS[document.documentElement.dataset.skin].name;
+  $("#skinName").textContent=(typeof SKIN_DEFS==="object"&&SKIN_DEFS[document.documentElement.dataset.skin]||{}).name||"";
 }
 /* ---------- 皮肤页（设计规范 5.13）：卡片和预览都按皮肤文件里的颜色画，组件不认识任何皮肤 ---------- */
 const MODE_TEXT={"auto":"跟随系统深浅色","dark-only":"始终深色","light-only":"始终浅色"};
@@ -2324,23 +2331,28 @@ function renderSkins(){
   }).join("");
 }
 /* ---------- 解锁皮肤（开发规格 7.9.5.4、7.10.3） ---------- */
-// 检查所有皮肤的解锁条件（启动、完成页打卡动画之后、恢复备份后）：新达成的记进打卡记录（来源、日期），排队弹窗
-let unlockQueue=[];
+// 检查所有皮肤的解锁条件（启动、回到首页、完成页打卡动画之后、恢复备份后）：新达成的记进打卡记录（来源、日期），
+// 还没弹过窗的记在 checkin.unseen（App 被关掉也不会丢），然后弹窗
 async function checkUnlocks(){
+  if(typeof UNLOCK==="undefined"||typeof SKIN_DEFS!=="object")return;
   let rec=getCheckin();const today=SRS.today(appNow());
   const fresh=UNLOCK.newlyUnlocked(SKIN_DEFS,skinCtx(),rec.unlocked);
-  if(!fresh.length)return;
-  for(const u of fresh)rec=CHECKIN.unlock(rec,u.id,u.by,today);
-  await saveCheckin(rec);
-  unlockQueue.push(...fresh.map(u=>u.id));
+  if(fresh.length){
+    for(const u of fresh)rec=CHECKIN.unlock(rec,u.id,u.by,today);
+    rec={...rec,unseen:[...new Set([...(rec.unseen||[]),...fresh.map(u=>u.id)])]};
+    await saveCheckin(rec);
+  }
   showUnlocks();
 }
-// 一次只弹一个，关掉后弹下一个。已经有别的弹窗时等它关掉；学词、整句中间不弹，回到首页或完成页再弹
+// 一次只弹一个，弹出时从 unseen 里拿掉，关掉后弹下一个。已经有别的弹窗时等它关掉；学词、整句中间不弹，回到首页或完成页再弹
 function showUnlocks(){
-  if(!unlockQueue.length)return;
+  const rec=getCheckin(),ids=(rec.unseen||[]).filter(x=>typeof x==="string");
+  if(!ids.length)return;
   if(!$("#sheet").hidden){setTimeout(showUnlocks,400);return}
   if(curView==="studyView"&&!$("#stBody .st-done"))return;
-  const id=unlockQueue.shift(),d=SKIN_DEFS[id];if(!d){showUnlocks();return}
+  const id=ids[0],d=SKIN_DEFS[id];
+  saveCheckin({...rec,unseen:ids.slice(1)});
+  if(!d||!rec.unlocked.includes(id)){showUnlocks();return}
   const rule=UNLOCK.RULES[d.unlock.type];
   openSheet(`<div class="unlock" data-skin-id="${esc(id)}">
     <div class="unlock-why">${esc(rule.reached(d.unlock.value))}</div>
@@ -2469,7 +2481,7 @@ async function restoreBackup(obj){
   for(const m of Array.isArray(obj.meta)?obj.meta:[]){if(!m||typeof m.key!=="string")continue;
     if(m.key==="daily")W.meta.push(STUDY.mergeDaily(metaRecs.get("daily"),m,today));
     // 打卡：这台设备还没打过卡（新设备、清空过）就直接用备份里的，不然新记录送的 1 张休息卡会被算进去
-    else if(m.key==="checkin"){const loc=getCheckin();W.meta.push(CHECKIN.normalize(Object.keys(loc.days).length?CHECKIN.merge(loc,m):m,today))}
+    else if(m.key==="checkin"){const loc=getCheckin();W.meta.push(CHECKIN.normalize(Object.keys(loc.days).length?CHECKIN.merge(loc,m):{...m,...CHECKIN.mergeUnlocked(loc,m),unseen:loc.unseen||[]},today))}
     else if(!BACKUP.DEVICE_ONLY.includes(m.key)&&!metaRecs.has(m.key))W.meta.push(m)}
   // 新设备从备份恢复：这份备份就是"上次备份"
   const exp=Date.parse(obj.exported);
@@ -2665,7 +2677,8 @@ function renderDone(){
   if(anim){const st=study;setTimeout(()=>{if(study!==st)return;const t=$("#stBody .st-week .cal-day.is-today");if(t){const e=rec.days[day];t.dataset.st=CHECKIN.dayState(e);if(e.more)t.insertAdjacentHTML("beforeend",DAY_STAR);t.classList.add("fill")}
     setTimeout(()=>$("#stBody .st-streak .flip")?.classList.add("go"),300)},300)}
   // 打卡动画放完再检查解锁（学会了一首歌、连续天数够了）
-  {const st=study;setTimeout(()=>{if(study===st)checkUnlocks()},anim?1100:0)}
+  // 离开了完成页也照样检查（回到首页时会弹）
+  setTimeout(checkUnlocks,anim?1100:0);
 }
 async function lineLearned(){
   stopStudyAudio();

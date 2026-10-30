@@ -187,7 +187,7 @@
     return { unlocked: [...new Set([...a.unlocked, ...b.unlocked])], unlockedInfo: info };
   }
 
-  const CHECKIN = { addDays, weekday, isoWeek, fresh, normalize, cleanUnlocked, unlock, qualifies, markDone, process, streak, total, best, dayState, weekOf, monthGrid, detail, merge };
+  const CHECKIN = { addDays, weekday, isoWeek, fresh, normalize, cleanUnlocked, unlock, mergeUnlocked, qualifies, markDone, process, streak, total, best, dayState, weekOf, monthGrid, detail, merge };
   root.CHECKIN = CHECKIN;
   if (typeof module !== "undefined" && module.exports) module.exports = CHECKIN;
 })(typeof self !== "undefined" ? self : globalThis);

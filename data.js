@@ -7,7 +7,7 @@
      2  M1（2026-10-27）：加了生词卡片（cards）和杂项（meta）
      3  M4a（2026-10-28）：「每天新学几句」从 localStorage 的 prefs.goal 搬到 meta daily；歌曲加学习进度 progress
      4  v0.26（2026-10-30）：meta 加打卡记录 checkin（含休息卡）
-     5  v0.33（2026-10-31）：打卡记录加 unlockedInfo（已解锁皮肤的来源和日期）；unlocked 还是 id 的文字数组
+     5  v0.33（2026-10-31）：打卡记录加 unlockedInfo（已解锁皮肤的来源和日期）、unseen（解锁了还没弹过窗的皮肤，没有就是空的）；unlocked 还是 id 的文字数组
 
    迁移函数的输入输出都是 { songs, cards, meta, prefs }：
      songs/cards/meta 是数组（歌曲里不带音频），prefs 是 localStorage yc-prefs 的内容（备份文件里没有，是 null）。

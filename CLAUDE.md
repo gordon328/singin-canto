@@ -63,7 +63,7 @@
   - `skins/registry.js`：`SKIN_IDS`（加皮肤只在这里加一行），页面里按顺序同步加载皮肤文件；`sw.js` 用它自动缓存
   - `skins/skin.js`（`SKIN`）：`cssVars`、`stylesheet`、`colorsFor`、`check`（颜色自动检查，`tests/skins.test.js`，不通过不能上线）、`pick`；`skins/unlock-rules.js`（`UNLOCK`）：`RULES`、`context`、`newlyUnlocked`
   - `<head>` 里「皮肤：开始/结束」那一块：生成样式表、按 localStorage `yc-skin` 在第一帧前套用、全局 `applySkin(id,{animate})`（0.3 秒过渡、theme-color）。当前皮肤记在 meta `checkin.theme`，已解锁 `checkin.unlocked`（文字数组）+ `unlockedInfo`（来源、日期）；`syncSkin()` 启动和恢复备份后按记录换皮肤（不存在或没解锁用丁香）
-  - 设置 › 外观 › 皮肤 `skinsView`（DEPTH 2，`renderSkins()`、`skinPreview(def,size)`、`useSkin(id)`）；解锁 `checkUnlocks()`（启动、完成页打卡动画后、恢复备份后）→ 队列 `showUnlocks()` 一个个弹，学习中间不弹
+  - 设置 › 外观 › 皮肤 `skinsView`（DEPTH 2，`renderSkins()`、`skinPreview(def,size)`、`useSkin(id)`）；解锁 `checkUnlocks()`（启动、回到首页、完成页打卡动画后、恢复备份后）；没弹过窗的记在 `checkin.unseen`，`showUnlocks()` 一个个弹，学习中间不弹
   - 加新皮肤按 `docs/皮肤/README.md`；每个皮肤的说明在 `docs/皮肤/<id>.md`
 - 界面按 `docs/设计规范.md`（「丁香」风格），组件里只用 CSS 变量，不写颜色值。中文用系统苹方；粤拼、数字用 Outfit（自带在 `fonts/`，OFL）。不从任何外部网站加载字体或脚本
 
