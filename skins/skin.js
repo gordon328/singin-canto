@@ -27,12 +27,13 @@
     if (s > 0) {
       out.push(`--shadow-1:0 2px 10px ${rgba(c.ink, 0.05 * s)}`, `--shadow-2:0 10px 30px ${rgba(c.ink, 0.08 * s)}`, `--shadow-3:0 12px 34px ${rgba(c.ink, 0.12 * s)}`,
         `--cur-glow:0 8px 24px ${rgba(c.accent, 0.14 * s)}`, `--shadow-sheet:0 -8px 40px ${rgba(c.ink, 0.18 * s)},0 0 0 1px var(--rule)`,
-        `--shadow-menu:var(--shadow-3)`, `--player-ring:0 0 0 0 transparent`);
+        `--shadow-menu:var(--shadow-3)`, `--player-shadow:var(--shadow-3)`);
     } else {
       out.push("--shadow-1:none", "--shadow-2:none", "--shadow-3:none", "--cur-glow:0 0 0 transparent",
         "--shadow-sheet:0 -8px 40px rgba(0,0,0,.5),0 0 0 1px var(--rule)", "--shadow-menu:0 12px 34px rgba(0,0,0,.5),0 0 0 1px var(--rule)",
-        "--player-ring:0 0 0 1px var(--rule)");
+        "--player-shadow:0 0 0 1px var(--rule)");
     }
+    out.push("--nav-dim:rgba(0,0,0,.10)"); // 切页时旧页面变暗一点，所有皮肤一样
     out.push(`color-scheme:${luminance(c.bg) < 0.4 ? "dark" : "light"}`);
     return out.join(";") + ";";
   }

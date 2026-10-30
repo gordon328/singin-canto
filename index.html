@@ -6,6 +6,31 @@
 <title>唱学粤语</title>
 <meta name="theme-color" content="#F7F6FB" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15131F" media="(prefers-color-scheme: dark)">
+<!-- 皮肤：开始 -->
+<!-- 皮肤（开发规格 7.10）：颜色全部在 skins/<id>.js。这里在第一帧之前把所有皮肤的变量写成样式表，按 localStorage yc-skin 选皮肤，
+     所以用夜曲的人打开 App 不会先闪一下丁香色。下面的组件只读 CSS 变量，不认识任何皮肤 -->
+<script src="skins/registry.js"></script>
+<script src="skins/skin.js"></script>
+<script src="skins/unlock-rules.js"></script>
+<script>
+// 换皮肤：设 <html data-skin>、顶部状态栏颜色（theme-color）、记到 localStorage。animate：颜色 0.3 秒过渡（减弱动态效果时不过渡）
+function applySkin(id,opt={}){
+  if(!SKIN_DEFS[id])id="lilac";
+  const root=document.documentElement,d=SKIN_DEFS[id];
+  clearTimeout(applySkin.t);root.classList.remove("skin-fade");
+  if(opt.animate&&!matchMedia("(prefers-reduced-motion: reduce)").matches){root.classList.add("skin-fade");applySkin.t=setTimeout(()=>root.classList.remove("skin-fade"),300)}
+  root.dataset.skin=id;
+  const m=document.querySelectorAll('meta[name="theme-color"]');
+  if(m.length===2){m[0].content=SKIN.colorsFor(d,false).bg;m[1].content=SKIN.colorsFor(d,true).bg}
+  try{localStorage.setItem("yc-skin",id)}catch(e){}
+  return id;
+}
+(()=>{const st=document.createElement("style");st.id="skinCss";st.textContent=SKIN.stylesheet(SKIN_DEFS);document.head.appendChild(st);
+  let id=null;try{id=localStorage.getItem("yc-skin")}catch(e){}
+  applySkin(id);
+})();
+</script>
+<!-- 皮肤：结束 -->
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -17,42 +42,16 @@
 @font-face{font-family:"Outfit";font-weight:500;font-display:swap;src:url(fonts/outfit-500.woff2) format("woff2")}
 @font-face{font-family:"Outfit";font-weight:600;font-display:swap;src:url(fonts/outfit-600.woff2) format("woff2")}
 @font-face{font-family:"Outfit";font-weight:700;font-display:swap;src:url(fonts/outfit-700.woff2) format("woff2")}
-/* 「丁香」设计变量（docs/设计规范.md）。组件里只用变量，不写颜色值 */
+/* 非颜色的设计变量（docs/设计规范.md）。颜色变量都来自皮肤文件 skins/<id>.js（上面 <head> 里生成），组件里只用变量，不写颜色值 */
 :root{
-  --bg:#F7F6FB; --surface:#FFFFFF; --surface-press:#F1EFFA; --ink:#221F33; --ink-2:#45405C; --muted:#6E6A82; --rule:#E2DFEE;
-  --accent:#5B4BDB; --accent-press:#4536B8; --accent-soft:#ECE9FD; --on-accent:#FFFFFF;
-  --inverse:#221F33; --on-inverse:#FFFFFF; --seg-current:#B7AEF2; --danger:#C2413A; --on-accent-veil:rgba(255,255,255,.14);
-  --t1:#D9443B; --t2:#C67312; --t3:#2B8A56; --t4:#2F6BD6; --t5:#8A4FD8; --t6:#0F7F8E;
-  --sq1-bg:#ECE9FD; --sq1-ink:#5B4BDB; --sq2-bg:#FDEDE3; --sq2-ink:#C2581A; --sq3-bg:#E3F4EA; --sq3-ink:#2B8A56; --sq4-bg:#E5EEFC; --sq4-ink:#2F6BD6;
-  --shadow-1:0 2px 10px rgba(34,31,51,.05); --shadow-2:0 10px 30px rgba(34,31,51,.08); --shadow-3:0 12px 34px rgba(34,31,51,.12); --cur-glow:0 8px 24px rgba(91,75,219,.14);
-  --shadow-sheet:0 -8px 40px rgba(34,31,51,.18),0 0 0 1px var(--rule); --shadow-menu:var(--shadow-3);
   --font-cjk:-apple-system,"PingFang HK","PingFang SC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif;
   --font-latin:"Outfit",var(--font-cjk);
   --dur-fast:120ms; --dur:220ms; --dur-slow:320ms; --ease:cubic-bezier(.2,.8,.2,1);
   /* 统一的弹簧（设计规范 6.1）：由 gesture.js 的 GESTURE.springLinear() 算出来，改了要一起改（有测试核对） */
-  --dur-spring:400ms; --spring:linear(0, 0.043, 0.149, 0.289, 0.441, 0.589, 0.723, 0.836, 0.926, 0.993, 1.039, 1.067, 1.081, 1.083, 1.079, 1.069, 1.057, 1.044, 1.032, 1.021, 1.012, 1.005, 1, 0.996, 0.994, 0.993, 0.993, 0.994, 0.994, 0.995, 0.996, 0.997, 1); --nav-dim:rgba(0,0,0,.10);
-  color-scheme:light;
+  --dur-spring:400ms; --spring:linear(0, 0.043, 0.149, 0.289, 0.441, 0.589, 0.723, 0.836, 0.926, 0.993, 1.039, 1.067, 1.081, 1.083, 1.079, 1.069, 1.057, 1.044, 1.032, 1.021, 1.012, 1.005, 1, 0.996, 0.994, 0.993, 0.993, 0.994, 0.994, 0.995, 0.996, 0.997, 1);
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#15131F; --surface:#1F1C2C; --surface-press:#2A2640; --ink:#F1EFF8; --ink-2:#CFCBE0; --muted:#9C97B3; --rule:#2E2A42;
-  --accent:#8E80FF; --accent-press:#A79CFF; --accent-soft:#2B2550; --on-accent:#14112A;
-  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80; --on-accent-veil:rgba(20,17,42,.12);
-  --t1:#FF7A70; --t2:#FFB547; --t3:#5FD38D; --t4:#6FA8FF; --t5:#B794FF; --t6:#4CC9DB;
-  --sq1-bg:#2B2550; --sq1-ink:#A79CFF; --sq2-bg:#3A2618; --sq2-ink:#FFB27A; --sq3-bg:#17311F; --sq3-ink:#5FD38D; --sq4-bg:#182640; --sq4-ink:#6FA8FF;
-  --shadow-1:none; --shadow-2:none; --shadow-3:none; --cur-glow:0 0 0 transparent; --shadow-sheet:0 -8px 40px rgba(0,0,0,.5),0 0 0 1px var(--rule);
-  --shadow-menu:0 12px 34px rgba(0,0,0,.5),0 0 0 1px var(--rule);
-  color-scheme:dark;
-}}
-:root[data-theme="dark"]{
-  --bg:#15131F; --surface:#1F1C2C; --surface-press:#2A2640; --ink:#F1EFF8; --ink-2:#CFCBE0; --muted:#9C97B3; --rule:#2E2A42;
-  --accent:#8E80FF; --accent-press:#A79CFF; --accent-soft:#2B2550; --on-accent:#14112A;
-  --inverse:#F1EFF8; --on-inverse:#15131F; --seg-current:#5A4FB0; --danger:#FF8A80; --on-accent-veil:rgba(20,17,42,.12);
-  --t1:#FF7A70; --t2:#FFB547; --t3:#5FD38D; --t4:#6FA8FF; --t5:#B794FF; --t6:#4CC9DB;
-  --sq1-bg:#2B2550; --sq1-ink:#A79CFF; --sq2-bg:#3A2618; --sq2-ink:#FFB27A; --sq3-bg:#17311F; --sq3-ink:#5FD38D; --sq4-bg:#182640; --sq4-ink:#6FA8FF;
-  --shadow-1:none; --shadow-2:none; --shadow-3:none; --cur-glow:0 0 0 transparent; --shadow-sheet:0 -8px 40px rgba(0,0,0,.5),0 0 0 1px var(--rule);
-  --shadow-menu:0 12px 34px rgba(0,0,0,.5),0 0 0 1px var(--rule);
-  color-scheme:dark;
-}
+/* 换皮肤时颜色 0.3 秒过渡（applySkin 加上 .skin-fade，300ms 后去掉） */
+.skin-fade,.skin-fade *,.skin-fade *::before,.skin-fade *::after{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease,box-shadow .3s ease!important}
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -262,7 +261,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .flip{display:inline-block;height:1.5em;line-height:1.5em;overflow:hidden;vertical-align:bottom}
 .flip>span{display:flex;flex-direction:column;transition:transform var(--dur) var(--ease)}
 .flip.go>span{transform:translateY(-1.5em)}
-.today-cell{background:var(--on-accent-veil);border-radius:20px;padding:12px 16px}
+.today-cell{background:var(--hero-tile);border-radius:20px;padding:12px 16px}
 .today-cells{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .today-cells .lbl{margin-bottom:4px}
 .today .today-link{width:100%;margin-top:4px;color:var(--on-accent);opacity:.85;text-decoration:underline;text-underline-offset:3px}
@@ -274,10 +273,10 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .today-cell .lbl{display:block;font-size:13px;font-weight:600;opacity:.85}
 .today .big{font-size:28px;font-weight:700;margin-right:4px}
 .today-sub{font-size:13px;line-height:1.6;margin:12px 0 16px;opacity:.85}
-.today .today-btn{width:100%;min-height:48px;background:var(--surface);color:var(--accent);font-size:16px}
-.today .today-btn.is-pressed{background:var(--surface-press)}
+.today .today-btn{width:100%;min-height:48px;background:var(--hero-btn);color:var(--hero-btn-ink);font-size:16px}
+.today .today-btn.is-pressed{background:color-mix(in srgb,var(--hero-btn) 88%,var(--hero-btn-ink))}
 .today-picks{display:flex;flex-direction:column;gap:8px}
-.today-picks .today-btn{justify-content:flex-start;min-height:48px;font-size:15px;color:var(--ink)}
+.today-picks .today-btn{justify-content:flex-start;min-height:48px;font-size:15px;color:var(--hero-btn-ink)}
 .sec-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:15px;font-weight:600}
 .sec-title .jp{font-weight:600}
 .tones{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:24px}
@@ -423,10 +422,8 @@ body.navigating .player,body.navigating .bottom-bar:not([data-page]),body.naviga
 
 /* 浮动播放条 */
 .player{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(32px + env(safe-area-inset-bottom,0px));
-  z-index:25;max-width:700px;margin:0 auto;padding:12px 16px;border-radius:30px;background:var(--surface);box-shadow:var(--shadow-3);
+  z-index:25;max-width:700px;margin:0 auto;padding:12px 16px;border-radius:30px;background:var(--surface);box-shadow:var(--player-shadow);
   display:flex;flex-direction:column;gap:8px}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .player{box-shadow:0 0 0 1px var(--rule)}}
-:root[data-theme="dark"] .player{box-shadow:0 0 0 1px var(--rule)}
 .player .wrap{padding:0;display:flex;flex-direction:column;gap:8px;width:100%}
 .prog{display:flex;align-items:center;gap:12px;font-family:var(--font-latin);font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
 .prog input{flex:1;min-width:0;height:20px;margin:0;background:transparent;-webkit-appearance:none;appearance:none}
@@ -1226,6 +1223,8 @@ function saveTones(rec){metaRecs.set("tones",rec);DB.put(rec,"meta")}
 // 今天的学习计数和每天新学几句（meta daily，凌晨 4 点换日）
 function getDaily(){return STUDY.dailyFor(metaRecs.get("daily"),SRS.today(appNow()))}
 // 打卡记录（meta checkin，开发规格 7.9.4）；规则在 checkin.js
+// 当前皮肤记在 meta checkin.theme（localStorage yc-skin 只是让首屏颜色对的副本）。皮肤不存在或没解锁就显示丁香，记录不改
+function syncSkin(){const c=getCheckin(),id=SKIN.pick(c.theme,c.unlocked,SKIN_DEFS);if(document.documentElement.dataset.skin!==id||localStorage.getItem("yc-skin")!==id)applySkin(id)}
 function getCheckin(){return CHECKIN.normalize(metaRecs.get("checkin"),SRS.today(appNow()))}
 function saveCheckin(rec){metaRecs.set("checkin",rec);return DB.put(rec,"meta")}
 // 启动、第二天切回、改模拟日期时：发休息卡、补上漏打卡的日子。用了休息卡就在首页提示一次（离开首页就消失）
@@ -1347,7 +1346,7 @@ function renderHome(){
   box.innerHTML=list.map((s,i)=>{
     const n=STUDY.progressOf(s).learned.length;
     const sub=[s.artist,n?`已学 ${n} / ${s.lines.length} 句`:"未开始",s.pack?"":"未导入词汇包",s.audio?"":"缺少音频"].filter(Boolean).join(" · ");
-    const q=i%4+1;
+    const q=i%sqCount()+1;
     const on=selected.has(s.id);
     return `<div class="song${on?" selected":""}" data-id="${s.id}" role="button" tabindex="0"${selectMode?` aria-pressed="${on}"`:""}>
     ${selectMode?'<span class="check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>':""}
@@ -1358,6 +1357,8 @@ function renderHome(){
 // 每句应用 fix 后的文字（判断副歌重复用）
 function lineTexts(song){return song.lines.map(l=>PACK.fixText(song,l.text))}
 // 存一首歌：songs 里同 id 的对象原地更新（播放页的 cur 指向它）
+// 当前皮肤有几组歌曲方块颜色（--sq-count）
+const sqCount=()=>parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sq-count"),10)||1;
 function saveSong(s){const ex=songs.find(x=>x.id===s.id);if(ex&&ex!==s)Object.assign(ex,s);return DB.put(ex||s)}
 async function setCurrentSong(id){for(const s of STUDY.setCurrent(songs,id))await saveSong(s)}
 const lineRange=lis=>lis.length?(lis.length===1?`第 ${lis[0]+1} 句`:`第 ${Math.min(...lis)+1}–${Math.max(...lis)+1} 句`):"";
@@ -2614,7 +2615,7 @@ history.replaceState({view:"home"},"");
   if(!metaRecs.has("daily"))await saveDaily(getDaily());
   // 申请持久存储：手机空间紧张时浏览器不会自动清掉 App 的数据
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}
-  processCheckin();booted=true;
+  processCheckin();syncSkin();booted=true;
   renderHome();renderDbgShell();renderDbg();renderSim();
   setTimeout(()=>prefetchVoice([...LESSONS.TONE_SETS.flatMap(t=>[1,2,3,4,5,6].map(k=>t.syl+k)),...[...cards.values()].map(c=>c.jp)]),3000);
 })();
