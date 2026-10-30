@@ -2,7 +2,7 @@
 const F = require("./fixtures.js");
 const click = sel => `document.querySelector(${JSON.stringify(sel)}).click()`;
 const visible = sel => `(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && !e.hidden && e.getBoundingClientRect().height > 0; })()`;
-const HOME_POS = [".home-head", ".brand", "#tones", "#songs", ".song", ".song .sq", "#appVer", ".sec-title:has(#btnSelect)"];
+const HOME_POS = [".home-head", "#homeDate", "#tones", "#songs", ".song", ".song .sq", "#appVer", ".sec-title:has(#btnSelect)"];
 // 记录主要元素的位置（进入/退出选择模式前后对比，除了勾选框其他都不能动）
 const pos = sels => `(() => { const o = {}; for (const s of ${JSON.stringify(sels)}) { const e = document.querySelector(s); const r = e.getBoundingClientRect(); o[s] = [r.left, r.top, r.width, r.height].map(Math.round).join(); } return o; })()`;
 const moved = (a, b) => Object.keys(a).filter(k => a[k] !== b[k]);

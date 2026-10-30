@@ -113,8 +113,11 @@ svg{display:block}
 
 /* Home（首页左右边距 20px） */
 .wrap.home{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
-.home-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:calc(env(safe-area-inset-top,0px) + 24px);padding-bottom:24px}
-.brand{font-weight:700;font-size:30px;margin:0;line-height:1.1}
+.home-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:calc(env(safe-area-inset-top,0px) + 24px);padding-bottom:16px}
+/* 首页第一行（v0.37）：日期 20px 粗 + 星期 15px --muted，右边齿轮；高 44px */
+.hdate{flex:0 1 auto;min-width:0;margin:0 auto 0 0;font-weight:400;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-d{font-size:20px;font-weight:700;color:var(--ink)}
+.hd-w{margin-left:4px;font-size:15px;color:var(--muted)}
 /* 学习页（规格 5.4–5.6，设计规范 5.8） */
 .cells{flex:1;display:flex;gap:4px}
 .cells i{flex:1;height:8px;border-radius:4px;background:var(--rule);transition:background-color var(--dur) var(--ease)}
@@ -204,11 +207,21 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .today{background:var(--accent);color:var(--on-accent);border-radius:28px;padding:16px;margin-bottom:24px;box-shadow:var(--shadow-2)}
 .today-head{font-size:17px;font-weight:700;margin-bottom:12px}
 /* 打卡（开发规格 7.9.5）：首页标题下面一行。按钮 44px 高，用负 margin 让文字离标题还是 24px */
-.streak{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:-12px 0 12px;padding:0;border:0;background:none;font:inherit;font-size:15px;color:var(--ink-2);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.streak b{font-weight:700;color:var(--ink)}
-.streak .flame{flex:none;color:var(--muted)}
-.streak.on .flame{color:var(--accent)}
-.streak.is-pressed{opacity:.6}
+/* 首页第二行（v0.37，设计图 home-top.png 方案 B）：本周打卡卡片。左边七个小方格（打卡填主色、休息日虚线框、今天没打卡是主色空心框），
+   右边细竖线隔开的连续天数（断了显示累计）。整张卡片可点，进打卡日历 */
+.streak{display:flex;align-items:center;gap:16px;width:100%;min-height:44px;margin:0 0 16px;padding:12px 16px;border:0;border-radius:20px;background:var(--surface);box-shadow:var(--shadow-1);
+  font:inherit;color:var(--ink);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color var(--dur) var(--ease)}
+.wk-grid{flex:1;min-width:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px 8px;justify-items:center}
+.wk-h{font-size:12px;line-height:16px;color:var(--muted)}
+.wk-day{display:block;width:100%;max-width:28px;aspect-ratio:1;border-radius:8px;background:var(--rule)}
+.wk-day[data-st="done"],.wk-day[data-st="more"]{background:var(--accent)}
+.wk-day.rest{background:transparent;border:1.5px dashed var(--muted)}
+.wk-day.is-today:not([data-st]){background:transparent;border:2px solid var(--accent)}
+.wk-stat{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:48px;padding-left:16px;border-left:1px solid var(--rule)}
+.wk-lbl{font-size:12px;line-height:16px;color:var(--muted)}
+.wk-val{font-size:13px;color:var(--ink);white-space:nowrap}
+.wk-num{font-family:var(--font-latin);font-size:22px;font-weight:700;line-height:1;color:var(--accent)}
+.streak.is-pressed{background:var(--surface-press)}
 #restNote .banner{margin:0 0 16px}
 /* 休息卡：三个小卡片，有几张就填满几个，其余是空框，后面写「N/3」 */
 .tokens{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;white-space:nowrap}
@@ -652,7 +665,7 @@ label.btn{overflow:hidden}
 <section id="home">
   <div class="wrap home">
     <header class="home-head">
-      <h1 class="brand">唱学粤语</h1>
+      <h1 class="hdate" id="homeDate"></h1>
       <button class="btn soft small" id="btnDone" type="button" hidden>完成</button>
       <button class="btn soft icon" id="btnSettings" type="button" aria-label="设置"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </header>
@@ -1139,7 +1152,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.36";
+const APP_VERSION="v0.37";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 // 开发者模式（开发规格 7.10.5）：调试面板、模拟日期只在开发者模式下有效。真的记录在 meta devMode；localStorage yc-dev 是启动时就能读的副本，读完数据库后 syncDev() 以数据库为准
 let devOn=false;try{devOn=localStorage.getItem("yc-dev")==="1"}catch(e){}
@@ -1387,10 +1400,17 @@ function tokensHTML(n){
   return `<span class="tokens" role="img" aria-label="休息卡 ${n}/${TOKEN_MAX}">${Array.from({length:TOKEN_MAX},(_,i)=>`<svg class="${i<n?"on":""}" width="12" height="16" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="2.5"/></svg>`).join("")}<b class="num">${n}/${TOKEN_MAX}</b></span>`;
 }
 const FLAME='<svg class="flame" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.6 3.2 4.8 5.6 4.8 10.4a4.8 4.8 0 0 1-9.6 0c0-2.4 1.3-4 2.4-5.4.2 1.5.9 2.6 1.9 3.1.6-2.6.9-4.9.5-8.1z"/></svg>';
+// 首页顶部（v0.37）：第一行日期（按 today()，凌晨 4 点换日）；第二行本周打卡卡片。读屏的说明还是原来那句「连续 N 天 · 累计 M 天」
 function renderStreak(){
   const rec=getCheckin(),day=SRS.today(appNow()),n=CHECKIN.streak(rec,day),tot=CHECKIN.total(rec),el=$("#streak");
+  const [,m,d]=day.split("-").map(Number);
+  $("#homeDate").innerHTML=`<span class="hd-d"><span class="num">${m}</span> 月 <span class="num">${d}</span> 日</span> <span class="hd-w">周${"一二三四五六日"[CHECKIN.weekday(day)-1]}</span>`;
   el.classList.toggle("on",rec.days[day]?.type==="done");
-  el.innerHTML=FLAME+"<span>"+(!tot?"今天开始第一天":n?`连续 <b class="num">${n}</b> 天 · 累计 <b class="num">${tot}</b> 天`:`今天重新开始 · 累计 <b class="num">${tot}</b> 天`)+"</span>";
+  const cells=CHECKIN.weekOf(day).map(x=>{const st=CHECKIN.dayState(rec.days[x]);
+    return `<span class="wk-day${st==="rest"?" rest":""}${x===day?" is-today":""}${x>day?" future":""}"${st?` data-st="${st}"`:""}></span>`}).join("");
+  el.innerHTML=`<span class="wk-grid" aria-hidden="true">${"一二三四五六日".split("").map(x=>`<span class="wk-h">${x}</span>`).join("")}${cells}</span>`
+    +`<span class="wk-stat" aria-hidden="true"><span class="wk-lbl">${n?"连续":"累计"}</span><span class="wk-val"><b class="wk-num">${n||tot}</b> 天</span></span>`;
+  el.setAttribute("aria-label",!tot?"今天开始第一天":n?`连续 ${n} 天 · 累计 ${tot} 天`:`今天重新开始 · 累计 ${tot} 天`);
   $("#restNote").innerHTML=restNote?`<div class="banner"><span>${restNote.used===1?"昨天没学，用了 1 张休息卡":`有 ${restNote.used} 天没学，用了 ${restNote.used} 张休息卡`}，连续天数保住了 · 还剩 ${tokensHTML(restNote.left)}</span></div>`:"";
 }
 // 打卡日历页（开发规格 7.9.5.2）：从首页那一行进入。calMonth 是正在看的月份，calSel 是点了哪一天

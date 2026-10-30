@@ -2,11 +2,12 @@
 // 跨天用调试面板的「模拟日期」（+1 天按钮）。
 const F = require("./fixtures.js");
 const click = sel => `document.querySelector(${JSON.stringify(sel)}).click()`;
-const streak = `document.querySelector("#streak").innerText.replace(/\\s+/g, " ").trim()`;
+// 首页那一行的说明（v0.37 起是本周打卡卡片的读屏说明，文字和以前一样）
+const streak = `document.querySelector("#streak").getAttribute("aria-label")`;
 const meta = F.idbGet("meta", "checkin");
 // 火焰是不是某个颜色变量的颜色
-const flameIs = v => `(() => { const p = document.createElement("span"); p.style.color = "var(${v})"; document.body.append(p); const c = getComputedStyle(p).color; p.remove();
-  return getComputedStyle(document.querySelector("#streak .flame")).color === c; })()`;
+// v0.37 起首页是本周打卡卡片：「--accent」= 今天那格填满（今天打过卡），「--muted」= 还没打卡
+const flameIs = v => `(() => { const t = document.querySelector("#streak .wk-day.is-today"); return ${v === "--accent"} === (!!t && /^(done|more)$/.test(t.dataset.st || "")); })()`;
 const plus = async (b, n = 1) => { for (let i = 0; i < n; i++) { await b.ev(click("#simPlus")); await b.sleep(150); } await b.sleep(200); };
 // 一下子往后跳 n 天（中间那几天没打开 App）：用日期选择框
 const jump = async (b, n) => { await b.ev(`(() => { const i = document.querySelector("#simDate"), [y, m, d] = i.value.split("-").map(Number), t = new Date(Date.UTC(y, m - 1, d + ${n}));
@@ -116,7 +117,7 @@ module.exports = { name: "checkin", async run(b) {
   await finishDay(b); await home(b);
   b.check("resume-before", await b.ev(flameIs("--accent")));
   await b.ev(`(() => { const real = Date.now; window.__realNow = real; Date.now = () => real() + 86400e3; document.dispatchEvent(new Event("visibilitychange")); })()`); await b.sleep(300);
-  b.check("resume-next-day " + (await b.ev(streak)) + " " + (await b.ev(`[getComputedStyle(document.querySelector("#streak .flame")).color, document.querySelector("#streak").className]`)), await b.ev(flameIs("--muted")) && /^连续 \d+ 天 · 累计 4 天$/.test(await b.ev(streak)));
+  b.check("resume-next-day " + (await b.ev(streak)), await b.ev(flameIs("--muted")) && /^连续 \d+ 天 · 累计 4 天$/.test(await b.ev(streak)));
   await b.ev(`Date.now = window.__realNow`);
 
   // 日历页：点首页那一行进入
