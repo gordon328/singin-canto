@@ -35,13 +35,19 @@
     return { key: "checkin", days: {}, restTokens: 1, lastTokenWeek: isoWeek(today), lastProcessed: addDays(today, -1), bestStreak: 0, unlocked: ["lilac"], theme: "lilac" };
   }
   const num = (v) => typeof v === "number" && isFinite(v) && v >= 0;
+  function cleanDays(days) {
+    const out = {};
+    if (!days || typeof days !== "object" || Array.isArray(days)) return out;
+    for (const [k, e] of Object.entries(days)) if (DAY_RE.test(k) && e && (e.type === "done" || e.type === "rest")) out[k] = e;
+    return out;
+  }
   function normalize(rec, today) {
     if (!rec || typeof rec !== "object" || Array.isArray(rec)) return fresh(today);
     const unlocked = Array.isArray(rec.unlocked) ? rec.unlocked.filter(s => typeof s === "string") : [];
     if (!unlocked.includes("lilac")) unlocked.unshift("lilac");
     return {
       key: "checkin",
-      days: rec.days && typeof rec.days === "object" && !Array.isArray(rec.days) ? rec.days : {},
+      days: cleanDays(rec.days),
       restTokens: num(rec.restTokens) ? Math.floor(rec.restTokens) : 0,
       lastTokenWeek: typeof rec.lastTokenWeek === "string" && WEEK_RE.test(rec.lastTokenWeek) ? rec.lastTokenWeek : isoWeek(today),
       lastProcessed: typeof rec.lastProcessed === "string" && DAY_RE.test(rec.lastProcessed) ? rec.lastProcessed : addDays(today, -1),

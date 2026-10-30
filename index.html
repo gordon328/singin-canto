@@ -846,7 +846,7 @@ const afterPaint=fn=>requestAnimationFrame(()=>requestAnimationFrame(fn));
 const afterRelease=fn=>{clearPressed();afterPaint(()=>setTimeout(fn,reduceMotion()?0:RELEASE_MS))};
 function go(view,data={}){
   if(navPending)return;
-  if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear();restNote="";$("#restNote").innerHTML=""}
+  if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear();restNote=""}
   navPending=true;
   afterRelease(()=>{
     navPending=false;dbgNote("跳转→"+view);
@@ -884,7 +884,7 @@ document.querySelectorAll("[data-back]").forEach(b=>b.addEventListener("click",g
 // 首页的固定按钮回首页时会被换成新元素，所以点击统一在 document 上按 id 分发
 function onClick(id,fn){document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#"+id))fn(e)})}
 // 回到首页：放掉焦点，把首页固定按钮换成新元素（不带任何旧状态）。歌曲卡片、声调键帽、今天的学习在 renderHome 里本来就是新生成的
-const HOME_BTNS=["btnDone","btnSettings","btnToneNext","btnSelect","btnDelSel","snackUndo","btnAdd"];
+const HOME_BTNS=["btnDone","btnSettings","btnToneNext","btnSelect","btnDelSel","snackUndo","btnAdd","streak"];
 function freshHome(){
   if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   HOME_BTNS.forEach(id=>{const o=$("#"+id),n=o.cloneNode(true);n.classList.remove("is-pressed","spin","turn");o.replaceWith(n)});
@@ -896,11 +896,13 @@ const APP_VERSION="v26";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
+// 模拟日期会把打卡、复习、学习进度按模拟的日子写进数据库，所以主屏幕 App（开发者的真实数据）里不能用，只能在 Safari 里用
+const simAllowed=!navigator.standalone;
 let simDays=0;
-try{if(dbg.on)simDays=parseInt(localStorage.getItem("yc-simdays"),10)||0}catch(e){}
+try{if(dbg.on&&simAllowed)simDays=parseInt(localStorage.getItem("yc-simdays"),10)||0}catch(e){}
 function appNow(){return Date.now()+simDays*86400000}
 function setSimDays(n){
-  simDays=dbg.on?n:0;
+  simDays=dbg.on&&simAllowed?n:0;
   try{if(simDays)localStorage.setItem("yc-simdays",String(simDays));else localStorage.removeItem("yc-simdays")}catch(e){}
   renderSim();onDayChange();
 }
@@ -910,6 +912,8 @@ const dayNum=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/86400000;
 function renderSim(){
   const box=$("#dbgSim");box.hidden=!dbg.on;if(box.hidden){box.innerHTML="";return}
   const day=SRS.today(appNow());
+  if(!simAllowed){box.innerHTML='<span class="lbl">模拟日期会改动打卡和复习数据，只能在 Safari 里用：先在这里导出备份，再在 Safari 里打开网址、从备份恢复</span>';return}
+  if($("#simDate")){$("#dbgSim .lbl").innerHTML=`模拟日期 <b class="num">${day}</b>（真实 ${simDays>=0?"+":""}${simDays} 天）`;if($("#simDate").value!==day)$("#simDate").value=day;return}
   box.innerHTML=`<span class="lbl">模拟日期 <b class="num">${day}</b>（真实 ${simDays>=0?"+":""}${simDays} 天）</span>
     <button class="btn soft small" type="button" id="simMinus">−1 天</button><button class="btn soft small" type="button" id="simPlus">+1 天</button><button class="btn soft small" type="button" id="simReset">回到今天</button>
     <input type="date" id="simDate" value="${day}" aria-label="选择模拟日期">`;
@@ -1106,9 +1110,11 @@ $("#calBody").addEventListener("touchend",e=>{
   if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy))calShift(dx<0?1:-1);
 },{passive:true});
 // 完成页出现时打卡：达到条件就记下今天（同一天再进只更新数字）。返回打卡前后的连续天数，没达到条件返回 null
+// 还要复习几个词才算打卡：今天已经评过分的词不算（「忘了」的卡 10 分钟后又到期，但今天已经复习过了）
+function checkinDue(d){const now=appNow();let n=0;for(const c of cards.values())if(!c.known&&c.srs&&c.srs.due<=now&&!d.reviewedW.includes(c.w))n++;return n}
 function checkinToday(stats){
   const d=getDaily(),day=SRS.today(appNow()),rec=getCheckin();
-  if(!CHECKIN.qualifies({due:STUDY.dueCount(cards.values(),appNow()),newLines:d.newLines,goal:d.goal,finished:!!study.finished}))return null;
+  if(!CHECKIN.qualifies({due:checkinDue(d),newLines:d.newLines,goal:d.goal,finished:!!study.finished}))return null;
   const before=CHECKIN.streak(rec,day),r=CHECKIN.markDone(rec,day,stats);
   saveCheckin(r.rec);
   return {first:r.first,before:r.first?before:CHECKIN.streak(r.rec,day),after:CHECKIN.streak(r.rec,day),rec:r.rec};
@@ -2114,7 +2120,7 @@ async function restoreBackup(obj){
   // 新设备从备份恢复：这份备份就是"上次备份"
   const ex=Date.parse(obj.exported);
   if(!metaRecs.get("backup")&&isFinite(ex))await markBackup(ex);
-  renderHome();
+  processCheckin();renderHome();
   return n;
 }
 
@@ -2229,7 +2235,8 @@ function renderDone(){
   const ck=checkinToday({reviewed:d.reviewed,newLines:d.newLines,newWords}),rec=ck?ck.rec:getCheckin(),anim=!!(ck&&ck.first)&&!reduceMotion();
   const week=CHECKIN.weekOf(day).map(x=>{const e=rec.days[x],hold=anim&&x===day;
     return `<span class="cal-day${e&&e.type==="rest"?" rest":""}${x===day?" today":""}"${hold?"":` data-lv="${CHECKIN.level(e)}"`}>${e&&e.type==="rest"?"休":""}</span>`}).join("");
-  const streakLine=!ck?"今天还没打卡":anim&&ck.before!==ck.after?`连续 <b class="num flip"><span><span>${ck.before}</span><span>${ck.after}</span></span></b> 天`:`连续 <b class="num">${ck.after}</b> 天`;
+  const due2=ck?0:checkinDue(d),need=Math.max(0,d.goal-d.newLines);
+  const streakLine=!ck?(rec.days[day]?.type==="done"?`连续 <b class="num">${CHECKIN.streak(rec,day)}</b> 天`:"今天还没打卡 · "+(due2?`还有 ${due2} 个词要复习`:`再学 ${need} 句就能打卡`)):anim&&ck.before!==ck.after?`连续 <b class="num flip"><span><span>${ck.before}</span><span>${ck.after}</span></span></b> 天`:`连续 <b class="num">${ck.after}</b> 天`;
   const due=STUDY.dueCount(cards.values(),SRS.dayDue(now,1),Infinity),up=STUDY.upcoming(lineTexts(s),learned,d.goal);
   studyCells(1,1);$("#stCount").textContent="";$("#stCount").classList.remove("whole");
   $("#stBody").innerHTML=`<div class="st-done st-anim">

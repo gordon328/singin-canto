@@ -139,4 +139,7 @@ test("merge", () => {
 test("normalize", () => {
   assert.deepEqual(C.normalize(null, "2026-10-30"), C.fresh("2026-10-30"));
   assert.deepEqual(C.normalize({ key: "checkin", days: "x" }, "2026-10-30").days, {});
+  // 坏条目去掉：不像日期的键、类型不对的、null
+  assert.deepEqual(C.normalize({ days: { "bad": { type: "done" }, "2026-10-29": { type: "bogus" }, "2026-10-28": null, "2026-10-27": { type: "rest" } } }, "2026-10-30").days,
+    { "2026-10-27": { type: "rest" } });
 });

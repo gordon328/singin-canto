@@ -25,7 +25,7 @@
   - `proof.js`：编辑歌曲（原「校对歌词」）的时间计算和行操作（全局 `PROOF`：`shiftAll`、`setStart`、`fmtT`、`fmtOffset`；行操作 `toEdit`、`insertAfter`、`split`、`mergeUp`、`remove`、`toSong`，保存时 `toSong` 返回新的 lines/overrides/learned 和原行号→新行号的 map，用来更新卡片出处）
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
   - `checkin.js`：打卡规则纯函数（全局 `CHECKIN`：`normalize`、`qualifies`、`markDone`、`process`（发休息卡、补漏打卡）、`streak`、`total`、`best`、`level`、`weekOf`、`monthGrid`、`detail`、`merge`、`isoWeek`、`addDays`），数据在 meta `checkin`（规格 7.9）
-  - 时间：日期和复习相关的「现在」都用 `appNow()`（= 真实时间 + 调试面板「模拟日期」的天数，存 localStorage `yc-simdays`，只在调试面板打开时生效）；只有 `uid` 和歌词滚动计时用 `Date.now()`
+  - 时间：日期和复习相关的「现在」都用 `appNow()`（= 真实时间 + 调试面板「模拟日期」的天数，存 localStorage `yc-simdays`，只在调试面板打开、并且不是主屏幕 App 时生效：模拟期间写下的数据都是真的会留下来，所以只在 Safari 里测）；只有 `uid` 和歌词滚动计时用 `Date.now()`
   - 打卡：完成页 `renderDone()` 里 `checkinToday()`；启动、切回前台、改模拟日期时 `onDayChange()` → `processCheckin()`；日历页 `calendarView`（首页那一行进入，DEPTH 1，`renderCalendar()`）
   - `voice.js`：标准发音的音节清单和纯函数（全局 `VOICE`：`HAS`、`plan(jp)`、`url`、`trimRange`、`GAP`）
   - `pack.js`：词汇包纯函数（全局 `PACK`：`buildPrompt`、`parsePack(raw, lines)`、`computeLineFor(song, li, autoJp)`、`fixText`、`HAN`）。词汇包 v3（`v:3`）覆盖整首歌的词，只有 `key:true` 的显示下划线；导入时整包里有一个词带 `key` 字段就按 v3 处理，整包都没有 `key` 是旧格式、全部当重点词。页面里 `computeLineFor(song, li)` / `computeLine(li)` 是它的包装
@@ -35,7 +35,7 @@
   - 歌词换行：`wrapGroups()` 把标点和前一个字、同一个词的字、最后两个字绑成不能拆开的组
   - 新增要离线可用的文件时，加进 `sw.js` 的 `SHELL` 并把 `VERSION` 加一
   - 删除类操作都用 `confirmSheet({title, body})`（返回 Promise<boolean>）先确认；删除歌曲走 `deleteSongs(ids)`：先从列表拿掉，5 秒内可撤销，`commitDelete()` 才真正删数据库（5 秒后、离开首页、切后台），卡片保留只去掉出处
-  - 按下效果：**不用 CSS `:active`**，JS 在 pointerdown 时给 `.btn,.tones .key,.song,.ib,.res` 加 `.is-pressed`，抬起/取消/移出/滚动时去掉；`go()`/`goBack()` 先 `clearPressed()` 再等一帧才切页；popstate、pageshow 也清掉。`:hover` 只能写在 `@media (hover: hover)` 里
+  - 按下效果：**不用 CSS `:active`**，JS 在 pointerdown 时给 `PRESSABLE`（`.btn,.tones .key,.song,.ib,.res,.streak,.cal-grid .cal-day`）加 `.is-pressed`，抬起/取消/移出/滚动时去掉；`go()`/`goBack()` 先 `clearPressed()` 再等一帧才切页；popstate、pageshow 也清掉。`:hover` 只能写在 `@media (hover: hover)` 里
   - 浮动播放条 `.player`、学习页 `.study-foot`：`show()` 在切页动画结束后加 `bar-in`（从下方滑入 + 淡入）；离开时没有动画，切页时 `body.navigating` 直接隐藏。**常驻按钮**「＋ 导入新歌」`#btnAdd`、导入页「保存」`#btnSave`：放在 section 外面（`data-page="home"` / `"importView"`），`pageButtons()` 按当前页面直接显示/隐藏，没有动画。学习页原唱 `playStudyLine` 只播这一句（到下一句开始停）、固定 0.8×（`applyRate` 在学习页用 0.8），所有播放都走 `playAu({at, onFail})`（必须在点击里直接调用）：失败或 4 秒没播起来 → `reloadAudio()` 从 IndexedDB（`DB.fresh`，绕过内存缓存）重新读这首歌的音频、换新 object URL 再试一次，还失败才 toast，提示带「错误代码」（MediaError code · play() 错误名 · 超时 T+readyState+networkState）。App 回到前台（visibilitychange / pageshow）时 `checkAudio()` 检查音频还读不读得出来，不行就重新加载。测试 `audio-recover`、累积检查 `stress2`（学习页、自由听、编辑歌曲进出 33 次）
   - 状态栏：iOS 26 Safari 用靠近屏幕顶部的 fixed 元素的颜色染状态栏，所以**顶部附近不能有带颜色的 fixed 元素**（`#topTint` 已去掉）。**弹出层不使用暗幕**（M3.12，设计规范 5.6）：底部弹窗 `openSheet(html, {modal})` 只靠 `--shadow-sheet` 阴影；点外面关闭（document 上的 pointerdown/pointerup 判断，移动超过 10px 算滚动，紧跟的 click 吞掉）；所有弹窗都有拖动条、统一间距（设计规范 5.6）；`modal: true` 的确认类弹窗（`confirmSheet`、未保存提示）点外面不关，往下拖关闭等于取消
   - 歌曲页「⋯」是下拉小菜单 `#songMenu`（设计规范 5.9）：放在吸顶顶栏 `.bar .wrap` 里，absolute，`openMenu()`/`closeMenu(now)`，切页时 `show()` 直接收起

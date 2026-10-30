@@ -36,7 +36,15 @@ async function finishDay(b) {
   }
   return { first: "none", later: await b.ev(`(() => { const d = document.querySelector("#stBody .st-done .cal-day.today"); return d ? d.dataset.lv || "" : "none"; })()`) };
 }
-const doneText = `document.querySelector("#stBody .st-done").innerText.replace(/\\s+/g, " ")`;
+// 改测试数据：learned（t1 前几句学过）、cards（换掉全部卡片）、goal（每天新学几句）
+const mkCard = (w, jp, due) => ({ w, jp, zh: "", tip: "", oral: false, sources: [], known: false, created: 1, updated: 1, srs: { due, interval: 1, ease: 2.5, reps: 1, lapses: 0 } });
+const setup = ({ learned, cards, goal }) => `new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const tx = db.transaction(["songs", "cards", "meta"], "readwrite");
+  const o = ${JSON.stringify({ learned, cards, goal })};
+  if (o.cards) { const cs = tx.objectStore("cards"); cs.clear(); o.cards.forEach(c => cs.put(c)); }
+  if (o.learned != null) { const st = tx.objectStore("songs"); st.get("t1").onsuccess = e => { st.put(Object.assign(e.target.result, { progress: { learned: Array.from({ length: o.learned }, (_, i) => i), current: true } })); }; }
+  if (o.goal) { const ms = tx.objectStore("meta"); ms.get("daily").onsuccess = e => { ms.put(Object.assign(e.target.result || { key: "daily" }, { goal: o.goal })); }; }
+  tx.oncomplete = () => { db.close(); res(); }; }; })`;
+const doneText =`document.querySelector("#stBody .st-done").innerText.replace(/\\s+/g, " ")`;
 const home = async b => { await b.ev(click('#studyView [data-act="home"]')); await b.sleep(900); };
 
 module.exports = { name: "checkin", async run(b) {
@@ -163,6 +171,36 @@ module.exports = { name: "checkin", async run(b) {
   b.check("backup-roundtrip " + JSON.stringify([s0, await b.ev(streak)]), (await b.ev(streak)) === s0 && k1.restTokens === k0.restTokens
     && JSON.stringify(k1.days) === JSON.stringify(k0.days) && k1.bestStreak === k0.bestStreak);
 
+  // 复习时同一个词点了两次「忘了」（10 分钟后又到期），学完新句子时已经过了 10 分钟：今天复习过的词不算，照样打卡
+  await jump(b, 1);
+  const now0 = await b.ev(`Date.now() + (+localStorage.getItem("yc-simdays")) * 86400e3`);
+  await b.ev(setup({ learned: 15, cards: [mkCard("測試", "cak1 si3", now0 - 60e3)] }));
+  await b.nav("/");
+  await b.ev(click('#today [data-today="start"]')); await b.sleep(900);
+  for (let i = 0; i < 30; i++) {
+    if (await b.ev(`!!document.querySelector('#studyView [data-act="lineok"]')`)) break;
+    await b.ev(`(() => { const q = s => document.querySelector('#studyView [data-act="' + s + '"]'); const x = q("flip") || q("again") || q("got"); if (x) x.click(); })()`);
+    await b.sleep(500);
+  }
+  b.check("again-twice-requeued", (await b.ev(F.idbGet("cards", "測試"))).srs.due > now0);
+  await b.ev(`(() => { const real = Date.now; window.__realNow = real; Date.now = () => real() + 11 * 60e3; })()`);
+  await b.ev(click('#studyView [data-act="lineok"]')); await b.sleep(900);
+  b.check("again-twice-checks-in " + (await b.ev(`document.querySelector("#stBody .st-streak").innerText`)),
+    (await b.ev(`document.querySelector("#stBody .st-streak").innerText`)).startsWith("连续"));
+  await b.ev(`Date.now = window.__realNow`);
+
+  // 主路径：歌还没学完，新句子学够了目标（这里目标设成 1 句）就打卡
+  await jump(b, 1);
+  await b.ev(setup({ learned: 10, cards: [], goal: 1 }));
+  await b.nav("/");
+  await b.ev(click('#today [data-today="start"]')); await b.sleep(900);
+  for (let i = 0; i < 25 && !(await b.ev(`!!document.querySelector("#stBody .st-done")`)); i++) {
+    await b.ev(`(() => { const x = document.querySelector('#studyView [data-act="got"]') || document.querySelector('#studyView [data-act="lineok"]'); if (x) x.click(); })()`); await b.sleep(500);
+  }
+  b.check("goal-path " + (await b.ev(`document.querySelector("#stBody .st-streak").innerText`)), !(await b.ev(doneText)).includes("全部学完")
+    && (await b.ev(`document.querySelector("#stBody .st-streak").innerText`)).startsWith("连续"));
+  await b.ev(setup({ goal: 4 }));
+
   // 没有词汇包：首页提示要先导入，按钮直接去导入词汇包
   await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const st = db.transaction("songs", "readwrite").objectStore("songs");
     st.get("t1").onsuccess = e => { st.put(Object.assign(e.target.result, { pack: null, progress: { learned: [], current: true } })).onsuccess = () => { db.close(); res(); }; }; }; })`);
@@ -172,5 +210,17 @@ module.exports = { name: "checkin", async run(b) {
   await b.ev(click('#today [data-today="pack"]')); await b.sleep(1300);
   b.check("no-pack-opens-pack", (await b.ev(`history.state.view`)) === "playerView" && !(await b.ev(`document.querySelector("#sheet").hidden`))
     && (await b.ev(F.sheetText)).includes("词汇包"));
+  // 没达到打卡条件也进了完成页（只做了复习）：写明还差什么
+  await jump(b, 1);
+  const now1 = await b.ev(`Date.now() + (+localStorage.getItem("yc-simdays")) * 86400e3`);
+  await b.ev(setup({ cards: [mkCard("測試", "cak1 si3", now1 - 60e3)] }));
+  await b.nav("/");
+  await b.ev(click('#today [data-today="review"]')); await b.sleep(900);
+  for (let i = 0; i < 10 && !(await b.ev(`!!document.querySelector("#stBody .st-done")`)); i++) {
+    await b.ev(`(() => { const q = s => document.querySelector('#studyView [data-act="' + s + '"]'); const x = q("flip") || q("good"); if (x) x.click(); })()`); await b.sleep(600);
+  }
+  const why = await b.ev(`document.querySelector("#stBody .st-streak").innerText`);
+  b.check("not-yet-reason " + why, why === "今天还没打卡 · 再学 4 句就能打卡"
+    && (await b.ev(`document.querySelector("#stBody .cal-day.today").dataset.lv`)) === "0");
   b.check("checkin: 页面没有报错", b.errors.length === 0);
 } };
