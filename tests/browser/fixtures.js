@@ -62,7 +62,9 @@ const exportText = `(async () => { let got = null; navigator.canShare = () => tr
 const restoreText = (text, confirm = true) => `(async () => { if (document.querySelector("#settingsView").hidden) { document.querySelector("#btnSettings").click(); await new Promise(r => setTimeout(r, 800)); }
   const inp = document.querySelector("#bkFile"), dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(text)}], "备份.json", { type: "application/json" }));
   inp.files = dt.files; inp.dispatchEvent(new Event("change")); await new Promise(r => setTimeout(r, 500));
-  const ok = document.querySelector('#sheetBody [data-confirm="${confirm ? "ok" : "cancel"}"]'); if (ok) { ok.click(); await new Promise(r => setTimeout(r, 900)); }
+  // 点了「恢复」后等到出现结果提示（恢复写完数据库才会显示），最多等 5 秒；机器忙的时候固定等 0.9 秒不一定够
+  const ok = document.querySelector('#sheetBody [data-confirm="${confirm ? "ok" : "cancel"}"]'); if (ok) { ok.click(); await new Promise(r => setTimeout(r, 900));
+    for (let i = 0; i < 40 && ${confirm ? "true" : "false"} && !document.querySelector("#bkMsg").innerText.trim(); i++) await new Promise(r => setTimeout(r, 100)); }
   return document.querySelector("#bkMsg").innerText; })()`;
 
 // VOICE_REC：录下标准发音录音播了哪些音节。fetch → 解码 → 播放一路带着文件名，每播一个音节往 window.__said 里放 ["♪音节", 开始时间, 长度]

@@ -24,7 +24,7 @@
   - `lessons.js`：课程内容（全局 `LESSONS`：`TONE_SETS` 8 组声调字、`toneSetFor(rec, today)` 首页今天用哪组；M6 的入门课也放这里）
   - `proof.js`：编辑歌曲（原「校对歌词」）的时间计算和行操作（全局 `PROOF`：`shiftAll`、`setStart`、`fmtT`、`fmtOffset`；行操作 `toEdit`、`insertAfter`、`split`、`mergeUp`、`remove`、`toSong`，保存时 `toSong` 返回新的 lines/overrides/learned 和原行号→新行号的 map，用来更新卡片出处）
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
-  - `checkin.js`：打卡规则纯函数（全局 `CHECKIN`：`normalize`、`qualifies`、`markDone`、`process`（发休息卡、补漏打卡）、`streak`、`total`、`best`、`level`、`weekOf`、`monthGrid`、`detail`、`merge`、`isoWeek`、`addDays`），数据在 meta `checkin`（规格 7.9）
+  - `checkin.js`：打卡规则纯函数（全局 `CHECKIN`：`normalize`、`qualifies`、`markDone`、`process`（发休息卡、补漏打卡）、`streak`、`total`、`best`、`dayState`（日历格子：done / more / rest）、`weekOf`、`monthGrid`、`detail`、`merge`、`isoWeek`、`addDays`），数据在 meta `checkin`（规格 7.9）
   - 时间：日期和复习相关的「现在」都用 `appNow()`（= 真实时间 + 调试面板「模拟日期」的天数，存 localStorage `yc-simdays`，只在调试面板打开、并且不是主屏幕 App 时生效：模拟期间写下的数据都是真的会留下来，所以只在 Safari 里测）；只有 `uid` 和歌词滚动计时用 `Date.now()`
   - 打卡：完成页 `renderDone()` 里 `checkinToday()`；启动、切回前台、改模拟日期时 `onDayChange()` → `processCheckin()`；日历页 `calendarView`（首页那一行进入，DEPTH 1，`renderCalendar()`）
   - `voice.js`：标准发音的音节清单和纯函数（全局 `VOICE`：`HAS`、`plan(jp)`、`url`、`trimRange`、`GAP`）
@@ -97,7 +97,8 @@
 - **v23（2026-10-30）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
 - **v24（2026-10-30）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒；有录音时不再显示「系统朗读可能读错」。iPhone 验收通过
 - **v25（2026-10-30）**：开发者听过决定多字词保持录音连读；整句「标准慢读」也改成逐字录音（停 0.3 秒，有音节没录音时整句退回系统朗读）。2026-10-30 iPhone 验收通过
-- **v28（2026-10-30，待 iPhone 验收）**：打卡日历页顶部统计改成一张合并卡片（设计图 `docs/design/calendar-stats.png` 方案 B）：上面连续 / 累计 / 最长连续三列（连续断了显示「—」），下面休息卡横栏；整个月在 iPhone 17 Pro Max 上不用滚动就能看到
+- **v29（2026-10-30，待 iPhone 验收）**：打卡日历不再按学习量分深浅：打卡的日子都用主色填满，当天点过「再学 2 句」的日子右上角加小星星（打卡记录里 `more: true`）；图例改成已打卡 / 多学了 / 休息日；完成页本周格子同样规则
+- **v28（2026-10-30）**：打卡日历页顶部统计改成一张合并卡片（设计图 `docs/design/calendar-stats.png` 方案 B）：上面连续 / 累计 / 最长连续三列（连续断了显示「—」），下面休息卡横栏；整个月在 iPhone 17 Pro Max 上不用滚动就能看到
 - **v27（2026-10-30）**：休息卡改成三个小卡片图标 +「N/3」（日历页统计、首页提示统一用 `tokensHTML()`）；说明文字没存满时「每周一发 1 张」，存满时「已存满，用掉后才会继续发放」
 - **v26（2026-10-30，待 iPhone 验收）**：M5.5 前半「打卡」（规格 7.9，计划 `docs/superpowers/plans/2026-10-30-m55a-checkin.md`）：首页连续/累计天数、日历页、完成页本周格子和打卡动画、休息卡、调试面板模拟日期、备份合并打卡记录。下一步：测好后做后半「皮肤」（解锁弹窗、设置里的皮肤页、夜曲和晨雾配色）
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词

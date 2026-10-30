@@ -72,9 +72,10 @@
   function best(rec, today) { return Math.max(rec.bestStreak || 0, streak(rec, today)); }
 
   // 今天记成 done；今天本来就是 done 时只更新数字
-  function markDone(rec, today, { reviewed, newLines, newWords }) {
+  // more：当天点过「再学 2 句」（多学了），日历上那天加一颗星
+  function markDone(rec, today, { reviewed, newLines, newWords, more = false }) {
     const first = !(rec.days[today] && rec.days[today].type === "done");
-    const next = { ...rec, days: { ...rec.days, [today]: { type: "done", reviewed, newLines, newWords } } };
+    const next = { ...rec, days: { ...rec.days, [today]: { type: "done", reviewed, newLines, newWords, more: !!more } } };
     next.bestStreak = Math.max(next.bestStreak || 0, streak(next, today));
     return { rec: next, first };
   }
@@ -102,11 +103,11 @@
   }
 
   // ---- 日历 ----
-  // 学习量 = 新词 + 复习词：1–15 是 1，16–40 是 2，40 以上是 3；done 但学习量 0 算 1
-  function level(entry) {
-    if (!entry || entry.type !== "done") return 0;
-    const v = (entry.newWords || 0) + (entry.reviewed || 0);
-    return v <= 15 ? 1 : v <= 40 ? 2 : 3;
+  // 日历格子的样子：打卡 "done"、打卡又多学了 "more"、休息日 "rest"、没打卡 ""（不按学习量分深浅）
+  function dayState(entry) {
+    if (!entry) return "";
+    if (entry.type === "done") return entry.more ? "more" : "done";
+    return entry.type === "rest" ? "rest" : "";
   }
   function weekOf(today) {
     const mon = addDays(today, 1 - weekday(today));
@@ -150,7 +151,7 @@
     };
   }
 
-  const CHECKIN = { addDays, weekday, isoWeek, fresh, normalize, qualifies, markDone, process, streak, total, best, level, weekOf, monthGrid, detail, merge };
+  const CHECKIN = { addDays, weekday, isoWeek, fresh, normalize, qualifies, markDone, process, streak, total, best, dayState, weekOf, monthGrid, detail, merge };
   root.CHECKIN = CHECKIN;
   if (typeof module !== "undefined" && module.exports) module.exports = CHECKIN;
 })(typeof self !== "undefined" ? self : globalThis);

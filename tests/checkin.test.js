@@ -96,14 +96,19 @@ test("streak：今天没打卡从昨天数", () => {
   r.days["2026-10-30"] = { type: "done" };
   assert.equal(C.streak(r, "2026-10-30"), 3);
 });
-test("level", () => {
-  assert.equal(C.level({ type: "done", newWords: 5, reviewed: 10 }), 1);
-  assert.equal(C.level({ type: "done", newWords: 6, reviewed: 10 }), 2);
-  assert.equal(C.level({ type: "done", newWords: 20, reviewed: 20 }), 2);
-  assert.equal(C.level({ type: "done", newWords: 21, reviewed: 20 }), 3);
-  assert.equal(C.level({ type: "done", newWords: 0, reviewed: 0 }), 1);
-  assert.equal(C.level({ type: "rest" }), 0);
-  assert.equal(C.level(undefined), 0);
+test("dayState：不按学习量分深浅，只分打卡 / 多学了 / 休息日", () => {
+  assert.equal(C.dayState({ type: "done", newWords: 1, reviewed: 0 }), "done");
+  assert.equal(C.dayState({ type: "done", newWords: 60, reviewed: 60 }), "done");
+  assert.equal(C.dayState({ type: "done", newWords: 2, reviewed: 0, more: true }), "more");
+  assert.equal(C.dayState({ type: "rest" }), "rest");
+  assert.equal(C.dayState(undefined), "");
+});
+test("markDone：记下多学了", () => {
+  const a = C.markDone(C.fresh("2026-10-30"), "2026-10-30", { reviewed: 3, newLines: 4, newWords: 5 });
+  assert.equal(a.rec.days["2026-10-30"].more, false);
+  const b = C.markDone(a.rec, "2026-10-30", { reviewed: 3, newLines: 6, newWords: 9, more: true });
+  assert.equal(b.rec.days["2026-10-30"].more, true);
+  assert.equal(b.first, false);
 });
 test("weekOf / monthGrid", () => {
   const w = C.weekOf("2026-10-30");

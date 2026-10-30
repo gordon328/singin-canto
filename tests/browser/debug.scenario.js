@@ -10,11 +10,11 @@ async function tap(b, sel) {
 const dbgText = `document.querySelector("#dbg").innerText`;
 module.exports = { name: "debug", async run(b) {
   await F.seed(b);
-  b.check("version-shown", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 v28");
+  b.check("version-shown", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 v29");
   b.check("panel-off", await b.ev(`document.querySelector("#dbg").hidden`));
 
   await b.ev(tapVer); await b.sleep(100);
-  b.check("panel-on", !(await b.ev(`document.querySelector("#dbg").hidden`)) && (await b.ev(dbgText)).includes("调试 v28"));
+  b.check("panel-on", !(await b.ev(`document.querySelector("#dbg").hidden`)) && (await b.ev(dbgText)).includes("调试 v29"));
 
   const oldSettings = await b.ev(`(window.__old = document.querySelector("#btnSettings"), true)`);
   await tap(b, "#btnSettings"); await b.sleep(700);
