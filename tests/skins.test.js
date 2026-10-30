@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const SKIN_IDS = require("../skins/registry.js");
 const SKIN = require("../skins/skin.js");
 const defs = SKIN_IDS.map(id => require(`../skins/${id}.js`));
-const UNLOCK_TYPES = ["default", "streak", "total", "songs", "words", "code"];
+const UNLOCK_TYPES = Object.keys(require("../skins/unlock-rules.js").RULES);
 const sets = def => (def.modes === "dark-only" ? ["dark"] : def.modes === "light-only" ? ["light"] : ["light", "dark"]);
 
 test("每个皮肤文件都注册了、id 和文件名一致、不重复", () => {
