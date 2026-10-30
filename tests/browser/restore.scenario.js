@@ -87,7 +87,7 @@ module.exports = { name: "restore", async run(b) {
   await b.ev(`localStorage.setItem("yc-debug", "1")`); await b.nav("/");
   const dt = await b.ev(`document.querySelector("#dbgData").innerText`);
   b.check("dbg-errors " + dt.replace(/\n/g, " | "), dt.includes("最近的错误") && dt.includes("DataCloneError: 测试：故意出错") && dt.includes("恢复备份"));
-  await b.shot("restore-debug-panel");
+  await b.ev(click("#dbgFab")); await b.sleep(300); await b.shot("restore-debug-panel");
   await b.ev(click("#dbgErrClear")); await b.sleep(100);
   b.check("dbg-errors-cleared", (await b.ev(`document.querySelector("#dbgData").innerText`)).includes("（0 条）"));
   await b.ev(`localStorage.removeItem("yc-debug")`);

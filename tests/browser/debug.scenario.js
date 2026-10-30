@@ -1,4 +1,4 @@
-// 调试面板（M3.12）：连点 3 下首页版本号开关；回首页量按钮状态；最近 10 个触摸事件。回首页时首页按钮换成新元素，点击仍有效
+// 调试面板（M3.12；v0.32 起默认收起成小圆按钮，收起时照常记录）：连点 3 下首页版本号开关；回首页量按钮状态；最近 10 个触摸事件。回首页时首页按钮换成新元素，点击仍有效
 const F = require("./fixtures.js");
 const click = sel => `document.querySelector(${JSON.stringify(sel)}).click()`;
 const tapVer = `(async () => { for (let i = 0; i < 3; i++) { document.querySelector("#appVer").click(); await new Promise(r => setTimeout(r, 80)); } })()`;
@@ -10,19 +10,19 @@ async function tap(b, sel) {
 const dbgText = `document.querySelector("#dbg").innerText`;
 module.exports = { name: "debug", async run(b) {
   await F.seed(b);
-  b.check("version-shown", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 v0.31");
+  b.check("version-shown", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 v0.32");
   b.check("panel-off", await b.ev(`document.querySelector("#dbg").hidden`));
 
   await b.ev(tapVer); await b.sleep(100);
-  b.check("panel-on", !(await b.ev(`document.querySelector("#dbg").hidden`)) && (await b.ev(dbgText)).includes("调试 v0.31"));
+  b.check("panel-on", !(await b.ev(`document.querySelector("#dbg").hidden`)) && (await b.ev(dbgText)).includes("调试 v0.32"));
 
   const oldSettings = await b.ev(`(window.__old = document.querySelector("#btnSettings"), true)`);
   await tap(b, "#btnSettings"); await b.sleep(700);
   b.check("settings-opened", oldSettings && await b.ev(`!document.querySelector("#settingsView").hidden`));
-  b.check("panel-hidden-off-home", await b.ev(`document.querySelector("#dbg").hidden`));
+  b.check("fab-on-other-pages", await b.ev(`!document.querySelector("#dbgWrap").hidden && document.querySelector("#dbgFab").getBoundingClientRect().width === 44 && document.querySelector("#dbgPanel").hidden`));
   await b.ev(click("#settingsView [data-back]")); await b.sleep(1300);
   const t = await b.ev(dbgText);
-  b.check("panel-back-on-home", !(await b.ev(`document.querySelector("#dbg").hidden`)));
+  b.check("panel-back-on-home", !(await b.ev(`document.querySelector("#dbg").hidden`)) && await b.ev(`document.querySelector("#dbgPanel").hidden`));
   b.check("panel-return-how", t.includes("返回方式：返回按钮") && t.includes("btnSettings"));
   // 第 0、≈100、≈500、≈1000ms 四行（定时器会晚几毫秒）
   b.check("panel-samples", (t.match(/\d+ms 新元素:是/g) || []).length === 4 && /\b1\d\dms/.test(t) && /\b5\d\dms/.test(t) && /\b10\d\dms/.test(t) && t.includes("is-pressed:否"));

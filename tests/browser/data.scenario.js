@@ -65,24 +65,12 @@ module.exports = { name: "data", async run(b) {
     b.check("v2-goal-moved", (await b.ev(F.idbGet("meta", "daily")))?.goal === 6);
     await b.ev(click("#btnSettings")); await b.sleep(800);
     b.check("v2-goal-shown", (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "6");
-    // 「恢复到更新前的数据」不给普通用户：设置页没有，只在调试面板里
-    b.check("no-snapshot-in-settings", !(await b.ev(`!!document.querySelector("#bkSnap")`)) && !(await b.ev(`document.querySelector("#settingsView").innerText`)).includes("恢复到更新前"));
-    b.check("dbg-off-no-snapshot", !(await b.ev(visible("#dbgData"))));
-
-    // ---- 恢复到更新前的数据：快照里的记录换回来，更新后新加的保留 ----
-    await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const tx = db.transaction(["cards", "songs"], "readwrite");
-      tx.objectStore("cards").put({ ...${JSON.stringify(d.cards[0])}, zh: "改过了" }); tx.objectStore("songs").put({ id: "new1", title: "更新后新加的歌", artist: "", lines: [{ t: 1, end: 2, text: "新歌一句" }], pack: null, overrides: {}, audio: null, created: 1, updated: 1 });
-      tx.oncomplete = () => { db.close(); res(); }; }; })`);
+    // 「恢复到更新前的数据」已经删掉：设置页和调试面板都没有，快照只在后台用（上面已检查升级时存了快照）
+    b.check("no-snapshot-in-settings", !(await b.ev(`document.querySelector("#settingsView").innerText`)).includes("恢复到更新前"));
     await b.ev(`localStorage.setItem("yc-debug", "1")`); await b.nav("/");
-    const dt = await b.ev(`document.querySelector("#dbgData").innerText`);
-    b.check("dbg-snapshot " + dt.replace(/\n/g, " "), await b.ev(visible("#dbgSnap")) && dt.includes(`更新到 ${APP} 前（数据格式 2 → ${DATA.VERSION}）`) && dt.includes(`数据格式第 ${DATA.VERSION} 版`));
-    await b.shot("data-debug-panel");
-    await b.ev(click("#dbgSnap")); await b.sleep(500);
-    b.check("snapshot-confirm", (await b.ev(F.sheetText)).includes("恢复到更新前的数据"));
-    await b.ev(`document.querySelector('#sheetBody [data-confirm="ok"]').click()`); await b.sleep(3000); // 恢复后 App 会重新打开
-    b.check("snapshot-restored-card", (await b.ev(F.idbGet("cards", d.cards[0].w)))?.zh === d.cards[0].zh);
-    b.check("snapshot-keeps-new", !!(await b.ev(F.idbGet("songs", "new1"))));
-    b.check("snapshot-reupgraded", (await b.ev(F.idbGet("meta", "dataVersion")))?.v === DATA.VERSION && (await b.ev(`document.querySelectorAll("#songs .song").length`)) === 3);
+    const dt = await b.ev(`document.querySelector("#dbgData").textContent`);
+    b.check("no-snapshot-in-debug " + dt.replace(/\s+/g, " "), !dt.includes("快照") && !dt.includes("恢复到更新前") && dt.includes(`数据格式第 ${DATA.VERSION} 版`)
+      && !(await b.ev(`!!document.querySelector("#dbgSnap")`)) && !!(await b.ev(F.idbGet("snapshot", "last"))));
     await b.ev(`localStorage.removeItem("yc-debug")`);
   }
 

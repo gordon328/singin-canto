@@ -302,15 +302,20 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .songs{display:flex;flex-direction:column;gap:12px}
 /* 首页底部版本号（连点 3 下开关调试面板），下面留出「＋ 导入新歌」的位置 */
 .ver{text-align:center;font-size:12px;color:var(--muted);padding:20px 0 calc(24px + 56px + 24px + env(safe-area-inset-bottom,0px));-webkit-user-select:none;user-select:none}
-/* 调试面板：浮在「＋ 导入新歌」上面，不挡手指（点击穿透到下面的按钮）；不放在屏幕顶部（会染状态栏） */
-.dbg{position:fixed;left:8px;right:8px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:50;max-height:64vh;overflow:hidden;pointer-events:none;
-  padding:8px 12px;border-radius:12px;background:var(--inverse);color:var(--on-inverse);opacity:.92;
-  font:10.5px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
+/* 调试面板（v0.32）：收起时是屏幕边上 44px 的半透明小圆按钮（可拖动，松手吸到最近的左边或右边，不放在屏幕顶部——会染状态栏）；
+   展开后占屏幕下半部分，内容能滚动，没有暗幕，上面的页面照常能点 */
+.dbg-fab{position:fixed;z-index:62;left:calc(100vw - 52px);top:60vh;width:44px;height:44px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;
+  background:var(--inverse);color:var(--on-inverse);opacity:.5;box-shadow:var(--shadow-3);touch-action:none;-webkit-tap-highlight-color:transparent;
+  transition:left var(--dur) var(--ease),top var(--dur) var(--ease),opacity var(--dur) var(--ease)}
+.dbg-fab.dragging{transition:none;opacity:.8}
+.dbg-fab[aria-expanded="true"]{opacity:.85}
+.dbg-panel{position:fixed;left:0;right:0;bottom:0;z-index:61;height:50vh;height:50dvh;display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;box-shadow:var(--shadow-sheet)}
+.dbg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;border-bottom:1px solid var(--rule);font-size:15px;color:var(--ink)}
+.dbg-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.dbg{flex-shrink:0;padding:8px 12px;border-radius:12px;background:var(--inverse);color:var(--on-inverse);font:10.5px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 .dbg b{font-weight:700}
-/* 调试面板打开时，首页最下面多一行「模拟日期」（测打卡跨天用） */
-.dbg-sim{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:24px;padding:12px 16px;border-radius:18px;background:var(--surface);font-size:13px;color:var(--ink-2)}
+.dbg-sim{flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-radius:18px;background:var(--bg);font-size:13px;color:var(--ink-2)}
 .dbg-sim .lbl{flex-basis:100%}
-.dbg-sim + .dbg-sim{margin-top:8px}
 .dbg-err{flex-basis:100%;margin:0;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:12px;line-height:1.5;color:var(--ink)}
 .dbg-sim input{min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:8px 12px}
 .song{display:flex;align-items:center;gap:12px;padding:16px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);text-align:left;width:100%;
@@ -599,8 +604,6 @@ label.btn{overflow:hidden}
     <div class="sec-title"><span>我的歌</span><button class="btn text small" id="btnSelect" type="button" hidden>选择</button></div>
     <div id="homeNote"></div>
     <div class="songs" id="songs"></div>
-    <div class="dbg-sim" id="dbgSim" hidden></div>
-    <div class="dbg-sim" id="dbgData" hidden></div>
     <div class="ver num" id="appVer"></div>
   </div>
   <button class="btn danger-fill bottom bottom-bar" id="btnDelSel" type="button" hidden>删除（0）</button>
@@ -806,7 +809,18 @@ label.btn{overflow:hidden}
 
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true"><div class="wrap" id="sheetBody"></div></div>
 <div id="toast" class="toast" hidden></div>
-<div id="dbg" class="dbg" hidden></div>
+<!-- 调试面板：打开后先收起成屏幕边上的小圆按钮（可拖动，松手吸到左边或右边）；点一下展开，占屏幕下半部分 -->
+<div id="dbgWrap" hidden>
+  <div class="dbg-panel" id="dbgPanel" hidden>
+    <div class="dbg-head"><b>调试面板</b><button class="btn soft small" id="dbgClose" type="button">收起</button></div>
+    <div class="dbg-body">
+      <div id="dbg" class="dbg" hidden></div>
+      <div class="dbg-sim" id="dbgSim" hidden></div>
+      <div class="dbg-sim" id="dbgData" hidden></div>
+    </div>
+  </div>
+  <button class="dbg-fab" id="dbgFab" type="button" aria-label="展开调试面板" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></button>
+</div>
 
 <script src="vendor/to-jyutping.js"></script>
 <script src="pack.js"></script>
@@ -1006,8 +1020,8 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.31";
-const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
+const APP_VERSION="v0.32";
+const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
 // 模拟日期会把打卡、复习、学习进度按模拟的日子写进数据库，所以主屏幕 App（开发者的真实数据）里不能用，只能在 Safari 里用
@@ -1023,19 +1037,17 @@ function setSimDays(n){
 // 日期变了（模拟日期、第二天切回 App）：处理休息卡，刷新首页
 function onDayChange(){processCheckin();if(curView==="home")renderHome()}
 const dayNum=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/86400000;
-// 调试面板「数据」：数据格式版本、升级前快照（手动恢复，以后挪进开发者模式）、最近的错误（完整的错误名和信息）
+// 调试面板「数据」：数据格式版本、最近的错误（完整的错误名和信息）
 function renderDbgData(){
   const box=$("#dbgData");box.hidden=!dbg.on;if(box.hidden){box.innerHTML="";return}
   let log=[];try{log=JSON.parse(localStorage.getItem("yc-errlog")||"[]")}catch(e){}
   box.innerHTML=`<span class="lbl"><b>数据</b> · 数据格式第 ${metaRecs.get("dataVersion")?.v??"?"} 版 · ${DB.ok?"数据库正常":"数据库没打开（只存在内存里）"}</span>
-    ${snapInfo?`<span class="lbl">升级前快照：${esc(snapLabel(snapInfo))}</span><button class="btn soft small" type="button" id="dbgSnap">恢复到更新前的数据</button>`:'<span class="lbl">没有升级前快照</span>'}
     <span class="lbl"><b>最近的错误</b>（${log.length} 条）</span>
     ${log.length?`<pre class="dbg-err" id="dbgErr">${log.slice().reverse().map(r=>esc(`${r.t} · ${r.where}\n  ${r.name}: ${r.msg}`)).join("\n")}</pre><button class="btn soft small" type="button" id="dbgErrClear">清空错误记录</button>`:""}`;
 }
 $("#dbgData").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
-  if(b.id==="dbgSnap")restoreSnapshot();
-  else if(b.id==="dbgErrClear"){try{localStorage.removeItem("yc-errlog")}catch(_){}renderDbgData()}
+  if(b.id==="dbgErrClear"){try{localStorage.removeItem("yc-errlog")}catch(_){}renderDbgData()}
 });
 function renderSim(){
   renderDbgData();
@@ -1085,8 +1097,9 @@ function dbgReturn(how){
   const take=()=>{if(dbg.ret!==r)return;r.rows.push(dbgSample(Math.round(performance.now()-t0)));renderDbg()};
   take();[100,500,1000,3000].forEach(ms=>setTimeout(take,ms));
 }
+// 收起时也照常记录（这里照样更新），展开就能看到收起期间的记录
 function renderDbg(){
-  const box=$("#dbg");box.hidden=!(dbg.on&&curView==="home");if(box.hidden)return;
+  const box=$("#dbg");box.hidden=!dbg.on;if(box.hidden)return;
   const L=dbg.last,R=dbg.ret;
   box.innerHTML=`<b>调试 ${APP_VERSION} · ${navigator.standalone?"主屏幕":"Safari"} · 返回方式：${R?R.how:"—"}</b>
 <b>刚才点的：</b>${L?esc(L.desc):"—"}
@@ -1094,6 +1107,35 @@ ${R?R.rows.join("\n"):"（回到首页后这里显示 0/100/500/1000/3000ms 的�
 <b>最近 10 个触摸事件：</b>
 ${dbg.log.map(x=>`${x.t} ${x.type.padEnd(13)} ${x.view} ${esc(x.desc)}`).join("\n")}`;
 }
+// 收起 / 展开；小圆按钮的位置存 localStorage yc-dbgpos：{side: "left" | "right", y}
+const FAB=44,FAB_M=8;
+function fabPos(p){
+  const top=120,bottom=innerHeight-FAB-FAB_M-96; // 不放在屏幕顶部（会染状态栏），也不压住底部常驻按钮
+  return {side:p.side==="left"?"left":"right",y:Math.round(Math.min(Math.max(+p.y||0,top),Math.max(top,bottom)))};
+}
+function savedFab(){let p={side:"right",y:innerHeight*0.6};try{Object.assign(p,JSON.parse(localStorage.getItem("yc-dbgpos")||"{}"))}catch(e){}return fabPos(p)}
+// 展开时圆按钮挪到面板上方，不压住面板里的内容；收起后回到记住的位置
+function placeFab(p){const f=$("#dbgFab"),y=dbg.open?Math.min(p.y,Math.round(innerHeight/2)-FAB-FAB_M):p.y;
+  f.style.left=(p.side==="left"?FAB_M:innerWidth-FAB-FAB_M)+"px";f.style.top=y+"px"}
+function renderDbgShell(){
+  $("#dbgWrap").hidden=!dbg.on;$("#dbgPanel").hidden=!(dbg.on&&dbg.open);
+  const f=$("#dbgFab");f.setAttribute("aria-expanded",String(dbg.open));f.setAttribute("aria-label",dbg.open?"收起调试面板":"展开调试面板");
+  if(dbg.on)placeFab(savedFab());
+}
+function setDbgOpen(o){dbg.open=o;renderDbgShell();if(o){renderDbg();renderSim()}}
+// 拖动：移动超过 6px 才算拖，松手吸到最近的左边或右边；没拖动就是点一下（展开 / 收起）
+(()=>{const f=$("#dbgFab");let st=null,dragged=false;
+  f.addEventListener("pointerdown",e=>{st={x:e.clientX,y:e.clientY,l:f.offsetLeft,t:f.offsetTop,moved:false};dragged=false;try{f.setPointerCapture(e.pointerId)}catch(_){}});
+  f.addEventListener("pointermove",e=>{if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;
+    if(!st.moved&&Math.hypot(dx,dy)<6)return;st.moved=true;f.classList.add("dragging");f.style.left=st.l+dx+"px";f.style.top=st.t+dy+"px"});
+  const end=()=>{if(!st)return;const s0=st;st=null;f.classList.remove("dragging");if(!s0.moved)return;dragged=true;
+    const p=fabPos({side:f.offsetLeft+FAB/2<innerWidth/2?"left":"right",y:f.offsetTop});
+    try{localStorage.setItem("yc-dbgpos",JSON.stringify(p))}catch(_){}placeFab(p)};
+  f.addEventListener("pointerup",end);f.addEventListener("pointercancel",end);
+  f.addEventListener("click",()=>{if(dragged){dragged=false;return}setDbgOpen(!dbg.open)});
+  $("#dbgClose").addEventListener("click",()=>setDbgOpen(false));
+  addEventListener("resize",()=>{if(dbg.on)placeFab(savedFab())});
+})();
 // 记下在首页点的按钮（版本号本身不是按钮，不会覆盖）
 document.addEventListener("pointerdown",e=>{
   if(!dbg.on||curView!=="home")return;
@@ -1104,7 +1146,7 @@ function dbgPush(type,desc){
   const d=new Date();
   dbg.log.push({type,view:curView,desc,t:`${String(d.getSeconds()).padStart(2,"0")}.${String(d.getMilliseconds()).padStart(3,"0")}`});
   if(dbg.log.length>10)dbg.log.shift();
-  if(curView==="home")renderDbg();
+  renderDbg();
 }
 // 记下真正切页（pushState / history.back）的时间，和上面的 pointerup 对比，看隔了多久
 function dbgNote(type){if(dbg.on)dbgPush(type,"")}
@@ -1119,7 +1161,7 @@ $("#appVer").addEventListener("click",e=>{
   if(dbg.taps<3)return;
   dbg.taps=0;dbg.on=!dbg.on;dbg.log=[];dbg.last=null;dbg.ret=null;
   try{localStorage.setItem("yc-debug",dbg.on?"1":"0")}catch(e){}
-  renderDbg();if(dbg.on)renderSim();else setSimDays(0);toast(dbg.on?"调试面板已打开":"调试面板已关闭");
+  dbg.open=false;renderDbgShell();renderDbg();if(dbg.on)renderSim();else setSimDays(0);toast(dbg.on?"调试面板已打开（右边的小圆按钮）":"调试面板已关闭");
 });
 
 
@@ -2326,12 +2368,9 @@ async function verifyRestore(obj){
 }
 
 /* ---------- 数据格式升级（docs/数据兼容规则.md）：meta dataVersion，迁移前存快照 ---------- */
-// snapshot 表里只有一条 "last"：最近一次升级前的全部数据（不含音频）。snapInfo 是它的说明（不含数据）。
-// 升级失败自动用它恢复；手动「恢复到更新前的数据」只在调试面板里（以后放进开发者模式）
-let snapInfo=null;
+// snapshot 表里只有一条 "last"：最近一次升级前的全部数据（不含音频）。只在后台用：升级失败时自动用它恢复，没有任何界面
 const stripAudio=s=>{const o={...s};delete o.audio;return o};
 function readPrefs(){try{return JSON.parse(localStorage.getItem("yc-prefs")||"{}")||{}}catch(e){return {}}}
-function snapLabel(i){const d=new Date(i.at);return `${d.getMonth()+1}月${d.getDate()}日更新到 ${i.app||"新版本"} 前（数据格式 ${i.from} → ${i.to}）`}
 // 没记 dataVersion 的老数据：打开前一张表都没有 = 新装；只有 songs 表 = 第一阶段（1）；有 meta 表 = M1 以后（2）
 function storedVersion(){
   const r=metaRecs.get("dataVersion");if(r&&Number.isInteger(r.v))return r.v;
@@ -2364,14 +2403,6 @@ async function putSnapshot(snap,from){
   const d=snap.data;
   await DB.write({songs:d.songs,cards:d.cards,meta:[...d.meta.filter(m=>m&&m.key!=="dataVersion"),{key:"dataVersion",v:from}]});
   try{localStorage.setItem("yc-prefs",JSON.stringify(d.prefs||{}))}catch(e){}
-}
-async function restoreSnapshot(){
-  const snap=await DB.fresh("last","snapshot");if(!snap){snapInfo=null;renderSim();return}
-  if(!await confirmSheet({title:"恢复到更新前的数据？",ok:"恢复",danger:false,
-    body:`会把歌、生词和学习记录换回 ${snapLabel(snap)} 自动保存的数据。更新后新加的歌和生词会保留。恢复后 App 会重新打开。`}))return;
-  await commitDelete();
-  try{await putSnapshot(snap,snap.from)}catch(e){logErr("恢复快照",e);toast("恢复失败，数据没有改动："+errText(e),8000);return}
-  location.reload(); // 重新打开时按现在的规则再升级一次
 }
 
 /* ---------- 每日学习 ---------- */
@@ -2580,12 +2611,11 @@ history.replaceState({view:"home"},"");
   cards=new Map((await DB.all("cards")).map(c=>[c.w,c]));
   metaRecs=new Map((await DB.all("meta")).map(m=>[m.key,m]));
   await upgradeData();
-  if(DB.ok)snapInfo=await DB.fresh("last","snapshot").then(s=>s&&{at:s.at,from:s.from,to:s.to,app:s.app});
   if(!metaRecs.has("daily"))await saveDaily(getDaily());
   // 申请持久存储：手机空间紧张时浏览器不会自动清掉 App 的数据
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}
   processCheckin();booted=true;
-  renderHome();renderDbg();renderSim();
+  renderHome();renderDbgShell();renderDbg();renderSim();
   setTimeout(()=>prefetchVoice([...LESSONS.TONE_SETS.flatMap(t=>[1,2,3,4,5,6].map(k=>t.syl+k)),...[...cards.values()].map(c=>c.jp)]),3000);
 })();
 // iOS 切到后台再回来，声音会被暂停：下一次点按时恢复

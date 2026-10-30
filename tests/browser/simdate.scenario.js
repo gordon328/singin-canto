@@ -17,6 +17,7 @@ module.exports = { name: "simdate", async run(b) {
   const today = await b.ev(real);
   b.check("sim-controls", await b.ev(`["simMinus", "simPlus", "simReset", "simDate"].every(id => !!document.getElementById(id))`)
     && (await b.ev(label)).includes("模拟日期 " + today) && (await b.ev(label)).includes("真实 +0 天"));
+  await b.ev(click("#dbgFab")); await b.sleep(300); // 展开调试面板才量得到大小
   b.check("sim-44px", await b.ev(`[...document.querySelectorAll("#dbgSim button, #dbgSim input")].every(e => e.getBoundingClientRect().height >= 44)`));
   const d0 = await b.ev(dueNum);
   await b.ev(click("#simPlus")); await b.sleep(200); await b.ev(click("#simPlus")); await b.sleep(300);
