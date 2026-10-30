@@ -24,6 +24,9 @@
   - `lessons.js`：课程内容（全局 `LESSONS`：`TONE_SETS` 8 组声调字、`toneSetFor(rec, today)` 首页今天用哪组；M6 的入门课也放这里）
   - `proof.js`：编辑歌曲（原「校对歌词」）的时间计算和行操作（全局 `PROOF`：`shiftAll`、`setStart`、`fmtT`、`fmtOffset`；行操作 `toEdit`、`insertAfter`、`split`、`mergeUp`、`remove`、`toSong`，保存时 `toSong` 返回新的 lines/overrides/learned 和原行号→新行号的 map，用来更新卡片出处）
   - `gesture.js`：手势判断纯函数（全局 `GESTURE`：`dragDismissDecision`，弹层下拉关闭）
+  - `checkin.js`：打卡规则纯函数（全局 `CHECKIN`：`normalize`、`qualifies`、`markDone`、`process`（发休息卡、补漏打卡）、`streak`、`total`、`best`、`level`、`weekOf`、`monthGrid`、`detail`、`merge`、`isoWeek`、`addDays`），数据在 meta `checkin`（规格 7.9）
+  - 时间：日期和复习相关的「现在」都用 `appNow()`（= 真实时间 + 调试面板「模拟日期」的天数，存 localStorage `yc-simdays`，只在调试面板打开时生效）；只有 `uid` 和歌词滚动计时用 `Date.now()`
+  - 打卡：完成页 `renderDone()` 里 `checkinToday()`；启动、切回前台、改模拟日期时 `onDayChange()` → `processCheckin()`；日历页 `calendarView`（首页那一行进入，DEPTH 1，`renderCalendar()`）
   - `voice.js`：标准发音的音节清单和纯函数（全局 `VOICE`：`HAS`、`plan(jp)`、`url`、`trimRange`、`GAP`）
   - `pack.js`：词汇包纯函数（全局 `PACK`：`buildPrompt`、`parsePack(raw, lines)`、`computeLineFor(song, li, autoJp)`、`fixText`、`HAN`）。词汇包 v3（`v:3`）覆盖整首歌的词，只有 `key:true` 的显示下划线；导入时整包里有一个词带 `key` 字段就按 v3 处理，整包都没有 `key` 是旧格式、全部当重点词。页面里 `computeLineFor(song, li)` / `computeLine(li)` 是它的包装
   - `study.js`：每日学习规则（全局 `STUDY`：`progressOf`、`withLearned`、`mergeProgress`、`currentSong`、`setCurrent`、`goalOf`、`dailyFor`，`GOALS` 2/4/6、`GOAL_MIN` 1、`GOAL_MAX` 20）。页面里 `getDaily()` / `saveDaily(rec)` 读写 meta `daily`。M4b 的学习流程也写在这里
@@ -91,9 +94,10 @@
 - **我的生词：筛选和多选**（v20，待 iPhone 验收）：全部 / 学习中 / 已认识 / 今天到期（带数量）、搜索汉字/粤拼/意思、「选择」多选 +「全选」（只选当前筛选结果）、底部「标为认识 / 取消认识 / 删除」（删除 5 秒撤销）。取消认识 = 明天凌晨 4 点开始复习。见规格 6.3
 - **M4b 完成**（2026-10-29 iPhone 验收通过，含验收反馈：底部按钮动画、首页紧凑一行、原唱只播这一句、「＋ 导入新歌」和「保存」常驻）：首页「今天的学习」（M5 前不显示复习格）、学词卡片、整句（原唱 0.8× 循环）、完成页、再学 2 句、中途退出继续、副歌和没汉字的句子自动跳过、「设为正在学」、整首学完「选下一首歌」。细节见规格 9 M4b
 - **v22**：首页底部渐进模糊上边缘对齐「＋ 导入新歌」（`fitEdgeBlur()` 按按钮位置算），最强 4px
-- **v23（2026-10-30，待 iPhone 验收）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
-- **v24（2026-10-30，待 iPhone 验收）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒；有录音时不再显示「系统朗读可能读错」。
-- **v25（2026-10-30，待 iPhone 验收）**：开发者听过决定多字词保持录音连读；整句「标准慢读」也改成逐字录音（停 0.3 秒，有音节没录音时整句退回系统朗读）。下一步：测好后做第四部分（打卡与皮肤，先合并规格、规划前半「打卡」）
+- **v23（2026-10-30）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
+- **v24（2026-10-30）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒；有录音时不再显示「系统朗读可能读错」。iPhone 验收通过
+- **v25（2026-10-30）**：开发者听过决定多字词保持录音连读；整句「标准慢读」也改成逐字录音（停 0.3 秒，有音节没录音时整句退回系统朗读）。2026-10-30 iPhone 验收通过
+- **v26（2026-10-30，待 iPhone 验收）**：M5.5 前半「打卡」（规格 7.9，计划 `docs/superpowers/plans/2026-10-30-m55a-checkin.md`）：首页连续/累计天数、日历页、完成页本周格子和打卡动画、休息卡、调试面板模拟日期、备份合并打卡记录。下一步：测好后做后半「皮肤」（解锁弹窗、设置里的皮肤页、夜曲和晨雾配色）
 - 设计截图：`docs/design/player-wordcard.png`（首页、播放、词卡）、`docs/design/learn-line-done-edit.png`（学词、整句、完成、校对歌词）。里面的句子是设计时编的示例，不是真实歌词
 
 ## 下一步（按顺序）

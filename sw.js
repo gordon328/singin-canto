@@ -3,7 +3,7 @@
    - 标准发音录音（audio/）：内容不会变，先用缓存，没有再联网下载并存起来。单独一个缓存，换版本不删
    - 歌词搜索（lrclib）等其他网站的请求：不缓存，照常联网
    每次改了要缓存的文件列表，把 VERSION 加一。 */
-const VERSION = "v25";
+const VERSION = "v26";
 const CACHE = "yuechang-" + VERSION;
 const VOICE_CACHE = "voice-hiujin-1";
 const SHELL = ["./", "./pack.js", "./srs.js", "./study.js", "./checkin.js", "./lessons.js", "./proof.js", "./gesture.js", "./backup.js", "./voice.js", "./vendor/to-jyutping.js", "./fonts/outfit-500.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700.woff2", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];

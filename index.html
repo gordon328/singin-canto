@@ -892,7 +892,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v25";
+const APP_VERSION="v26";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
