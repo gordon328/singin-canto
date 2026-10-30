@@ -148,3 +148,45 @@ test("normalize", () => {
   assert.deepEqual(C.normalize({ days: { "bad": { type: "done" }, "2026-10-29": { type: "bogus" }, "2026-10-28": null, "2026-10-27": { type: "rest" } } }, "2026-10-30").days,
     { "2026-10-27": { type: "rest" } });
 });
+
+// ---- 皮肤解锁记录（v0.33，数据格式第 5 版）：unlocked 保持文字数组，来源记在 unlockedInfo ----
+test("fresh：丁香是默认解锁的", () => {
+  const f = C.fresh("2026-10-31");
+  assert.deepEqual(f.unlocked, ["lilac"]);
+  assert.deepEqual(f.unlockedInfo, { lilac: { by: "default" } });
+});
+test("normalize-keeps-unknown-fields：不认识的字段原样留着", () => {
+  const n = C.normalize(rec({ future: { x: 1 }, note: "以后加的" }), "2026-10-31");
+  assert.deepEqual(n.future, { x: 1 }); assert.equal(n.note, "以后加的");
+});
+test("normalize：旧记录补上 unlockedInfo（丁香 default，其他 legacy）", () => {
+  const n = C.normalize({ ...rec({}), unlocked: ["lilac", "night"], unlockedInfo: undefined }, "2026-10-31");
+  assert.deepEqual(n.unlocked, ["lilac", "night"]);
+  assert.deepEqual(n.unlockedInfo, { lilac: { by: "default" }, night: { by: "legacy" } });
+});
+test("normalize-object-format：规格里的对象格式也认", () => {
+  const n = C.normalize({ ...rec({}), unlocked: [{ id: "night", by: "streak", at: "2026-11-02" }, "lilac", { bad: 1 }] }, "2026-11-03");
+  assert.deepEqual(n.unlocked, ["night", "lilac"]);
+  assert.deepEqual(n.unlockedInfo.night, { by: "streak", at: "2026-11-02" });
+  assert.deepEqual(n.unlockedInfo.lilac, { by: "default" });
+});
+test("normalize：已有的 unlockedInfo 保留", () => {
+  const n = C.normalize(rec({ unlocked: ["lilac", "mist"], unlockedInfo: { lilac: { by: "default" }, mist: { by: "songs", at: "2026-10-31" } } }), "2026-10-31");
+  assert.deepEqual(n.unlockedInfo.mist, { by: "songs", at: "2026-10-31" });
+});
+test("unlock-adds-once", () => {
+  const a = C.unlock(C.fresh("2026-10-31"), "night", "streak", "2026-11-02");
+  assert.deepEqual(a.unlocked, ["lilac", "night"]);
+  assert.deepEqual(a.unlockedInfo.night, { by: "streak", at: "2026-11-02" });
+  const b = C.unlock(a, "night", "code", "2026-11-05");
+  assert.equal(b, a, "已经有就原样返回");
+});
+test("merge-unlocked-info：按 id 合并，两边都有时留早的", () => {
+  const local = rec({ unlocked: ["lilac", "night"], unlockedInfo: { lilac: { by: "default" }, night: { by: "streak", at: "2026-11-05" } } });
+  const inc = rec({ unlocked: ["lilac", "night", "mist"], unlockedInfo: { lilac: { by: "default" }, night: { by: "streak", at: "2026-11-02" }, mist: { by: "songs", at: "2026-11-04" } } });
+  const m = C.merge(local, inc);
+  assert.deepEqual(m.unlocked, ["lilac", "night", "mist"]);
+  assert.equal(m.unlockedInfo.night.at, "2026-11-02");
+  assert.deepEqual(m.unlockedInfo.mist, { by: "songs", at: "2026-11-04" });
+  assert.equal(m.theme, local.theme);
+});

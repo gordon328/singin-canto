@@ -22,7 +22,8 @@ function assertKept(before, after) {
   const cards = before.cards || [];
   assert.equal(after.cards.length, cards.length, "卡片数量");
   for (const c of cards) assert.deepEqual(after.cards.find(x => x.w === c.w), c, "卡片没变：" + c.w);
-  for (const m of before.meta || []) assert.deepEqual(after.meta.find(x => x.key === m.key), m, "meta 没变：" + m.key);
+  // meta：原有字段一个不少、值不变；迁移可以新加字段（只加不删）
+  for (const m of before.meta || []) { const a = after.meta.find(x => x.key === m.key); assert.ok(a, "meta 还在：" + m.key); for (const k of Object.keys(m)) assert.deepEqual(a[k], m[k], `meta ${m.key}.${k} 没变`); }
 }
 
 test("每一版数据格式都有示例数据（以后改数据结构要加一份）", () => {
@@ -92,4 +93,16 @@ test("新导出的备份：记着 dataVersion 和 App 版本，不带本机专�
   assert.ok(!o.meta.some(m => m.key === "dataVersion" || m.key === "backup"));
   const back = DATA.upgradeBackup(BACKUP.parse(JSON.stringify(o)).obj);
   assertKept({ songs: o.songs, cards: o.cards, meta: o.meta }, back);
+});
+
+test("第 5 版：打卡记录补上 unlockedInfo，其他不动", () => {
+  const fx = load("data-v4.json");
+  const r = DATA.migrate(fx, 4).data;
+  const ci = r.meta.find(m => m.key === "checkin");
+  assert.deepEqual(ci.unlocked, ["lilac"]);
+  assert.deepEqual(ci.unlockedInfo, { lilac: { by: "default" } });
+  const old = fx.meta.find(m => m.key === "checkin");
+  for (const k of Object.keys(old)) assert.deepEqual(ci[k], old[k], k);
+  const r2 = DATA.migrate({ ...fx, meta: fx.meta.filter(m => m.key !== "checkin") }, 4).data;
+  assert.ok(!r2.meta.some(m => m.key === "checkin"), "没有打卡记录就不建");
 });

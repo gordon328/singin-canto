@@ -45,7 +45,7 @@ module.exports = { name: "data", async run(b) {
   // ---- 每一版旧数据：打开 App 自动升级 ----
   // v0.30 以前的设备没记 dataVersion：只有 songs 表算第 1 版，有 meta 表一律按第 2 版从头升级（每一步都不会重复改数据）
   // 最后一项模拟以后的设备：记着 dataVersion 3
-  for (const [f, mark] of [["data-v1.json"], ["data-v2.json"], ["data-v3.json"], ["data-v4.json"], ["data-v3.json", 3]]) {
+  for (const [f, mark] of [["data-v1.json"], ["data-v2.json"], ["data-v3.json"], ["data-v4.json"], ["data-v5.json"], ["data-v3.json", 3], ["data-v5.json", 5]]) {
     const d = fx(f), name = f + (mark ? "-marked" : "");
     if (mark) d.meta = [...d.meta, { key: "dataVersion", v: mark }];
     await b.nav("/__blank"); await b.ev(seedOld(d)); await b.nav("/");
@@ -55,7 +55,7 @@ module.exports = { name: "data", async run(b) {
     b.check(`${name}-upgraded`, dv && dv.v === DATA.VERSION);
     b.check(`${name}-kept`, await kept(b, d));
     b.check(`${name}-home-shows-songs`, (await b.ev(`document.querySelectorAll("#songs .song").length`)) === d.songs.length);
-    b.check(`${name}-snapshot`, !!snap && snap.from === from && snap.to === DATA.VERSION && snap.app === APP
+    if (from === DATA.VERSION) b.check(`${name}-no-upgrade-no-snapshot`, !snap); else b.check(`${name}-snapshot`, !!snap && snap.from === from && snap.to === DATA.VERSION && snap.app === APP
       && snap.data.songs.length === d.songs.length && snap.data.songs.every(s => !("audio" in s)) && same(snap.data.prefs, d.prefs || {}));
     b.check(`${name}-prefs-kept`, same(await b.ev(`JSON.parse(localStorage.getItem("yc-prefs"))`), { ...(d.prefs || {}) }));
     b.check(`${name}-stores`, same(await b.ev(stores), ["cards", "meta", "snapshot", "songs"]));
@@ -81,7 +81,7 @@ module.exports = { name: "data", async run(b) {
   b.check("fresh-safari-tip", (await b.ev(`document.querySelector("#bkTip").innerText`)) === "建议添加到主屏幕使用，数据更不容易丢失" && await b.ev(visible("#bkTip")));
 
   // ---- 每一种旧备份都能导入（先迁移再合并）----
-  for (const f of ["backup-v1.json", "backup-v2-m1.json", "backup-v2-m4.json", "backup-v2-v029.json", "backup-v3.json"]) {
+  for (const f of ["backup-v1.json", "backup-v2-m1.json", "backup-v2-m4.json", "backup-v2-v029.json", "backup-v3.json", "backup-v3-dv5.json"]) {
     const d = fx(f);
     await b.nav("/__blank"); await b.ev(`(localStorage.clear(), ${F.WIPE})`); await b.nav("/");
     const msg = await b.ev(F.restoreText(fxText(f)));

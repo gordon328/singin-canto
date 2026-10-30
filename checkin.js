@@ -32,7 +32,32 @@
   // ---- 记录 ----
   const DAY_RE = /^\d{4}-\d{2}-\d{2}$/, WEEK_RE = /^\d{4}-W\d{2}$/;
   function fresh(today) {
-    return { key: "checkin", days: {}, restTokens: 1, lastTokenWeek: isoWeek(today), lastProcessed: addDays(today, -1), bestStreak: 0, unlocked: ["lilac"], theme: "lilac" };
+    return { key: "checkin", days: {}, restTokens: 1, lastTokenWeek: isoWeek(today), lastProcessed: addDays(today, -1), bestStreak: 0,
+      unlocked: ["lilac"], unlockedInfo: { lilac: { by: "default" } }, theme: "lilac" };
+  }
+  // 已解锁的皮肤：unlocked 是 id 的文字数组（v26 起的格式，不改）；来源和日期记在 unlockedInfo（v0.33，数据格式第 5 版）。
+  // 也认规格里的对象格式 {id, by, at}，转成这两个字段。缺来源的：丁香 default，其他 legacy（v0.33 以前解锁的）
+  function cleanUnlocked(list, info) {
+    const ids = [], out = {};
+    const src = info && typeof info === "object" && !Array.isArray(info) ? info : {};
+    for (const u of Array.isArray(list) ? list : []) {
+      const id = typeof u === "string" ? u : u && typeof u.id === "string" ? u.id : "";
+      if (!id || ids.includes(id)) continue;
+      ids.push(id);
+      if (u && typeof u === "object" && typeof u.by === "string") out[id] = { by: u.by, ...(typeof u.at === "string" ? { at: u.at } : {}) };
+    }
+    if (!ids.includes("lilac")) ids.unshift("lilac");
+    for (const id of ids) {
+      const e = src[id];
+      if (e && typeof e === "object" && typeof e.by === "string") out[id] = e;
+      else if (!out[id]) out[id] = { by: id === "lilac" ? "default" : "legacy" };
+    }
+    return { unlocked: ids, unlockedInfo: out };
+  }
+  // 解锁一个皮肤（已经有就原样返回）
+  function unlock(rec, id, by, today) {
+    if ((rec.unlocked || []).includes(id)) return rec;
+    return { ...rec, unlocked: [...(rec.unlocked || []), id], unlockedInfo: { ...(rec.unlockedInfo || {}), [id]: { by, at: today } } };
   }
   const num = (v) => typeof v === "number" && isFinite(v) && v >= 0;
   function cleanDays(days) {
@@ -43,16 +68,16 @@
   }
   function normalize(rec, today) {
     if (!rec || typeof rec !== "object" || Array.isArray(rec)) return fresh(today);
-    const unlocked = Array.isArray(rec.unlocked) ? rec.unlocked.filter(s => typeof s === "string") : [];
-    if (!unlocked.includes("lilac")) unlocked.unshift("lilac");
+    // 先放原记录：不认识的字段（以后的版本加的）原样留着
     return {
+      ...rec,
       key: "checkin",
       days: cleanDays(rec.days),
       restTokens: num(rec.restTokens) ? Math.floor(rec.restTokens) : 0,
       lastTokenWeek: typeof rec.lastTokenWeek === "string" && WEEK_RE.test(rec.lastTokenWeek) ? rec.lastTokenWeek : isoWeek(today),
       lastProcessed: typeof rec.lastProcessed === "string" && DAY_RE.test(rec.lastProcessed) ? rec.lastProcessed : addDays(today, -1),
       bestStreak: num(rec.bestStreak) ? rec.bestStreak : 0,
-      unlocked,
+      ...cleanUnlocked(rec.unlocked, rec.unlockedInfo),
       theme: typeof rec.theme === "string" && rec.theme ? rec.theme : "lilac",
     };
   }
@@ -144,14 +169,25 @@
       days,
       restTokens: Math.max(local.restTokens || 0, incoming.restTokens || 0),
       bestStreak: Math.max(local.bestStreak || 0, incoming.bestStreak || 0),
-      unlocked: [...new Set([...(local.unlocked || []), ...(incoming.unlocked || [])])],
+      ...mergeUnlocked(local, incoming),
       lastTokenWeek: later(local.lastTokenWeek, incoming.lastTokenWeek),
       lastProcessed: later(local.lastProcessed, incoming.lastProcessed),
       theme: local.theme,
     };
   }
 
-  const CHECKIN = { addDays, weekday, isoWeek, fresh, normalize, qualifies, markDone, process, streak, total, best, dayState, weekOf, monthGrid, detail, merge };
+  // 已解锁的皮肤取并集；同一个皮肤两边都有来源时，留解锁得早的那个
+  function mergeUnlocked(local, incoming) {
+    const a = cleanUnlocked(local.unlocked, local.unlockedInfo), b = cleanUnlocked(incoming.unlocked, incoming.unlockedInfo);
+    const info = { ...a.unlockedInfo };
+    for (const [id, e] of Object.entries(b.unlockedInfo)) {
+      const l = info[id];
+      if (!l || (e.at && (!l.at || e.at < l.at))) info[id] = e;
+    }
+    return { unlocked: [...new Set([...a.unlocked, ...b.unlocked])], unlockedInfo: info };
+  }
+
+  const CHECKIN = { addDays, weekday, isoWeek, fresh, normalize, cleanUnlocked, unlock, qualifies, markDone, process, streak, total, best, dayState, weekOf, monthGrid, detail, merge };
   root.CHECKIN = CHECKIN;
   if (typeof module !== "undefined" && module.exports) module.exports = CHECKIN;
 })(typeof self !== "undefined" ? self : globalThis);

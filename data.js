@@ -7,13 +7,14 @@
      2  M1（2026-10-27）：加了生词卡片（cards）和杂项（meta）
      3  M4a（2026-10-28）：「每天新学几句」从 localStorage 的 prefs.goal 搬到 meta daily；歌曲加学习进度 progress
      4  v0.26（2026-10-30）：meta 加打卡记录 checkin（含休息卡）
+     5  v0.33（2026-10-31）：打卡记录加 unlockedInfo（已解锁皮肤的来源和日期）；unlocked 还是 id 的文字数组
 
    迁移函数的输入输出都是 { songs, cards, meta, prefs }：
      songs/cards/meta 是数组（歌曲里不带音频），prefs 是 localStorage yc-prefs 的内容（备份文件里没有，是 null）。
    以后改数据结构：VERSION 加一，在 STEPS 里加一个「从上一版升到这一版」的函数，并在 tests/fixtures/ 加一份这一版的示例数据。 */
 (function (root) {
   "use strict";
-  const VERSION = 4;
+  const VERSION = 5;
 
   const STEPS = {
     // 1 → 2（M1）：加生词卡片和 meta，旧数据里没有就是空的
@@ -29,6 +30,17 @@
     },
     // 3 → 4（v0.26）：打卡记录 checkin 第一次用时才建（CHECKIN.normalize 给默认值），旧数据不用改
     4(d) { return d; },
+    // 4 → 5（v0.33）：已解锁的皮肤补上来源：丁香 default，其他 legacy。unlocked 不动。迁移写死在这里，以后改 checkin.js 也不影响
+    5(d) {
+      const meta = d.meta.map(m => {
+        if (!m || m.key !== "checkin" || (m.unlockedInfo && typeof m.unlockedInfo === "object")) return m;
+        const ids = Array.isArray(m.unlocked) ? m.unlocked.filter(x => typeof x === "string") : [];
+        const unlockedInfo = {};
+        for (const id of ids.includes("lilac") ? ids : ["lilac", ...ids]) unlockedInfo[id] = { by: id === "lilac" ? "default" : "legacy" };
+        return { ...m, unlockedInfo };
+      });
+      return { ...d, meta };
+    },
   };
 
   // 从 from 版一步步升到最新版。返回 { data, from, to, steps }；from 比最新还新、或不是整数时抛错
