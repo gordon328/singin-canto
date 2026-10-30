@@ -64,9 +64,10 @@
   - `skins/registry.js`：`SKIN_IDS`（加皮肤只在这里加一行），页面里按顺序同步加载皮肤文件；`sw.js` 用它自动缓存
   - `skins/skin.js`（`SKIN`）：`cssVars`、`stylesheet`、`colorsFor`、`check`（颜色自动检查，`tests/skins.test.js`，不通过不能上线）、`pick`；`skins/unlock-rules.js`（`UNLOCK`）：`RULES`、`context`、`newlyUnlocked`
   - `<head>` 里「皮肤：开始/结束」那一块：生成样式表、按 localStorage `yc-skin` 在第一帧前套用、全局 `applySkin(id,{animate})`（0.3 秒过渡、theme-color）。当前皮肤记在 meta `checkin.theme`，已解锁 `checkin.unlocked`（文字数组）+ `unlockedInfo`（来源、日期）；`syncSkin()` 启动和恢复备份后按记录换皮肤（不存在或没解锁用丁香）
+  - **要输入文字的界面不能放在底部弹窗里**（设计规范 5.16）：用独立页面或页面里的输入框（兑换码 `redeemView`、词汇包 `packView`）；实在要放底部必须用 visualViewport 跟着键盘上移。测试 `inputpages` 会检查所有 `openSheet` 里没有文字输入框
   - 输入框（设计规范 5.14）：卡片里底色 `--bg`、页面上 `.on-page` 用 `--surface`；1px `--field-border`（引擎给，=muted，颜色检查 ≥ 3:1），点进去 1.5px 主色。新加输入框不用另写样式
   - 设置 › 外观 › 皮肤 `skinsView`（DEPTH 2，分「已拥有」「未解锁」两组，`openSkinsPage()` 处理刚解锁的移位动画，`renderSkins()`、`skinPreview(def,size)`、`useSkin(id)`）；解锁 `checkUnlocks()`（启动、回到首页、完成页打卡动画后、恢复备份后）；没弹过窗的记在 `checkin.unseen`，`showUnlocks()` 一个个弹，学习中间不弹
-  - 兑换码（开发规格 7.10.4）：`skins/redeem.js`（`REDEEM`：`normalize`、`sha256`、`generate`、`plan`、`MESSAGES`）、`skins/codes.js`（`SKIN_CODES`，只有哈希）、`tools/make-code.js`；设置 › 关于 › 兑换码 `openRedeem()`/`doRedeem()`；兑换记录 meta `redeemed`（随备份，按哈希合并）。兑换码解锁的皮肤弹窗标题是「兑换成功」
+  - 兑换码（开发规格 7.10.4）：`skins/redeem.js`（`REDEEM`：`normalize`、`sha256`、`generate`、`plan`、`MESSAGES`）、`skins/codes.js`（`SKIN_CODES`，只有哈希）、`tools/make-code.js`；设置 › 关于 › 兑换码 → 整页 `redeemView`（`openRedeem()` 先 `holdKeyboard()` 再切页，`focusRedeem()` 交焦点；`doRedeem()`，成功弹窗关掉后回设置页）；兑换记录 meta `redeemed`（随备份，按哈希合并）。兑换码解锁的皮肤弹窗标题是「兑换成功」
   - 开发者模式（7.10.5）：meta `devMode`（`{on}`，不随备份导出，localStorage `yc-dev` 是启动时的副本，`syncDev()` 以数据库为准）；设置页最下面「开发者」组 → `devView`（DEPTH 2，`renderDev()`、`devAction()`：调试面板开关、模拟日期、解锁全部皮肤 / 恢复按条件解锁、重置今日打卡、清空休息卡、关闭开发者模式，都先确认）。**调试面板和模拟日期只在开发者模式下有效**，连点版本号也是；测试里用 `F.DEV_ON` 打开
   - 加新皮肤按 `docs/皮肤/README.md`；每个皮肤的说明在 `docs/皮肤/<id>.md`
 - 界面按 `docs/设计规范.md`（「丁香」风格），组件里只用 CSS 变量，不写颜色值。中文用系统苹方；粤拼、数字用 Outfit（自带在 `fonts/`，OFL）。不从任何外部网站加载字体或脚本
@@ -114,7 +115,8 @@
 - **v23（2026-10-30）**：修编辑歌曲页能左右拖（「更换音频」里的选文件框在 iPhone 上超出屏幕，现在钉在按钮左上角、按钮 `overflow:hidden`；`html, body { overflow-x: clip }` 保险）；所有弹窗统一间距、都有拖动条（确认类往下拖 = 取消）；选择模式不再挪动别的元素（勾选框改到右边、「选择」「完成」60 宽、「我的歌」行固定高、生词列表留白固定）；齿轮按下就转 60 度（0.5 秒 ease-out，取消转回）；全 App 视觉对齐（设计规范 4.4），新增 `visual` 截图测试。2026-10-30 iPhone 验收通过
 - **v24（2026-10-30）**：发音改进。开发者在试听页选了 Hiujin；标准发音换成单音节录音（规格 7.8）、「慢速再听」改名「逐字听」、多字词音节连读停 0.05 秒；有录音时不再显示「系统朗读可能读错」。iPhone 验收通过
 - **v25（2026-10-30）**：开发者听过决定多字词保持录音连读；整句「标准慢读」也改成逐字录音（停 0.3 秒，有音节没录音时整句退回系统朗读）。2026-10-30 iPhone 验收通过
-- **v0.35（2026-10-31，待 iPhone 验收）**：兑换码（只存哈希、`tools/make-code.js`、兑换记录随备份，数据格式第 6 版）和开发者模式（设置页最下面，调试面板 / 模拟日期只在开发者模式下有效）
+- **v0.36（2026-10-31，待 iPhone 验收）**：兑换码、词汇包改成整页（键盘不再挡住输入框）；设计规范 5.16「要输入文字的界面不放在底部弹窗里」
+- **v0.35（2026-10-31）**：兑换码（只存哈希、`tools/make-code.js`、兑换记录随备份，数据格式第 6 版）和开发者模式（设置页最下面，调试面板 / 模拟日期只在开发者模式下有效）
 - **v0.34（2026-10-31）**：输入框统一（深色下看得清）、颜色检查加输入框边框 ≥ 3:1；皮肤页分「已拥有」「未解锁」两组，解锁后移位动画；分组小标题 12px
 - **v0.33（2026-10-31）**：M5.5 后半「皮肤」（计划 `docs/superpowers/plans/2026-10-31-m55b-skins.md`）：丁香 / 夜曲（连续打卡 3 天）/ 晨雾（学会第一首歌）三个独立皮肤文件、颜色自动检查、「今天的学习」小格和按钮变量、设置 › 皮肤页、解锁弹窗、数据格式第 5 版（`unlockedInfo`）。兑换码和开发者模式下一次做
 - **v0.32（2026-10-31）**：删掉「恢复到更新前的数据」（快照只在后台：迁移前存、失败自动恢复）；调试面板可以收起：`#dbgWrap` 里小圆按钮 `#dbgFab`（44px 半透明，默认收起，可拖动，松手吸到左边或右边，位置存 localStorage `yc-dbgpos`，top ≥ 120 不进状态栏；展开时挪到面板上方）+ 面板 `#dbgPanel`（下半屏，`.dbg-body` 能滚动，没有暗幕；里面是 `#dbg` 触摸记录、`#dbgSim` 模拟日期、`#dbgData` 数据和最近的错误）。`setDbgOpen()`、`renderDbgShell()`；收起时照常记录。测试 `dbgfab`

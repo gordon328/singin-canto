@@ -27,11 +27,11 @@ module.exports = { name: "forms", async run(b) {
   await collect("player");
   await b.ev(`document.querySelector("#btnMenu").click()`); await b.sleep(500);
   await collect("menu");
-  await b.ev(`document.querySelector('[data-menu="pack"]').click()`); await b.sleep(500);
-  b.check("pack-sheet", await b.ev(`[...document.querySelectorAll("#sheet textarea")].every(e => parseFloat(getComputedStyle(e).fontSize) >= 16)`) && !(await b.ev(OLD_ACCENT)));
+  await b.ev(`document.querySelector('[data-menu="pack"]').click()`); await b.sleep(900);
+  b.check("pack-page", await b.ev(`[...document.querySelectorAll("#packView textarea")].every(e => parseFloat(getComputedStyle(e).fontSize) >= 16)`) && !(await b.ev(OLD_ACCENT)));
   await collect("pack");
   await b.shot("pack-light");
-  await F.closeSheet(b); await b.nav("/");
+  await b.nav("/");
   await b.ev(`document.querySelector("#btnSettings").click()`); await b.sleep(800);
   b.check("backup-sheet", await b.ev(`document.querySelector("#bkExport").classList.contains("cell") && !document.querySelector("#settingsView textarea")`) && !(await b.ev(OLD_ACCENT)));
   await collect("backup");

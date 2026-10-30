@@ -3,7 +3,7 @@ const F = require("./fixtures.js");
 const click = sel => `document.querySelector(${JSON.stringify(sel)}).click()`;
 const charCls = (li, ci) => `document.querySelector('#lyrics .line[data-li="${li}"] .c[data-ci="${ci}"]').className`;
 const hasW = (li, ci) => `document.querySelector('#lyrics .line[data-li="${li}"] .c[data-ci="${ci}"]').hasAttribute("data-w")`;
-async function openPack(b) { await b.ev(click("#btnMenu")); await b.sleep(400); await b.ev(click('[data-menu="pack"]')); await b.sleep(600); }
+async function openPack(b) { await b.ev(click("#btnMenu")); await b.sleep(400); await b.ev(click('[data-menu="pack"]')); await b.sleep(900); } // v0.36 起是整页
 // 第 0 句是「我穿風褸出去」
 const V3 = JSON.stringify({ summary: "测试大意", fix: [], words: [
   { w: "風褸", jp: "fung1 lau1", zh: "风衣", key: true, tip: "褸读 lau1" },
@@ -18,12 +18,11 @@ module.exports = { name: "pack", async run(b) {
   await openPack(b);
   const prompt = await b.ev(`document.querySelector("#promptBox").value`);
   b.check("prompt-v3", prompt.includes("所有") && prompt.includes('"key": true'));
-  const sheet = await b.ev(F.sheetText);
+  const sheet = await b.ev(`document.querySelector("#packView").innerText`);
   b.check("pack-sheet-copy", sheet.includes("每个词") && !sheet.includes("挑出这首歌的重点词"));
 
   await b.ev(`document.querySelector("#packIn").value = ${JSON.stringify(V3)}`);
-  await b.ev(click("#doImport")); await b.sleep(700);
-  if (!(await b.ev(`document.querySelector("#sheet").hidden`))) await F.closeSheet(b);
+  await b.ev(click("#doImport")); await b.sleep(1100); // 导入成功回到歌曲页
   b.check("import-v3", (await b.ev(charCls(0, 2))).includes("key") && (await b.ev(charCls(0, 3))).includes("key")
     && !(await b.ev(charCls(0, 0))).includes("key") && await b.ev(hasW(0, 0)) && !(await b.ev(charCls(0, 4))).includes("key"));
 

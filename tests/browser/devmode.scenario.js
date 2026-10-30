@@ -14,9 +14,9 @@ const cell = t => `[...document.querySelectorAll("#devView .cell")].find(e => e.
 async function confirm(b, ok = true) { await b.sleep(400); await b.ev(`document.querySelector('#sheetBody [data-confirm="${ok ? "ok" : "cancel"}"]').click()`); await b.sleep(600); }
 async function openDev(b) { await b.nav("/"); await b.ev(click("#btnSettings")); await b.sleep(800); await b.ev(click("#devRow")); await b.sleep(900); }
 async function enterCode(b, code) {
-  await b.ev(click("#btnRedeem")); await b.sleep(500);
+  await b.ev(click("#btnRedeem")); await b.sleep(900);
   await b.ev(`(() => { const i = document.querySelector("#rdIn"); i.value = ${JSON.stringify(code)}; i.dispatchEvent(new Event("input", { bubbles: true })); })()`);
-  await b.ev(click("#rdGo")); await b.sleep(900);
+  await b.ev(click("#rdGo")); await b.sleep(1300); // 成功后回到设置页
 }
 
 module.exports = { name: "devmode", async run(b) {

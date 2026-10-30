@@ -37,8 +37,8 @@ module.exports = { name: "visual", async run(b) {
 
   await F.openSong(b, "t1"); await page("player");
   await b.ev(click("#btnMenu")); await b.sleep(500); await page("player-menu");
-  await b.ev(click('[data-menu="pack"]')); await b.sleep(700); await page("sheet-pack");
-  await F.closeSheet(b);
+  await b.ev(click('[data-menu="pack"]')); await b.sleep(900); await page("pack"); // v0.36 起词汇包是整页
+  await b.ev("history.back()"); await b.sleep(1000);
   await b.ev(F.tapChar(0, 2)); await b.sleep(700); await page("sheet-word");
   await F.closeSheet(b);
 

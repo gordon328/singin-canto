@@ -488,6 +488,7 @@ label.btn{overflow:hidden}
 .sgrp-note{padding:8px 16px 0;font-size:13px;line-height:1.6;color:var(--muted)}
 /* 兑换码弹窗（设计规范 5.15）：输入框 + 提示（固定高度，出现提示时按钮不挪动）+ 兑换按钮 */
 .rd-msg{min-height:20px;font-size:14px;line-height:20px;color:var(--danger)}
+.rd-note{margin:0;padding:0 4px}
 /* 开发者模式页面（设计规范 5.15）：开关、模拟日期、危险操作 */
 .sw{flex:none;position:relative;width:51px;height:31px;border-radius:16px;background:var(--rule);transition:background-color var(--dur) var(--ease)}
 .sw i{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:var(--surface);box-shadow:0 0 0 1px var(--field-border);transition:transform var(--dur) var(--ease)}
@@ -859,6 +860,31 @@ label.btn{overflow:hidden}
   </div>
 </section>
 
+<!-- REDEEM：兑换码（设置 › 关于进入，整页；设计规范 5.15、5.16：要输入文字的界面不放在底部弹窗里） -->
+<section id="redeemView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>兑换码</b></div>
+  </div></div>
+  <div class="wrap form">
+    <div class="card field">
+      <input type="text" id="rdIn" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="CANTO-XXXX-XXXX-XXXX" aria-label="兑换码">
+      <div class="rd-msg" id="rdMsg" role="status"></div>
+      <button class="btn primary block" type="button" id="rdGo">兑换</button>
+    </div>
+    <p class="note rd-note">兑换码可以解锁皮肤。不区分大小写，空格和连字符可以不输。</p>
+  </div>
+</section>
+
+<!-- PACK：词汇包（歌曲页「⋯」进入，整页；粘贴框不能放在底部弹窗里） -->
+<section id="packView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>词汇包</b><span id="packSub"></span></div>
+  </div></div>
+  <div class="wrap form" id="packBody"></div>
+</section>
+
 <!-- DEV：开发者模式（设置页最下面进入，开发规格 7.10.5） -->
 <section id="devView" hidden>
   <div class="bar"><div class="wrap">
@@ -1005,8 +1031,8 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView","changelogView","skinsView","devView"];
-const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2,changelogView:2,skinsView:2,devView:2};
+const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView","changelogView","skinsView","devView","redeemView","packView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2,changelogView:2,skinsView:2,devView:2,redeemView:2,packView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
@@ -1020,9 +1046,10 @@ function show(id,dir){
   const from=$("#"+curView),to=$("#"+id),y=scrollY;
   clearTimeout(navTimer);document.body.classList.remove("navigating");views.forEach(v=>{const el=$("#"+v);el.classList.remove("nav-layer","enter-fwd","leave-fwd","enter-back","leave-back");el.style.cssText=""});
   views.forEach(v=>$("#"+v).hidden=v!==id);window.scrollTo(0,0);curView=id;
-  clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
+  clearPressed();closeMenu(true);if(document.activeElement&&document.activeElement!==document.body&&!document.activeElement.dataset.kb)document.activeElement.blur();
   // 浮动播放条：页面滑入之后再从下方滑入（没有切页动画时马上滑入；减弱动态效果时只淡入）
-  pageButtons();renderDbg();if(id==="home"&&booted)checkUnlocks(); // 回到首页检查解锁（学习中间解锁的、完成页很快离开的，在这里弹）
+  pageButtons();renderDbg();if(id==="home"&&booted)checkUnlocks();
+  if(id==="redeemView")focusRedeem();else dropKeyboardHolder(); // 回到首页检查解锁（学习中间解锁的、完成页很快离开的，在这里弹）
   const BARS=".player,.study-foot";
   document.querySelectorAll(BARS).forEach(p=>p.classList.remove("bar-in"));
   const bars=to.querySelectorAll(BARS),barIn=()=>bars.forEach(x=>x.classList.add("bar-in"));
@@ -1088,6 +1115,8 @@ window.addEventListener("popstate",e=>{
   if(st.view==="calendarView"){renderCalendar();show("calendarView",anim);return}
   if(st.view==="changelogView"){renderChangelog();show("changelogView",anim);return}
   if(st.view==="skinsView"){renderSkins();show("skinsView",anim);return}
+  if(st.view==="redeemView"){show("redeemView",anim);return}
+  if(st.view==="packView"){if(cur&&cur.id===st.songId){renderPack();show("packView",anim);return}history.replaceState({view:"playerView",songId:st.songId},"");if(songs.some(s=>s.id===st.songId)){openSong(st.songId,{restore:true,anim});return}}
   if(st.view==="devView"){if(!devOn){history.replaceState({view:"settingsView"},"");renderSettings();show("settingsView",anim);return}renderDev();show("devView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
@@ -1110,7 +1139,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.35";
+const APP_VERSION="v0.36";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 // 开发者模式（开发规格 7.10.5）：调试面板、模拟日期只在开发者模式下有效。真的记录在 meta devMode；localStorage yc-dev 是启动时就能读的副本，读完数据库后 syncDev() 以数据库为准
 let devOn=false;try{devOn=localStorage.getItem("yc-dev")==="1"}catch(e){}
@@ -2199,38 +2228,45 @@ function openWord(li,ci){
 function computeLineNoOverride(li){const sv=cur.overrides;cur.overrides={};const r=computeLine(li);cur.overrides=sv;return r}
 
 /* ---------- word pack ---------- */
-function openPack(){
-  const prompt=PACK.buildPrompt(cur);
-  openSheet(`
-    <h3>词汇包${cur.pack?' <span class="chip">已导入</span>':""}</h3>
-    <p class="note">词汇包让 Claude 帮你整理这首歌的每个词：正确读音、普通话意思；其中的重点词还有记忆提示，在歌词里显示下划线。再加上整首歌的大意。</p>
-    <ol class="steps">
-      <li><div><button class="btn primary" type="button" id="cpPrompt">复制提示词</button><div class="note" style="margin-top:8px">提示词里已经放好了这首歌的歌词。</div></div></li>
-      <li><div>在 Claude 里新开一个对话，粘贴发送。等它回复完。</div></li>
-      <li><div>复制它回复的整段 JSON，粘贴到下面：</div></li>
-    </ol>
-    <textarea id="promptBox" readonly hidden>${esc(prompt)}</textarea>
-    <textarea id="packIn" placeholder='{"summary": …, "words": [ … ]}'></textarea>
-    <div id="packMsg" class="msgs"></div>
-    <button class="btn primary block" type="button" id="doImport">导入词汇包</button>${cur.pack?'<button class="btn text block danger" type="button" id="rmPack">删除词汇包</button>':""}
-  `);
-  $("#sheetBody").onclick=null;
-  $("#cpPrompt").addEventListener("click",()=>{
-    const box=$("#promptBox");
+function openPack(){if(!cur||navPending)return;renderPack();go("packView",{songId:cur.id})}
+function renderPack(){
+  $("#packSub").textContent=cur.title||"";
+  $("#packBody").innerHTML=`
+    <div class="card field">
+      <div class="label">词汇包${cur.pack?' <span class="chip">已导入</span>':""}</div>
+      <p class="note" style="margin:0">词汇包让 Claude 帮你整理这首歌的每个词：正确读音、普通话意思；其中的重点词还有记忆提示，在歌词里显示下划线。再加上整首歌的大意。</p>
+      <ol class="steps">
+        <li><div><button class="btn primary" type="button" id="cpPrompt">复制提示词</button><div class="note" style="margin-top:8px">提示词里已经放好了这首歌的歌词。</div></div></li>
+        <li><div>在 Claude 里新开一个对话，粘贴发送。等它回复完。</div></li>
+        <li><div>复制它回复的整段 JSON，粘贴到下面：</div></li>
+      </ol>
+      <textarea id="promptBox" readonly hidden>${esc(PACK.buildPrompt(cur))}</textarea>
+      <textarea id="packIn" placeholder='{"summary": …, "words": [ … ]}'></textarea>
+      <div id="packMsg" class="msgs"></div>
+      <button class="btn primary block" type="button" id="doImport">导入词汇包</button>${cur.pack?'<button class="btn text block danger" type="button" id="rmPack">删除词汇包</button>':""}
+    </div>`;
+}
+$("#packBody").addEventListener("click",async e=>{
+  const b=e.target.closest("button");if(!b||!cur)return;
+  if(b.id==="cpPrompt"){
+    const box=$("#promptBox"),prompt=box.value;
     const fallback=()=>{box.hidden=false;box.focus();box.select();toast("自动复制不可用：已选中提示词，请手动复制")};
-    try{navigator.clipboard.writeText(prompt).then(()=>toast("已复制提示词"),fallback)}catch(e){fallback()}
-  });
-  $("#doImport").addEventListener("click",async()=>{
+    try{navigator.clipboard.writeText(prompt).then(()=>toast("已复制提示词"),fallback)}catch(err){fallback()}
+  }
+  else if(b.id==="doImport"){
     const raw=$("#packIn").value;if(!raw.trim()){toast("先粘贴 Claude 的回复");return}
     const r=PACK.parsePack(raw,cur.lines);const msg=$("#packMsg");
     if(r.errs.length){msg.innerHTML=r.errs.slice(0,10).map(x=>`<div class="err">✗ ${esc(x)}</div>`).join("")+(r.errs.length>10?`<div class="err">……还有 ${r.errs.length-10} 个问题</div>`:"")+'<div class="note">可以把这些问题发给 Claude，请它修正后重新输出。</div>';return}
     cur.pack=r.pack;cur.overrides={};cur.updated=appNow();await DB.put(cur);
     buildLyrics();applyToggles();if(loopIdx!=null)setLoop(loopIdx);if(curIdx>=0)$("#lyrics").children[curIdx]?.classList.add("cur");
-    if(r.warns.length){msg.innerHTML=`<div class="ok">✓ 已导入，有 ${r.warns.length} 处小问题已自动处理：</div>`+r.warns.slice(0,8).map(x=>`<div class="note">· ${esc(x)}</div>`).join("");}
-    else{closeSheet();toast("词汇包已导入")}
-  });
-  const rm=$("#rmPack");if(rm)rm.addEventListener("click",async()=>{if(!await confirmSheet({title:"删除词汇包？",body:"重点词的意思、记忆提示和这首歌的大意会被删掉。生词卡片不受影响。"}))return;cur.pack=null;cur.updated=appNow();await DB.put(cur);buildLyrics();applyToggles();closeSheet();toast("词汇包已删除")});
-}
+    if(r.warns.length){msg.innerHTML=`<div class="ok">✓ 已导入，有 ${r.warns.length} 处小问题已自动处理：</div>`+r.warns.slice(0,8).map(x=>`<div class="note">· ${esc(x)}</div>`).join("")}
+    else{$("#packIn").blur();toast("词汇包已导入");goBack()}
+  }
+  else if(b.id==="rmPack"){
+    if(!await confirmSheet({title:"删除词汇包？",body:"重点词的意思、记忆提示和这首歌的大意会被删掉。生词卡片不受影响。"}))return;
+    cur.pack=null;cur.updated=appNow();await DB.put(cur);buildLyrics();applyToggles();toast("词汇包已删除");goBack();
+  }
+});
 
 /* ---------- settings：每天新学几句（M4 接上功能）+ 备份与恢复 ---------- */
 // 齿轮带弹簧转 90 度，同时开始跳转（go() 本来就会先等按钮弹回再切页）；减弱动态效果时 CSS 不播动画
@@ -2427,7 +2463,7 @@ async function checkUnlocks(){
 // 一次只弹一个，弹出时从 unseen 里拿掉，关掉后弹下一个。已经有别的弹窗时等它关掉；学词、整句中间不弹，回到首页或完成页再弹
 function showUnlocks(){
   const rec=getCheckin(),ids=(rec.unseen||[]).filter(x=>typeof x==="string");
-  if(!ids.length)return;
+  if(!ids.length){if(redeemReturn&&$("#sheet").hidden){redeemReturn=false;if(curView==="redeemView")goBack()}return}
   if(!$("#sheet").hidden){setTimeout(showUnlocks,400);return}
   if(curView==="studyView"&&!$("#stBody .st-done"))return;
   const id=ids[0],d=SKIN_DEFS[id];
@@ -2461,13 +2497,23 @@ $("#skinsList").addEventListener("click",async e=>{
 $("#skinRow").addEventListener("click",()=>{if(navPending)return;openSkinsPage();go("skinsView")});
 
 /* ---------- 兑换码（开发规格 7.10.4）：只比对哈希，兑换码原文不在代码里 ---------- */
-function openRedeem(){
-  openSheet(`<h3>兑换码</h3>
-    <input type="text" id="rdIn" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="CANTO-XXXX-XXXX-XXXX" aria-label="兑换码">
-    <div class="rd-msg" id="rdMsg" role="status"></div>
-    <button class="btn primary block" type="button" id="rdGo">兑换</button>`);
-  $("#rdIn").focus(); // 点按钮的同一时刻弹出键盘
+// iPhone 只在手指点按的那一刻允许弹出键盘，切页要晚一点才完成：点的时候先让一个看不见的临时输入框拿到焦点（键盘弹出来），
+// 页面滑进来后再把焦点交给真的输入框（键盘不会收起）
+function holdKeyboard(){
+  dropKeyboardHolder();
+  const t=document.createElement("input");t.type="text";t.dataset.kb="1";t.setAttribute("aria-hidden","true");t.tabIndex=-1;
+  t.style.cssText="position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0;pointer-events:none";
+  document.body.appendChild(t);t.focus({preventScroll:true});
 }
+function dropKeyboardHolder(){document.querySelectorAll("input[data-kb]").forEach(t=>t.remove())}
+function openRedeem(){
+  if(navPending)return;
+  const i=$("#rdIn");i.value="";$("#rdMsg").textContent="";
+  holdKeyboard();go("redeemView");
+}
+function focusRedeem(){const i=$("#rdIn");i.focus({preventScroll:true});window.scrollTo(0,0);dropKeyboardHolder()}
+// 兑换成功、弹窗都关掉后回到设置页
+let redeemReturn=false;
 let redeeming=false;
 async function doRedeem(){
   const inp=$("#rdIn");if(!inp||redeeming)return;
@@ -2485,21 +2531,20 @@ async function doRedeem(){
     const rr={key:"redeemed",list:[...list.filter(x=>x.hash!==hash),{hash,at:today,rewards:entry.rewards}]};
     metaRecs.set("redeemed",rr);await DB.put(rr,"meta");
     if(r.dev)await setDevMode(true);
-    closeSheet();renderSettings();
+    inp.value="";inp.blur();renderSettings(); // 收起键盘
     if(r.dev)toast("开发者模式已开启：在设置页最下面",4000);
-    if(r.skins.length)showUnlocks(); // 等兑换框关掉再弹「兑换成功」
+    if(r.skins.length){redeemReturn=true;showUnlocks()}else goBack(); // 有皮肤：弹「兑换成功」，关掉后回设置页
   }catch(e){logErr("兑换",e);say("兑换出错了："+errText(e))}
   finally{redeeming=false}
 }
 $("#btnRedeem").addEventListener("click",openRedeem);
-$("#sheetBody").addEventListener("input",e=>{
-  if(e.target.id!=="rdIn")return;
+$("#rdIn").addEventListener("input",e=>{
   const i=e.target,p=i.selectionStart,up=i.value.toUpperCase();
   if(up!==i.value){i.value=up;try{i.setSelectionRange(p,p)}catch(_){}}
   const m=$("#rdMsg");if(m)m.textContent="";
 });
-$("#sheetBody").addEventListener("keydown",e=>{if(e.target.id==="rdIn"&&e.key==="Enter"){e.preventDefault();doRedeem()}});
-$("#sheetBody").addEventListener("click",e=>{if(e.target.closest("#rdGo"))doRedeem()});
+$("#rdIn").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();doRedeem()}});
+$("#rdGo").addEventListener("click",doRedeem);
 
 /* ---------- 开发者模式页面（开发规格 7.10.5、设计规范 5.15）：每个会改数据的操作都先确认 ---------- */
 $("#devGroup").addEventListener("click",e=>{if(e.target.closest("#devRow")&&!navPending){renderDev();go("devView")}});

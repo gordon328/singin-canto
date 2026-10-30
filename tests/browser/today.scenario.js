@@ -49,8 +49,8 @@ module.exports = { name: "today", async run(b) {
   // T2 没有词汇包 → 按钮「先导入词汇包」→ 打开 T2 和词汇包弹窗
   b.check("no-pack-button", (await b.ev(`document.querySelector("#today [data-today]").innerText.trim()`)) === "先导入词汇包");
   await b.ev(click("#today [data-today]")); await b.sleep(1300);
-  b.check("no-pack-opens", await b.ev(visible("#playerView")) && (await b.ev(`history.state.songId`)) === "t2"
-    && !(await b.ev(`document.querySelector("#sheet").hidden`)) && !!(await b.ev(`document.querySelector("#promptBox")`)));
+  b.check("no-pack-opens", await b.ev(visible("#packView")) && (await b.ev(`history.state.songId`)) === "t2" && (await b.ev(`history.state.view`)) === "packView"
+    && (await b.ev(`document.querySelector("#sheet").hidden`)) && !!(await b.ev(`document.querySelector("#promptBox")`))); // v0.36 起词汇包是整页
   await F.closeSheet(b);
   await b.ev(click("#playerView [data-back]")); await b.sleep(900);
 

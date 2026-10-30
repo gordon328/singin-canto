@@ -267,8 +267,8 @@ module.exports = { name: "checkin", async run(b) {
   b.check("no-pack-hint", (await b.ev(`document.querySelector("#today").innerText`)).includes("先导入词汇包，才能学新句子和打卡")
     && await b.ev(`!!document.querySelector('#today [data-today="pack"]')`));
   await b.ev(click('#today [data-today="pack"]')); await b.sleep(1300);
-  b.check("no-pack-opens-pack", (await b.ev(`history.state.view`)) === "playerView" && !(await b.ev(`document.querySelector("#sheet").hidden`))
-    && (await b.ev(F.sheetText)).includes("词汇包"));
+  b.check("no-pack-opens-pack", (await b.ev(`history.state.view`)) === "packView" && !(await b.ev(`document.querySelector("#packView").hidden`))
+    && !!(await b.ev(`document.querySelector("#packIn")`))); // v0.36 起词汇包是整页
   // 没达到打卡条件也进了完成页（只做了复习）：写明还差什么
   await jump(b, 1);
   const now1 = await b.ev(`Date.now() + (+localStorage.getItem("yc-simdays")) * 86400e3`);
