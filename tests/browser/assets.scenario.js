@@ -8,7 +8,9 @@ module.exports = { name: "assets", async run(b) {
   b.check("jyutping-loaded", await b.ev(`typeof ToJyutping === "object" && ToJyutping.getJyutpingText("風") === "fung1"`));
   b.check("outfit-loaded", await b.ev(`document.fonts.load("600 16px Outfit").then(() => [...document.fonts].some(f => f.family.replace(/\"/g, "") === "Outfit" && String(f.weight) === "600" && f.status === "loaded"))`));
   const missing = await b.ev(`fetch("sw.js").then(r => r.text()).then(async t => {
-    const shell = JSON.parse(t.match(/const SHELL = (\\[[^\\]]*\\])/)[1].replace(/'/g, '"'));
+    // SHELL 里的皮肤文件按 skins/registry.js 算出来：用替身跑一遍 sw.js 拿到列表
+    const shell = new Function("self", "importScripts", t + "; return SHELL;")({ SKIN_IDS: window.SKIN_IDS, addEventListener() {} }, () => {});
+    if (!shell.some(p => p.includes("skins/night.js"))) return ["（SHELL 里没有皮肤文件）"];
     const bad = []; for (const p of shell) { const r = await fetch(p); if (r.status !== 200) bad.push(p); } return bad; })`);
   b.check("sw-shell-files-exist" + (missing.length ? " missing: " + missing.join(" ") : ""), missing.length === 0);
 } };
