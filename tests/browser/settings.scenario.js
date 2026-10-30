@@ -16,8 +16,8 @@ module.exports = { name: "settings", async run(b) {
   const txt = await b.ev(`document.querySelector("#settingsView").innerText`);
   b.check("goal-section", txt.includes("每天新学几句") && (await b.ev(`[...document.querySelectorAll("#goalSeg button")].map(e => e.innerText.trim()).join()`)) === "2,4,6,自定义"
     && (await b.ev(`document.querySelector("#goalSeg [aria-pressed=true]").innerText.trim()`)) === "4");
-  b.check("groups", (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp-t")].map(e => e.innerText).join()`)) === "学习,数据,关于"
-    && (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp .cell")].map(e => e.querySelector(".cell-n").innerText).join()`)) === "我的生词,导出备份文件,从文件恢复,版本记录");
+  b.check("groups", (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp-t")].map(e => e.innerText).join()`)) === "学习,外观,数据,关于"
+    && (await b.ev(`[...document.querySelectorAll("#settingsView .sgrp .cell")].map(e => e.querySelector(".cell-n").innerText).join()`)) === "我的生词,皮肤,导出备份文件,从文件恢复,版本记录");
   b.check("rows-52", await b.ev(`[...document.querySelectorAll("#settingsView .cell, #settingsView .cell-head")].every(e => Math.round(e.getBoundingClientRect().height) === 52)`));
   b.check("rows-full-width", await b.ev(`[...document.querySelectorAll("#settingsView .sgrp")].every(g => [...g.children].every(c => Math.abs(c.getBoundingClientRect().width - g.getBoundingClientRect().width) < 1) && Math.abs(g.getBoundingClientRect().width - document.querySelector("#settingsView .set").clientWidth + 32) < 1)`));
   b.check("goal-seg-equal", await b.ev(`(() => { const r = [...document.querySelectorAll("#goalSeg .btn")].map(e => e.getBoundingClientRect()); return r.length === 4 && r.every(x => Math.abs(x.width - r[0].width) < 0.5 && x.height === 44); })()`));

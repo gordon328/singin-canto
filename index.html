@@ -480,6 +480,40 @@ label.btn{overflow:hidden}
 .cell-goal .seg .btn{flex:1 1 0;min-width:0;height:44px;padding:0}
 .cell-goal .stepper{margin:0;padding:0 16px 16px}
 .sgrp-note{padding:8px 16px 0;font-size:13px;line-height:1.6;color:var(--muted)}
+/* 设置 › 皮肤（设计规范 5.13）：每个皮肤一张卡片；正在用的主色描边；没解锁的预览半透明 */
+.skins{display:flex;flex-direction:column;gap:12px;padding-block:8px calc(32px + env(safe-area-inset-bottom,0px))}
+.skins-note{margin:0;padding:0 4px;font-size:15px;line-height:1.6;color:var(--ink-2)}
+.skins-list{display:flex;flex-direction:column;gap:12px}
+.skin-card{display:flex;align-items:center;gap:16px;width:100%;padding:16px;margin:0;border:2px solid transparent;border-radius:22px;background:var(--surface);box-shadow:var(--shadow-1);
+  font:inherit;color:var(--ink);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color var(--dur) var(--ease)}
+.skin-card.current{border-color:var(--accent)}
+.skin-card.is-pressed{background:var(--surface-press)}
+.skin-card.locked .skin-prev{opacity:.5}
+.skin-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.skin-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px}
+.skin-name{font-size:17px;font-weight:700}
+.skin-mode{font-size:13px;color:var(--muted)}
+.skin-cond{font-size:14px;line-height:1.5;color:var(--ink-2)}
+.skin-cond.ok{color:var(--accent);font-weight:600}
+.skin-prog{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.skin-bar{flex:1;height:6px;border-radius:3px;background:var(--rule);overflow:hidden}
+.skin-bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+.skin-pill{flex:none;display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:16px;font-size:14px;font-weight:600;white-space:nowrap;background:var(--accent-soft);color:var(--accent)}
+.skin-pill.on{background:var(--accent);color:var(--on-accent)}
+.skin-pill.off{background:var(--surface-press);color:var(--muted)}
+/* 皮肤预览：颜色来自预览元素上的 --p-* 变量（skinPreview 按皮肤颜色写进去），不用图片 */
+.skin-prev{flex:none;display:flex;flex-direction:column;gap:4px;width:64px;height:88px;padding:8px;border-radius:16px;background:var(--p-bg);box-shadow:0 0 0 1px var(--rule)}
+.skin-prev i{display:block}
+.p-title{width:45%;height:8px;border-radius:4px;background:var(--p-surface)}
+.p-hero{height:20px;border-radius:6px;background:var(--p-accent)}
+.p-tones{display:flex;justify-content:space-between;gap:2px}
+.p-tone{width:6px;height:6px;border-radius:50%;background:var(--p-t)}
+.p-card{flex:1;border-radius:4px;background:var(--p-surface)}
+.skin-prev.large{width:168px;height:200px;padding:12px;gap:8px;border-radius:28px;box-shadow:var(--shadow-2),0 0 0 1px var(--rule)}
+.skin-prev.large .p-hero{height:56px;border-radius:12px}
+.skin-prev.large .p-tones{gap:4px}
+.skin-prev.large .p-tone{flex:1;width:auto;height:12px;border-radius:4px;background:var(--p-surface);box-shadow:inset 0 -3px 0 var(--p-t)}
+.skin-prev.large .p-card{border-radius:10px}
 /* 版本记录（CHANGELOG.md）：每个版本一张卡片 */
 .cl h3{margin:0;font-size:17px;font-weight:700;color:var(--ink)}
 .cl h4{margin:4px 0 0;font-size:15px;font-weight:600;color:var(--ink-2)}
@@ -723,7 +757,7 @@ label.btn{overflow:hidden}
     <div class="tt"><b>设置</b></div>
   </div></div>
   <!-- 分组列表（设计规范 5.11）：组名在卡片上方；每行 52px，细线分隔；左边名称，右边当前值 + 箭头。
-       以后：「外观」（皮肤）放在学习和数据之间；「兑换码」放进关于；「开发者模式」在最下面单独一组，开启时才显示 -->
+       以后：「兑换码」放进关于；「开发者模式」在最下面单独一组，开启时才显示 -->
   <div class="wrap set">
     <div class="sgrp-t">学习</div>
     <div class="sgrp">
@@ -733,6 +767,10 @@ label.btn{overflow:hidden}
         <div class="stepper" id="goalStep" hidden><button class="btn soft icon" id="goalMinus" type="button" aria-label="少一句">−</button><span id="goalNum" class="num"></span><span class="note">句</span><button class="btn soft icon" id="goalPlus" type="button" aria-label="多一句">+</button></div>
       </div>
       <button class="cell" type="button" id="wordsRow"><span class="cell-n">我的生词</span><span class="cell-v"><span class="num" id="wordsN"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
+    </div>
+    <div class="sgrp-t">外观</div>
+    <div class="sgrp">
+      <button class="cell" type="button" id="skinRow"><span class="cell-n">皮肤</span><span class="cell-v"><span id="skinName"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></span></button>
     </div>
     <div class="sgrp-t">数据</div>
     <div class="sgrp">
@@ -777,6 +815,18 @@ label.btn{overflow:hidden}
     <div class="tt"><b>打卡日历</b></div>
   </div></div>
   <div class="wrap cal" id="calBody"></div>
+</section>
+
+<!-- SKINS：设置 › 皮肤（设计规范 5.13） -->
+<section id="skinsView" hidden>
+  <div class="bar"><div class="wrap">
+    <button class="btn icon back" data-back type="button" aria-label="返回"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="tt"><b>皮肤</b></div>
+  </div></div>
+  <div class="wrap skins">
+    <p class="skins-note">皮肤只改变颜色，学习进度和设置都不受影响。</p>
+    <div class="skins-list" id="skinsList"></div>
+  </div>
 </section>
 
 <!-- CHANGELOG：版本记录（设置页进入，内容是 CHANGELOG.md） -->
@@ -914,8 +964,8 @@ try{const p=JSON.parse(localStorage.getItem("yc-prefs")||"{}");Object.assign(pre
 function savePrefs(){try{localStorage.setItem("yc-prefs",JSON.stringify(prefs))}catch(e){}}
 
 /* ---------- views ---------- */
-const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView","changelogView"];
-const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2,changelogView:2};
+const views=["home","importView","syncView","playerView","proofView","settingsView","studyView","wordsView","calendarView","changelogView","skinsView"];
+const DEPTH={home:0,importView:1,syncView:1,playerView:1,settingsView:1,studyView:1,calendarView:1,proofView:2,wordsView:2,changelogView:2,skinsView:2};
 // 右滑返回：Safari 和主屏幕模式都用 iOS 系统自带的（系统手势触发 popstate，App 直接切页，不再播自己的动画）。
 // 页面按层级：首页(0) → 导入/打轴/播放(1) → 编辑歌曲(2)。往深一层用 pushState，同层跳转用 replaceState，所以返回总是回上一层
 let curView="home",navAnim=false,navTimer=0,navPending=false;
@@ -943,7 +993,7 @@ function show(id,dir){
   navTimer=setTimeout(()=>{from.hidden=true;from.classList.remove("nav-layer","leave-fwd","leave-back");from.style.cssText="";to.classList.remove("enter-fwd","enter-back");to.style.cssText="";document.body.classList.remove("navigating");barIn()},340);
 }
 // 按下效果用 JS 控制（不用 CSS :active，iPhone 上切页回来 :active 会卡住）：手指按下加 .is-pressed，抬起、取消、移出、滚动时立刻去掉
-const PRESSABLE=".btn,.tones .key,.song,.ib,.res,.streak,.cal-grid .cal-day,.sgrp .cell";
+const PRESSABLE=".btn,.tones .key,.song,.ib,.res,.streak,.cal-grid .cal-day,.sgrp .cell,.skin-card";
 let pressedEl=null;
 function clearPressed(){document.querySelectorAll(".is-pressed").forEach(e=>e.classList.remove("is-pressed"));pressedEl=null}
 document.addEventListener("pointerdown",e=>{
@@ -996,6 +1046,7 @@ window.addEventListener("popstate",e=>{
   if(st.view==="wordsView"){renderWords();show("wordsView",anim);return}
   if(st.view==="calendarView"){renderCalendar();show("calendarView",anim);return}
   if(st.view==="changelogView"){renderChangelog();show("changelogView",anim);return}
+  if(st.view==="skinsView"){renderSkins();show("skinsView",anim);return}
   if((st.view==="playerView"||st.view==="proofView")&&songs.some(s=>s.id===st.songId)){if(st.view==="proofView")history.replaceState({view:"playerView",songId:st.songId},"");openSong(st.songId,{restore:true,anim});return}
   if(st.view!=="home")history.replaceState({view:"home"},"");
   // 回到首页：停掉播放，放开音频文件占的内存
@@ -2239,7 +2290,41 @@ function renderSettings(){
   goalCustom=!STUDY.GOALS.includes(STUDY.goalOf(getDaily()));renderGoal();
   renderBackupCard();
   $("#setVer").textContent=APP_VERSION;
+  $("#skinName").textContent=SKIN_DEFS[document.documentElement.dataset.skin].name;
 }
+/* ---------- 皮肤页（设计规范 5.13）：卡片和预览都按皮肤文件里的颜色画，组件不认识任何皮肤 ---------- */
+const MODE_TEXT={"auto":"跟随系统深浅色","dark-only":"始终深色","light-only":"始终浅色"};
+const sysDark=()=>matchMedia("(prefers-color-scheme: dark)").matches;
+// 皮肤预览：底色、主色卡片、六个声调色、两条卡片。size：small 皮肤页 / large 解锁弹窗（多一条标题、声调画成小键帽）
+function skinPreview(def,size="small"){
+  const c=SKIN.colorsFor(def,sysDark());
+  const v=[["bg",c.bg],["surface",c.surface],["accent",c.accent],...c.tones.map((t,i)=>["t"+(i+1),t])].map(([k,x])=>`--p-${k}:${x}`).join(";");
+  return `<span class="skin-prev ${size}" style="${esc(v)}" aria-hidden="true">${size==="large"?'<i class="p-title"></i>':""}<i class="p-hero"></i><span class="p-tones">${c.tones.map((_,i)=>`<i class="p-tone" style="--p-t:var(--p-t${i+1})"></i>`).join("")}</span><i class="p-card"></i><i class="p-card"></i></span>`;
+}
+function skinCtx(){return UNLOCK.context({checkin:getCheckin(),songs,cards:[...cards.values()],today:SRS.today(appNow())})}
+function renderSkins(){
+  const ci=getCheckin(),cur=document.documentElement.dataset.skin,ctx=skinCtx();
+  $("#skinsList").innerHTML=Object.values(SKIN_DEFS).sort((a,b)=>a.order-b.order).map(d=>{
+    const rule=UNLOCK.RULES[d.unlock.type],v=d.unlock.value,have=ci.unlocked.includes(d.id),use=d.id===cur;
+    let cond;
+    if(d.unlock.type==="default")cond=`<span class="skin-cond">${esc(rule.label(v))}</span>`;
+    else if(have)cond=`<span class="skin-cond ok">${esc(rule.label(v).replace(/解锁$/,""))} · 已解锁</span>`;
+    else{const p=rule.progress(ctx,v);cond=`<span class="skin-cond">${esc(rule.label(v))}</span>`+(p?`<span class="skin-prog"><span class="skin-bar"><i style="width:${(p.cur/p.max*100).toFixed(1)}%"></i></span><span class="num">${p.cur}/${p.max}</span></span>`:"")}
+    const pill=use?'<span class="skin-pill on">使用中 ✓</span>':have?'<span class="skin-pill">使用</span>':'<span class="skin-pill off">未解锁</span>';
+    return `<button class="skin-card${use?" current":""}${have?"":" locked"}" type="button" data-skin-id="${esc(d.id)}">${skinPreview(d)}<span class="skin-main"><span class="skin-head"><b class="skin-name">${esc(d.name)}</b><span class="skin-mode">${MODE_TEXT[d.modes]}</span></span>${cond}</span>${pill}</button>`;
+  }).join("");
+}
+// 换成某个已解锁的皮肤：颜色 0.3 秒过渡，记到打卡记录的 theme
+async function useSkin(id){applySkin(id,{animate:true});await saveCheckin({...getCheckin(),theme:id})}
+$("#skinsList").addEventListener("click",async e=>{
+  const b=e.target.closest(".skin-card");if(!b)return;
+  const id=b.dataset.skinId,d=SKIN_DEFS[id];
+  if(!getCheckin().unlocked.includes(id)){toast("还没解锁："+UNLOCK.RULES[d.unlock.type].label(d.unlock.value));return}
+  if(id!==document.documentElement.dataset.skin)await useSkin(id);
+  renderSkins();
+});
+$("#skinRow").addEventListener("click",()=>{if(navPending)return;renderSkins();go("skinsView")});
+
 /* ---------- 版本记录：显示 CHANGELOG.md（设置页「关于」进入，DEPTH 2） ---------- */
 // 只认几种写法：## 版本标题、### 小标题、- 列表、含 ⚠️ 的行醒目显示、**粗体**。# 大标题不显示（顶栏已经有）
 function changelogHTML(md){
