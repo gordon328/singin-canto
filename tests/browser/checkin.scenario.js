@@ -26,15 +26,15 @@ async function finishDay(b) {
     if (await b.ev(`!!document.querySelector('#studyView [data-act="lineok"]')`)) {
       // 最后一下：点完马上开始看完成页
       const first = await b.ev(`new Promise(res => { document.querySelector('#studyView [data-act="lineok"]').click(); const t0 = Date.now();
-        (function poll() { const d = document.querySelector("#stBody .st-done .cal-day.today"); if (d) return res(d.dataset.lv || "");
+        (function poll() { const d = document.querySelector("#stBody .st-done .cal-day.is-today"); if (d) return res(d.dataset.lv || "");
           if (Date.now() - t0 > 3000) return res("timeout"); setTimeout(poll, 20); })(); })`);
       await b.sleep(1100);
-      const later = await b.ev(`(() => { const d = document.querySelector("#stBody .st-done .cal-day.today"); return d ? d.dataset.lv || "" : "none"; })()`);
+      const later = await b.ev(`(() => { const d = document.querySelector("#stBody .st-done .cal-day.is-today"); return d ? d.dataset.lv || "" : "none"; })()`);
       return { first, later };
     }
     await b.sleep(450);
   }
-  return { first: "none", later: await b.ev(`(() => { const d = document.querySelector("#stBody .st-done .cal-day.today"); return d ? d.dataset.lv || "" : "none"; })()`) };
+  return { first: "none", later: await b.ev(`(() => { const d = document.querySelector("#stBody .st-done .cal-day.is-today"); return d ? d.dataset.lv || "" : "none"; })()`) };
 }
 // 改测试数据：learned（t1 前几句学过）、cards（换掉全部卡片）、goal（每天新学几句）
 const mkCard = (w, jp, due) => ({ w, jp, zh: "", tip: "", oral: false, sources: [], known: false, created: 1, updated: 1, srs: { due, interval: 1, ease: 2.5, reps: 1, lapses: 0 } });
@@ -59,7 +59,7 @@ module.exports = { name: "checkin", async run(b) {
   // 第一天：完成页有本周 7 格，今天那格先空着，0.3 秒后填色；「连续 1 天」
   let r = await finishDay(b);
   b.check("done-week " + JSON.stringify(r), (await b.ev(`document.querySelectorAll("#stBody .st-week .wk:nth-child(2) .cal-day").length`)) === 7
-    && r.first === "" && +r.later >= 1 && (await b.ev(`document.querySelector("#stBody .cal-day.today").classList.contains("fill")`))
+    && r.first === "" && +r.later >= 1 && (await b.ev(`document.querySelector("#stBody .cal-day.is-today").classList.contains("fill")`))
     && (await b.ev(doneText)).includes("连续") && (await b.ev(`document.querySelector("#stBody .st-streak").innerText`)).replace(/\s+/g, "").endsWith("1天"));
   await b.shot("checkin-done-light");
   await home(b);
@@ -68,7 +68,7 @@ module.exports = { name: "checkin", async run(b) {
   // 同一天再学完一次：不重复打卡、没有动画，数字更新
   r = await finishDay(b);
   const m1 = await b.ev(meta), day0 = Object.keys(m1.days)[0];
-  b.check("second-done-no-anim " + JSON.stringify(r), r.first !== "" && r.first !== "timeout" && !(await b.ev(`document.querySelector("#stBody .cal-day.today").classList.contains("fill")`))
+  b.check("second-done-no-anim " + JSON.stringify(r), r.first !== "" && r.first !== "timeout" && !(await b.ev(`document.querySelector("#stBody .cal-day.is-today").classList.contains("fill")`))
     && Object.keys(m1.days).length === 1 && m1.days[day0].type === "done" && m1.days[day0].newLines === 2);
   await home(b);
   b.check("total-still-1 " + (await b.ev(streak)), (await b.ev(streak)) === "连续 1 天 · 累计 1 天");
@@ -82,9 +82,11 @@ module.exports = { name: "checkin", async run(b) {
   // 跳过一天：自动用 1 张休息卡
   await jump(b, 2);
   const m2 = await b.ev(meta), restDay = Object.keys(m2.days).find(k => m2.days[k].type === "rest");
-  const note = await b.ev(`document.querySelector("#restNote").innerText`);
-  b.check("rest-used " + note, note === `昨天没学，用了 1 张休息卡，连续天数保住了 · 还剩 ${m2.restTokens} 张` && !!restDay
+  const note = (await b.ev(`document.querySelector("#restNote").innerText`)).replace(/\s+/g, " ").trim();
+  b.check("rest-used " + note, note === `昨天没学，用了 1 张休息卡，连续天数保住了 · 还剩 ${m2.restTokens}/3`
+    && (await b.ev(`document.querySelectorAll("#restNote .tokens svg").length`)) === 3 && (await b.ev(`document.querySelectorAll("#restNote .tokens svg.on").length`)) === m2.restTokens && !!restDay
     && (await b.ev(streak)) === "连续 3 天 · 累计 2 天");
+  await b.shot("checkin-rest-banner");
   await b.ev(click("#btnSettings")); await b.sleep(900); await b.ev(`history.back()`); await b.sleep(900);
   b.check("banner-gone", (await b.ev(`document.querySelector("#restNote").innerText.trim()`)) === "");
 
@@ -119,13 +121,20 @@ module.exports = { name: "checkin", async run(b) {
   const stats = await b.ev(`[...document.querySelectorAll("#calBody .cal-stat")].map(e => e.innerText.replace(/\\s+/g, " ").trim())`);
   const ck = await b.ev(meta);
   b.check("cal-stats " + JSON.stringify(stats), stats.length === 4 && stats[0].startsWith("连续") && stats[1].startsWith("累计 4") && stats[2].startsWith("最长连续")
-    && stats[3].includes("休息卡 ×" + ck.restTokens) && stats[3].includes("每周一发 1 张，最多存 3 张"));
-  const today = await b.ev(`document.querySelector("#calBody .cal-day.today").dataset.day`);
+    && stats[3].replace(/\s+/g, "") === "休息卡" + ck.restTokens + "/3" + (ck.restTokens >= 3 ? "已存满，用掉后才会继续发放" : "每周一发1张")
+    && (await b.ev(`document.querySelectorAll("#calBody .cal-stat .tokens svg.on").length`)) === ck.restTokens);
+  const today = await b.ev(`document.querySelector("#calBody .cal-day.is-today").dataset.day`);
   b.check("cal-head", (await b.ev(`[...document.querySelectorAll("#calBody .cal-head span")].map(e => e.innerText).join(" ")`)) === "一 二 三 四 五 六 日");
   const cell = d => `(() => { const e = document.querySelector('#calGrid [data-day="' + ${JSON.stringify(d)} + '"]'); if (!e) return null; const s = getComputedStyle(e);
     return { lv: e.dataset.lv, rest: e.classList.contains("rest"), text: e.innerText.trim(), border: s.borderTopStyle, outline: s.outlineWidth + " " + s.outlineStyle }; })()`;
   const ct = await b.ev(cell(today));
   b.check("cal-today " + JSON.stringify(ct), ct.outline === "2px solid" && +ct.lv >= 1);
+  // 每一行一样高、行距一样，今天那一行不会被撑高（以前今天的格子误用了首页卡片的 .today 样式）
+  const geo = await b.ev(`(() => { const g = document.querySelector("#calGrid"), r = g.getBoundingClientRect(), k = [...g.children].map(e => e.getBoundingClientRect());
+    const tops = [...new Set(k.map(x => Math.round(x.top - r.top)))], h = Math.round(k.find((_, i) => g.children[i].dataset.day).height);
+    return { tops, h, gridH: Math.round(r.height), shadow: getComputedStyle(g.querySelector(".is-today")).boxShadow }; })()`);
+  b.check("cal-rows-even " + JSON.stringify(geo), geo.tops.every((t, i) => Math.abs(t - i * geo.tops[geo.tops.length - 1] / (geo.tops.length - 1)) <= 1)
+    && Math.abs(geo.gridH - (geo.tops[geo.tops.length - 1] + geo.h)) <= 1 && geo.shadow === "none");
   // 跳到最早那个月，找打卡日和休息日
   for (let i = 0; i < 3; i++) if (!(await b.ev(`document.querySelector("#calPrev").disabled`))) { await b.ev(click("#calPrev")); await b.sleep(150); }
   const days = Object.keys(ck.days).sort(), doneDay = days.find(k => ck.days[k].type === "done"), restDay2 = days.find(k => ck.days[k].type === "rest");
@@ -144,7 +153,7 @@ module.exports = { name: "checkin", async run(b) {
     && (await b.ev(`document.querySelector('#calGrid [data-day="${doneDay}"]').classList.contains("sel")`)));
   // 翻回本月；本月不能再往后
   for (let i = 0; i < 3; i++) if (!(await b.ev(`document.querySelector("#calNext").disabled`))) { await b.ev(click("#calNext")); await b.sleep(150); }
-  b.check("cal-no-future", await b.ev(`document.querySelector("#calNext").disabled`) && !!(await b.ev(`document.querySelector("#calGrid .cal-day.today")`))
+  b.check("cal-no-future", await b.ev(`document.querySelector("#calNext").disabled`) && !!(await b.ev(`document.querySelector("#calGrid .cal-day.is-today")`))
     && await b.ev(`[...document.querySelectorAll("#calGrid [data-day]")].filter(e => e.dataset.day > ${JSON.stringify(today)}).every(e => e.disabled)`));
   // 左右滑：往右滑看上个月（最早那个月和本月不同时才会动）
   const t1 = await b.ev(`document.querySelector("#calTitle").innerText`), g = await b.ev(`(() => { const r = document.querySelector("#calGrid").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
@@ -158,6 +167,14 @@ module.exports = { name: "checkin", async run(b) {
   await b.shot("checkin-calendar-light");
   await b.ev(click("#calendarView [data-back]")); await b.sleep(900);
   b.check("cal-back", (await b.ev(`history.state.view`)) === "home");
+  // 存满 3 张：三个都填满，说明改成「已存满」
+  await b.ev(`new Promise(res => { const r = indexedDB.open("yuechang"); r.onsuccess = () => { const db = r.result; const st = db.transaction("meta", "readwrite").objectStore("meta");
+    st.get("checkin").onsuccess = e => { st.put(Object.assign(e.target.result, { restTokens: 3 })).onsuccess = () => { db.close(); res(); }; }; }; })`);
+  await b.nav("/"); await b.ev(click("#streak")); await b.sleep(900);
+  const full = await b.ev(`document.querySelectorAll("#calBody .cal-stat")[3].innerText.replace(/\\s+/g, "")`);
+  b.check("tokens-full " + full, full === "休息卡3/3已存满，用掉后才会继续发放" && (await b.ev(`document.querySelectorAll("#calBody .cal-stat .tokens svg.on").length`)) === 3);
+  await b.shot("checkin-tokens-full");
+  await b.ev(`history.back()`); await b.sleep(900);
 
   // 导出备份 → 清空 → 恢复：打卡记录和休息卡都在
   await b.nav("/");
@@ -221,6 +238,6 @@ module.exports = { name: "checkin", async run(b) {
   }
   const why = await b.ev(`document.querySelector("#stBody .st-streak").innerText`);
   b.check("not-yet-reason " + why, why === "今天还没打卡 · 再学 4 句就能打卡"
-    && (await b.ev(`document.querySelector("#stBody .cal-day.today").dataset.lv`)) === "0");
+    && (await b.ev(`document.querySelector("#stBody .cal-day.is-today").dataset.lv`)) === "0");
   b.check("checkin: 页面没有报错", b.errors.length === 0);
 } };

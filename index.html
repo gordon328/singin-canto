@@ -205,13 +205,21 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .streak.on .flame{color:var(--accent)}
 .streak.is-pressed{opacity:.6}
 #restNote .banner{margin:0 0 16px}
+/* 休息卡：三个小卡片，有几张就填满几个，其余是空框，后面写「N/3」 */
+.tokens{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;white-space:nowrap}
+.tokens svg{flex:none;fill:none;stroke:var(--accent);stroke-width:1.5}
+.tokens svg.on{fill:var(--accent)}
+.tokens b{margin-left:4px;font-weight:700;color:var(--ink)}
+.cal-stat .tokens{gap:4px}
+.cal-stat .tokens svg{width:15px;height:20px}
+.cal-stat .tokens b{font-size:28px;line-height:1.2;margin-left:8px}
 /* 日历格子：首页日历页和完成页的本周共用。颜色深浅 = 当天新学的词 + 复习的词 */
 .cal-day{aspect-ratio:1;max-width:100%;border-radius:12px;background:var(--rule);display:grid;place-items:center;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .cal-day[data-lv="1"]{background:color-mix(in srgb,var(--accent) 25%,transparent)}
 .cal-day[data-lv="2"]{background:color-mix(in srgb,var(--accent) 55%,transparent)}
 .cal-day[data-lv="3"]{background:var(--accent);color:var(--on-accent)}
 .cal-day.rest{background:transparent;border:1.5px dashed var(--muted);color:var(--muted)}
-.cal-day.today{outline:2px solid var(--accent);outline-offset:1px}
+.cal-day.is-today{outline:2px solid var(--accent);outline-offset:1px}
 .cal-day.fill{animation:calFill var(--dur-spring) var(--spring) both}
 @keyframes calFill{from{transform:scale(.6)}to{transform:scale(1)}}
 /* 日历页：上面四格统计，下面月历直接放在页面上（不放卡片里，窄屏上每格也能有 44px） */
@@ -846,7 +854,7 @@ const afterPaint=fn=>requestAnimationFrame(()=>requestAnimationFrame(fn));
 const afterRelease=fn=>{clearPressed();afterPaint(()=>setTimeout(fn,reduceMotion()?0:RELEASE_MS))};
 function go(view,data={}){
   if(navPending)return;
-  if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear();restNote=""}
+  if(curView==="home"&&view!=="home"){commitDelete();selectMode=false;selected.clear();restNote=null}
   navPending=true;
   afterRelease(()=>{
     navPending=false;dbgNote("跳转→"+view);
@@ -892,7 +900,7 @@ function freshHome(){
 
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
-const APP_VERSION="v26";
+const APP_VERSION="v27";
 const dbg={on:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 try{dbg.on=localStorage.getItem("yc-debug")==="1"}catch(e){}
 // 模拟日期：App 的「现在」= 真实时间 + simDays 天（localStorage yc-simdays）。只在调试面板打开时生效，关掉面板就清零
@@ -1058,18 +1066,23 @@ function getDaily(){return STUDY.dailyFor(metaRecs.get("daily"),SRS.today(appNow
 function getCheckin(){return CHECKIN.normalize(metaRecs.get("checkin"),SRS.today(appNow()))}
 function saveCheckin(rec){metaRecs.set("checkin",rec);return DB.put(rec,"meta")}
 // 启动、第二天切回、改模拟日期时：发休息卡、补上漏打卡的日子。用了休息卡就在首页提示一次（离开首页就消失）
-let restNote="";
+let restNote=null;
 function processCheckin(){
   const r=CHECKIN.process(getCheckin(),SRS.today(appNow()));
-  if(r.used)restNote=(r.used===1?"昨天没学，用了 1 张休息卡":`有 ${r.used} 天没学，用了 ${r.used} 张休息卡`)+`，连续天数保住了 · 还剩 ${r.rec.restTokens} 张`;
+  if(r.used)restNote={used:r.used,left:r.rec.restTokens};
   saveCheckin(r.rec);
+}
+// 休息卡数量的显示（日历页统计、首页提示共用）：三个小卡片 + 「N/3」
+const TOKEN_MAX=3;
+function tokensHTML(n){
+  return `<span class="tokens" role="img" aria-label="休息卡 ${n}/${TOKEN_MAX}">${Array.from({length:TOKEN_MAX},(_,i)=>`<svg class="${i<n?"on":""}" width="12" height="16" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="2.5"/></svg>`).join("")}<b class="num">${n}/${TOKEN_MAX}</b></span>`;
 }
 const FLAME='<svg class="flame" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.6 3.2 4.8 5.6 4.8 10.4a4.8 4.8 0 0 1-9.6 0c0-2.4 1.3-4 2.4-5.4.2 1.5.9 2.6 1.9 3.1.6-2.6.9-4.9.5-8.1z"/></svg>';
 function renderStreak(){
   const rec=getCheckin(),day=SRS.today(appNow()),n=CHECKIN.streak(rec,day),tot=CHECKIN.total(rec),el=$("#streak");
   el.classList.toggle("on",rec.days[day]?.type==="done");
   el.innerHTML=FLAME+"<span>"+(!tot?"今天开始第一天":n?`连续 <b class="num">${n}</b> 天 · 累计 <b class="num">${tot}</b> 天`:`今天重新开始 · 累计 <b class="num">${tot}</b> 天`)+"</span>";
-  $("#restNote").innerHTML=restNote?`<div class="banner">${esc(restNote)}</div>`:"";
+  $("#restNote").innerHTML=restNote?`<div class="banner"><span>${restNote.used===1?"昨天没学，用了 1 张休息卡":`有 ${restNote.used} 天没学，用了 ${restNote.used} 张休息卡`}，连续天数保住了 · 还剩 ${tokensHTML(restNote.left)}</span></div>`:"";
 }
 // 打卡日历页（开发规格 7.9.5.2）：从首页那一行进入。calMonth 是正在看的月份，calSel 是点了哪一天
 let calMonth=null,calSel=null,calTouch=null;
@@ -1085,10 +1098,11 @@ function renderCalendar(){
   const cells=CHECKIN.monthGrid(y,m).map(d=>{
     if(!d)return "<span></span>";
     const e=rec.days[d],rest=e&&e.type==="rest";
-    return `<button class="cal-day${rest?" rest":""}${d===day?" today":""}${d===calSel?" sel":""}" type="button" data-day="${d}" data-lv="${CHECKIN.level(e)}"${d>day?" disabled":""} aria-label="${+d.slice(5,7)} 月 ${+d.slice(8)} 日 ${esc(CHECKIN.detail(e))}">${rest?"休":+d.slice(8)}</button>`}).join("");
+    return `<button class="cal-day${rest?" rest":""}${d===day?" is-today":""}${d===calSel?" sel":""}" type="button" data-day="${d}" data-lv="${CHECKIN.level(e)}"${d>day?" disabled":""} aria-label="${+d.slice(5,7)} 月 ${+d.slice(8)} 日 ${esc(CHECKIN.detail(e))}">${rest?"休":+d.slice(8)}</button>`}).join("");
   const sel=calSel&&rec.days[calSel],selLabel=calSel?`${+calSel.slice(5,7)} 月 ${+calSel.slice(8)} 日 · ${CHECKIN.detail(sel)}`:"点某一天，看那天学了多少";
-  const stat=(lbl,n,unit,sub="")=>`<div class="cal-stat"><span class="lbl">${lbl}</span><b class="num">${n}<small>${unit}</small></b>${sub?`<span class="sub">${sub}</span>`:""}</div>`;
-  $("#calBody").innerHTML=`<div class="cal-stats">${stat("连续",CHECKIN.streak(rec,day),"天")}${stat("累计",CHECKIN.total(rec),"天")}${stat("最长连续",CHECKIN.best(rec,day),"天")}${stat("休息卡","×"+rec.restTokens,"","每周一发 1 张，最多存 3 张")}</div>
+  const stat=(lbl,n,unit)=>`<div class="cal-stat"><span class="lbl">${lbl}</span><b class="num">${n}<small>${unit}</small></b></div>`;
+  const tk=rec.restTokens,tokenStat=`<div class="cal-stat"><span class="lbl">休息卡</span>${tokensHTML(tk)}<span class="sub">${tk>=TOKEN_MAX?"已存满，用掉后才会继续发放":"每周一发 1 张"}</span></div>`;
+  $("#calBody").innerHTML=`<div class="cal-stats">${stat("连续",CHECKIN.streak(rec,day),"天")}${stat("累计",CHECKIN.total(rec),"天")}${stat("最长连续",CHECKIN.best(rec,day),"天")}${tokenStat}</div>
     <div class="cal-nav"><button class="btn soft icon" type="button" id="calPrev" aria-label="上个月"${calMonth<=lo?" disabled":""}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <b id="calTitle">${y} 年 ${m} 月</b>
       <button class="btn soft icon" type="button" id="calNext" aria-label="下个月"${calMonth>=hi?" disabled":""}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button></div>
@@ -2234,7 +2248,7 @@ function renderDone(){
   const newWords=[...cards.values()].filter(c=>SRS.today(c.created)===day).length;
   const ck=checkinToday({reviewed:d.reviewed,newLines:d.newLines,newWords}),rec=ck?ck.rec:getCheckin(),anim=!!(ck&&ck.first)&&!reduceMotion();
   const week=CHECKIN.weekOf(day).map(x=>{const e=rec.days[x],hold=anim&&x===day;
-    return `<span class="cal-day${e&&e.type==="rest"?" rest":""}${x===day?" today":""}"${hold?"":` data-lv="${CHECKIN.level(e)}"`}>${e&&e.type==="rest"?"休":""}</span>`}).join("");
+    return `<span class="cal-day${e&&e.type==="rest"?" rest":""}${x===day?" is-today":""}"${hold?"":` data-lv="${CHECKIN.level(e)}"`}>${e&&e.type==="rest"?"休":""}</span>`}).join("");
   const due2=ck?0:checkinDue(d),need=Math.max(0,d.goal-d.newLines);
   const streakLine=!ck?(rec.days[day]?.type==="done"?`连续 <b class="num">${CHECKIN.streak(rec,day)}</b> 天`:"今天还没打卡 · "+(due2?`还有 ${due2} 个词要复习`:`再学 ${need} 句就能打卡`)):anim&&ck.before!==ck.after?`连续 <b class="num flip"><span><span>${ck.before}</span><span>${ck.after}</span></span></b> 天`:`连续 <b class="num">${ck.after}</b> 天`;
   const due=STUDY.dueCount(cards.values(),SRS.dayDue(now,1),Infinity),up=STUDY.upcoming(lineTexts(s),learned,d.goal);
@@ -2251,7 +2265,7 @@ function renderDone(){
   $("#stFoot").innerHTML=(study.finished?'<button class="btn primary bottom block" type="button" data-act="pick">选下一首歌</button>':s.pack?'<button class="btn primary bottom block" type="button" data-act="more">还有精神，再学 2 句</button>':"")
     +'<button class="btn bottom block" type="button" data-act="home">回到首页</button>';
   // 第一次打卡：0.3 秒后今天的格子弹簧放大填色，再把连续天数往上翻
-  if(anim){const st=study;setTimeout(()=>{if(study!==st)return;const t=$("#stBody .st-week .cal-day.today");if(t){t.dataset.lv=CHECKIN.level(rec.days[day]);t.classList.add("fill")}
+  if(anim){const st=study;setTimeout(()=>{if(study!==st)return;const t=$("#stBody .st-week .cal-day.is-today");if(t){t.dataset.lv=CHECKIN.level(rec.days[day]);t.classList.add("fill")}
     setTimeout(()=>$("#stBody .st-streak .flip")?.classList.add("go"),300)},300)}
 }
 async function lineLearned(){
