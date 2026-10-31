@@ -12,7 +12,8 @@ const LOOKS = [["lilac", false], ["lilac", true], ["night", false], ["mist", fal
 module.exports = { name: "skins", async run(b) {
   // ---- 组件代码里没有皮肤 id 判断、没有写死的颜色 ----
   const html = fs.readFileSync(path.join(__dirname, "../../index.html"), "utf8");
-  const body = html.replace(/<!-- 皮肤：开始 -->[\s\S]*?<!-- 皮肤：结束 -->/, "");
+  // 开屏（v0.40）只跟系统深浅色、不跟皮肤，颜色写在它自己的标记块里，也跳过
+  const body = html.replace(/<!-- 皮肤：开始 -->[\s\S]*?<!-- 皮肤：结束 -->/, "").replace(/<!-- 开屏：开始 -->[\s\S]*?<!-- 开屏：结束 -->/, "");
   b.check("head-skin-block-marked", body !== html);
   const ids_ = ids.filter(id => new RegExp(`["'\`]${id}["'\`]|data-skin="${id}"`).test(body));
   b.check("no-skin-ids-in-components " + ids_.join(","), ids_.length === 0);

@@ -1,11 +1,45 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="booting">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>唱学粤语</title>
 <meta name="theme-color" content="#F7F6FB" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15131F" media="(prefers-color-scheme: dark)">
+<!-- 开屏：开始 -->
+<!-- 开屏动画（v0.40，设计规范 5.17）：颜色只跟系统深色/浅色，不受皮肤影响。<html class="booting"> 让第一帧的底色就是开屏的底色 -->
+<link rel="preload" href="fonts/outfit-600.woff2" as="font" type="font/woff2" crossorigin>
+<style id="splashCss">
+html.booting,html.booting body{background:#F7F6FB}
+.splash{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);background:#F7F6FB;color:#221F33;transition:opacity .25s ease}
+@media (prefers-color-scheme: dark){html.booting,html.booting body{background:#15131F}.splash{background:#15131F;color:#F1EFF8}}
+.splash.out{opacity:0;pointer-events:none}
+/* 图标和名字是一个整体：在可见区域（让开安全区）正中，再往上 24px */
+.sp-box{position:relative;top:-24px;display:flex;flex-direction:column;align-items:center}
+/* 图标就是 icons/splash-icon.svg 原样内联，外形已经裁好：不加圆角、阴影、描边 */
+.sp-icon,.sp-icon svg{display:block;width:96px;height:96px}
+/* 名字：文字框 = 字的宽度 + 末尾 0.24px 字间距，实际字形比框的中心偏左 0.25px（Outfit 600 24px 实测），往右补回 */
+.sp-name{position:relative;left:.25px;margin:20px 0 0;font-family:"Outfit",-apple-system,sans-serif;font-weight:600;font-size:24px;line-height:1;letter-spacing:.01em;white-space:nowrap}
+/* 动画只加在 splash-icon.svg 已有的 class（.tone/.glow/.tone-i/.glow-i）上，结束时都回到文件里的原始值（不透明度 1） */
+@media (prefers-reduced-motion: no-preference){
+.sp-icon{animation:spIcon .35s cubic-bezier(.34,1.56,.64,1) both}
+.splash .tone{animation:spTone .14s ease-out both}
+.splash .glow{animation:spGlow .14s ease-out both}
+.splash .tone-0,.splash .glow-0{animation-delay:.2s}
+.splash .tone-1,.splash .glow-1{animation-delay:.31s}
+.splash .tone-2,.splash .glow-2{animation-delay:.42s}
+.splash .tone-3,.splash .glow-3{animation-delay:.53s}
+.splash .tone-4,.splash .glow-4{animation-delay:.64s}
+.splash .tone-5,.splash .glow-5{animation-delay:.75s}
+.sp-name{animation:spName .3s cubic-bezier(.2,.8,.2,1) .95s both}
+}
+@keyframes spIcon{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+@keyframes spTone{from{opacity:.18}to{opacity:1}}
+@keyframes spGlow{from{opacity:0}to{opacity:1}}
+@keyframes spName{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+</style>
+<!-- 开屏：结束 -->
 <!-- 皮肤：开始 -->
 <!-- 皮肤（开发规格 7.10）：颜色全部在 skins/<id>.js。这里在第一帧之前把所有皮肤的变量写成样式表，按 localStorage yc-skin 选皮肤，
      所以用夜曲的人打开 App 不会先闪一下丁香色。下面的组件只读 CSS 变量，不认识任何皮肤 -->
@@ -39,7 +73,7 @@ function applySkin(id,opt={}){
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="唱学粤语">
+<meta name="apple-mobile-web-app-title" content="Singin’ Canto">
 <style>
 /* Outfit 字体自带（OFL，见 fonts/OFL.txt），只用于粤拼、数字、时间 */
 @font-face{font-family:"Outfit";font-weight:500;font-display:swap;src:url(fonts/outfit-500.woff2) format("woff2")}
@@ -58,11 +92,6 @@ function applySkin(id,opt={}){
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%;background:var(--bg)}
-/* 启动画面（v0.38，设计规范 5.17）：读数据期间盖住页面，颜色是当前皮肤（<head> 里第一帧前就套好了），读完就淡出 0.3 秒，没有最短显示时间 */
-.splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--bg);color:var(--ink);
-  font-size:20px;font-weight:700;transition:opacity .3s ease}
-.splash img{width:88px;height:88px;border-radius:20px}
-.splash.out{opacity:0;pointer-events:none}
 /* 保险：就算哪个元素超出屏幕，页面也不能横着滚（找到超出的元素要先修它） */
 html,body{overflow-x:clip}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font-cjk);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
@@ -679,7 +708,24 @@ label.btn{overflow:hidden}
 </style>
 </head>
 <body>
-<div id="splash" class="splash" aria-hidden="true"><img src="icons/icon-192.png" alt=""><div>唱学粤语</div></div>
+<!-- 开屏（设计规范 5.17）：.sp-icon 里是 icons/splash-icon.svg 的原样内容，一个字都不改；改图标时整段换掉 -->
+<div id="splash" class="splash" aria-hidden="true"><div class="sp-box"><div class="sp-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="96" height="96">
+  <!-- 开屏专用：和 icon.svg 完全相同的图形，只是
+       1) 外形用 iOS 主屏幕同款的连续圆角（squircle）裁切
+       2) 每段声调线和它的光晕拆开、加了 class，方便单独做动画
+       动画结束时（tone 不透明度 1、glow 不透明度 1）画面和 icon.svg 一致 -->
+  <defs>
+    <clipPath id="sc-shape"><path d="M100.00,50.00 L100.00,59.90 L99.99,63.06 L99.97,65.36 L99.95,67.23 L99.92,68.84 L99.89,70.26 L99.85,71.54 L99.80,72.72 L99.75,73.81 L99.69,74.82 L99.63,75.78 L99.56,76.68 L99.48,77.53 L99.40,78.34 L99.31,79.12 L99.22,79.86 L99.11,80.57 L99.01,81.26 L98.89,81.92 L98.77,82.55 L98.64,83.17 L98.51,83.76 L98.37,84.33 L98.22,84.89 L98.07,85.43 L97.91,85.95 L97.74,86.46 L97.57,86.95 L97.39,87.43 L97.20,87.89 L97.01,88.34 L96.81,88.78 L96.60,89.21 L96.39,89.63 L96.17,90.03 L95.94,90.43 L95.70,90.81 L95.46,91.18 L95.20,91.54 L94.94,91.90 L94.68,92.24 L94.40,92.58 L94.12,92.90 L93.83,93.22 L93.53,93.53 L93.22,93.83 L92.90,94.12 L92.58,94.40 L92.24,94.68 L91.90,94.94 L91.54,95.20 L91.18,95.46 L90.81,95.70 L90.43,95.94 L90.03,96.17 L89.63,96.39 L89.21,96.60 L88.78,96.81 L88.34,97.01 L87.89,97.20 L87.43,97.39 L86.95,97.57 L86.46,97.74 L85.95,97.91 L85.43,98.07 L84.89,98.22 L84.33,98.37 L83.76,98.51 L83.17,98.64 L82.55,98.77 L81.92,98.89 L81.26,99.01 L80.57,99.11 L79.86,99.22 L79.12,99.31 L78.34,99.40 L77.53,99.48 L76.68,99.56 L75.78,99.63 L74.82,99.69 L73.81,99.75 L72.72,99.80 L71.54,99.85 L70.26,99.89 L68.84,99.92 L67.23,99.95 L65.36,99.97 L63.06,99.99 L59.90,100.00 L50.00,100.00 L40.10,100.00 L36.94,99.99 L34.64,99.97 L32.77,99.95 L31.16,99.92 L29.74,99.89 L28.46,99.85 L27.28,99.80 L26.19,99.75 L25.18,99.69 L24.22,99.63 L23.32,99.56 L22.47,99.48 L21.66,99.40 L20.88,99.31 L20.14,99.22 L19.43,99.11 L18.74,99.01 L18.08,98.89 L17.45,98.77 L16.83,98.64 L16.24,98.51 L15.67,98.37 L15.11,98.22 L14.57,98.07 L14.05,97.91 L13.54,97.74 L13.05,97.57 L12.57,97.39 L12.11,97.20 L11.66,97.01 L11.22,96.81 L10.79,96.60 L10.37,96.39 L9.97,96.17 L9.57,95.94 L9.19,95.70 L8.82,95.46 L8.46,95.20 L8.10,94.94 L7.76,94.68 L7.42,94.40 L7.10,94.12 L6.78,93.83 L6.47,93.53 L6.17,93.22 L5.88,92.90 L5.60,92.58 L5.32,92.24 L5.06,91.90 L4.80,91.54 L4.54,91.18 L4.30,90.81 L4.06,90.43 L3.83,90.03 L3.61,89.63 L3.40,89.21 L3.19,88.78 L2.99,88.34 L2.80,87.89 L2.61,87.43 L2.43,86.95 L2.26,86.46 L2.09,85.95 L1.93,85.43 L1.78,84.89 L1.63,84.33 L1.49,83.76 L1.36,83.17 L1.23,82.55 L1.11,81.92 L0.99,81.26 L0.89,80.57 L0.78,79.86 L0.69,79.12 L0.60,78.34 L0.52,77.53 L0.44,76.68 L0.37,75.78 L0.31,74.82 L0.25,73.81 L0.20,72.72 L0.15,71.54 L0.11,70.26 L0.08,68.84 L0.05,67.23 L0.03,65.36 L0.01,63.06 L0.00,59.90 L0.00,50.00 L0.00,40.10 L0.01,36.94 L0.03,34.64 L0.05,32.77 L0.08,31.16 L0.11,29.74 L0.15,28.46 L0.20,27.28 L0.25,26.19 L0.31,25.18 L0.37,24.22 L0.44,23.32 L0.52,22.47 L0.60,21.66 L0.69,20.88 L0.78,20.14 L0.89,19.43 L0.99,18.74 L1.11,18.08 L1.23,17.45 L1.36,16.83 L1.49,16.24 L1.63,15.67 L1.78,15.11 L1.93,14.57 L2.09,14.05 L2.26,13.54 L2.43,13.05 L2.61,12.57 L2.80,12.11 L2.99,11.66 L3.19,11.22 L3.40,10.79 L3.61,10.37 L3.83,9.97 L4.06,9.57 L4.30,9.19 L4.54,8.82 L4.80,8.46 L5.06,8.10 L5.32,7.76 L5.60,7.42 L5.88,7.10 L6.17,6.78 L6.47,6.47 L6.78,6.17 L7.10,5.88 L7.42,5.60 L7.76,5.32 L8.10,5.06 L8.46,4.80 L8.82,4.54 L9.19,4.30 L9.57,4.06 L9.97,3.83 L10.37,3.61 L10.79,3.40 L11.22,3.19 L11.66,2.99 L12.11,2.80 L12.57,2.61 L13.05,2.43 L13.54,2.26 L14.05,2.09 L14.57,1.93 L15.11,1.78 L15.67,1.63 L16.24,1.49 L16.83,1.36 L17.45,1.23 L18.08,1.11 L18.74,0.99 L19.43,0.89 L20.14,0.78 L20.88,0.69 L21.66,0.60 L22.47,0.52 L23.32,0.44 L24.22,0.37 L25.18,0.31 L26.19,0.25 L27.28,0.20 L28.46,0.15 L29.74,0.11 L31.16,0.08 L32.77,0.05 L34.64,0.03 L36.94,0.01 L40.10,0.00 L50.00,0.00 L59.90,0.00 L63.06,0.01 L65.36,0.03 L67.23,0.05 L68.84,0.08 L70.26,0.11 L71.54,0.15 L72.72,0.20 L73.81,0.25 L74.82,0.31 L75.78,0.37 L76.68,0.44 L77.53,0.52 L78.34,0.60 L79.12,0.69 L79.86,0.78 L80.57,0.89 L81.26,0.99 L81.92,1.11 L82.55,1.23 L83.17,1.36 L83.76,1.49 L84.33,1.63 L84.89,1.78 L85.43,1.93 L85.95,2.09 L86.46,2.26 L86.95,2.43 L87.43,2.61 L87.89,2.80 L88.34,2.99 L88.78,3.19 L89.21,3.40 L89.63,3.61 L90.03,3.83 L90.43,4.06 L90.81,4.30 L91.18,4.54 L91.54,4.80 L91.90,5.06 L92.24,5.32 L92.58,5.60 L92.90,5.88 L93.22,6.17 L93.53,6.47 L93.83,6.78 L94.12,7.10 L94.40,7.42 L94.68,7.76 L94.94,8.10 L95.20,8.46 L95.46,8.82 L95.70,9.19 L95.94,9.57 L96.17,9.97 L96.39,10.37 L96.60,10.79 L96.81,11.22 L97.01,11.66 L97.20,12.11 L97.39,12.57 L97.57,13.05 L97.74,13.54 L97.91,14.05 L98.07,14.57 L98.22,15.11 L98.37,15.67 L98.51,16.24 L98.64,16.83 L98.77,17.45 L98.89,18.08 L99.01,18.74 L99.11,19.43 L99.22,20.14 L99.31,20.88 L99.40,21.66 L99.48,22.47 L99.56,23.32 L99.63,24.22 L99.69,25.18 L99.75,26.19 L99.80,27.28 L99.85,28.46 L99.89,29.74 L99.92,31.16 L99.95,32.77 L99.97,34.64 L99.99,36.94 L100.00,40.10 Z"/></clipPath>
+    <mask id="sc-gap" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><rect width="100" height="100" fill="#fff"/><g stroke="#000" stroke-width="13" stroke-linecap="round"><line x1="18" y1="28" x2="26" y2="28"/><line x1="29" y1="50" x2="37" y2="28"/><line x1="40" y1="50" x2="48" y2="50"/><line x1="51" y1="61" x2="59" y2="72"/><line x1="62" y1="72" x2="70" y2="50"/><line x1="73" y1="61" x2="81" y2="61"/></g></mask>
+    <filter id="sc-blur" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="2.6"/></filter>
+  </defs>
+  <g clip-path="url(#sc-shape)">
+    <rect width="100" height="100" fill="#000"/>
+    <g stroke="#8E80FF" stroke-opacity="0.6" stroke-width="1.2" mask="url(#sc-gap)"><line x1="12" y1="28" x2="88" y2="28"/><line x1="12" y1="39" x2="88" y2="39"/><line x1="12" y1="50" x2="88" y2="50"/><line x1="12" y1="61" x2="88" y2="61"/><line x1="12" y1="72" x2="88" y2="72"/></g>
+    <g filter="url(#sc-blur)" opacity="0.6" stroke-width="9" stroke-linecap="round"><line class="glow glow-0" x1="18" y1="28" x2="26" y2="28" stroke="#FF7A70"/><line class="glow glow-1" x1="29" y1="50" x2="37" y2="28" stroke="#FFB547"/><line class="glow glow-2" x1="40" y1="50" x2="48" y2="50" stroke="#5FD38D"/><line class="glow glow-3" x1="51" y1="61" x2="59" y2="72" stroke="#6FA8FF"/><line class="glow glow-4" x1="62" y1="72" x2="70" y2="50" stroke="#B794FF"/><line class="glow glow-5" x1="73" y1="61" x2="81" y2="61" stroke="#4CC9DB"/></g>
+    <g stroke-width="6" stroke-linecap="round"><line class="tone tone-0" x1="18" y1="28" x2="26" y2="28" stroke="#FF7A70"/><line class="tone tone-1" x1="29" y1="50" x2="37" y2="28" stroke="#FFB547"/><line class="tone tone-2" x1="40" y1="50" x2="48" y2="50" stroke="#5FD38D"/><line class="tone tone-3" x1="51" y1="61" x2="59" y2="72" stroke="#6FA8FF"/><line class="tone tone-4" x1="62" y1="72" x2="70" y2="50" stroke="#B794FF"/><line class="tone tone-5" x1="73" y1="61" x2="81" y2="61" stroke="#4CC9DB"/></g>
+  </g>
+</svg></div><p class="sp-name">singin’ canto</p></div></div>
 
 <audio id="au" preload="auto" playsinline></audio>
 
@@ -1175,7 +1221,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.39";
+const APP_VERSION="v0.40";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 // 开发者模式（开发规格 7.10.5）：调试面板、模拟日期只在开发者模式下有效。真的记录在 meta devMode；localStorage yc-dev 是启动时就能读的副本，读完数据库后 syncDev() 以数据库为准
 let devOn=false;try{devOn=localStorage.getItem("yc-dev")==="1"}catch(e){}
@@ -2539,11 +2585,21 @@ $("#skinsList").addEventListener("click",async e=>{
 });
 $("#skinRow").addEventListener("click",()=>{if(navPending)return;openSkinsPage();go("skinsView")});
 
-/* ---------- 启动画面：数据读完就淡出（减弱动态效果时直接去掉） ---------- */
+/* ---------- 开屏：动画完整放完（1.45 秒）、数据也读完了，才淡出 0.25 秒；数据慢就停在最后的完整画面。
+   减弱动态效果时没有动画，数据读完就淡出 ---------- */
+// splashGone：开屏完全消失以后（自动弹出的教程等它，免得在开屏下面弹出来）
+let splashDone;const splashGone=new Promise(r=>splashDone=r);
 function hideSplash(){
-  const sp=$("#splash");if(!sp)return;
-  if(reduceMotion()){sp.remove();return}
-  sp.classList.add("out");setTimeout(()=>sp.remove(),320);
+  const sp=$("#splash");if(!sp){splashDone();return}
+  if(hideSplash.done)return;
+  hideSplash.done=true;
+  const fade=()=>{sp.classList.add("out");document.documentElement.classList.remove("booting");setTimeout(()=>{sp.remove();splashDone()},260)};
+  if(reduceMotion()){fade();return}
+  // 按名字那段动画实际放到哪了算：它从开屏真正出现（第一帧画出来）开始计时，0.95 秒开始、1.25 秒放完，整个画面停到 1.45 秒。
+  // 先等动画真的开始（ready），免得页面刚打开卡一下时提前淡出
+  const a=sp.querySelector(".sp-name").getAnimations?.()[0];
+  if(!a){setTimeout(fade,1450);return}
+  a.ready.then(()=>setTimeout(fade,Math.max(0,1450-(document.timeline.currentTime-a.startTime))),fade); // 动画放完后 currentTime 停在 1.25 秒，所以用开始时间算
 }
 setTimeout(hideSplash,8000); // 保险：万一启动出错，8 秒后也不再挡着
 
@@ -2560,7 +2616,7 @@ function isIOSSafari(){
   const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   return ios&&/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|DuckDuckGo/.test(ua);
 }
-function maybeA2hs(){if(isIOSSafari()&&!isStandalone()&&prefs.a2hs!==false)setTimeout(()=>{if(curView==="home"&&$("#sheet").hidden)openA2hs()},600)}
+function maybeA2hs(){if(isIOSSafari()&&!isStandalone()&&prefs.a2hs!==false)splashGone.then(()=>setTimeout(()=>{if(curView==="home"&&$("#sheet").hidden)openA2hs()},600))}
 function openA2hs(){
   openSheet(`<div class="a2">
     <h3>添加到主屏幕</h3>

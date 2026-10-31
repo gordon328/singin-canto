@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, "../..");
 const OUT = path.join(__dirname, "out");
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".json": "application/json",
-  ".png": "image/png", ".woff2": "font/woff2", ".mp3": "audio/mpeg", ".txt": "text/plain", ".md": "text/markdown; charset=utf-8" };
+  ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".mp3": "audio/mpeg", ".txt": "text/plain", ".md": "text/markdown; charset=utf-8" };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function serve() {
@@ -53,7 +53,9 @@ async function runScenario(sc, port) {
         await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 3, mobile: true });
         await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
       },
-      async nav(p) { const loaded = once("Page.loadEventFired"); await send("Page.navigate", { url: "http://localhost:8080" + p }); await loaded; await sleep(1500); },
+      async nav(p) { const loaded = once("Page.loadEventFired"); await send("Page.navigate", { url: "http://localhost:8080" + p }); await loaded; await sleep(1500);
+        // 开屏动画（v0.40）约 1.7 秒：等它消失再继续（最多再等 3 秒）
+        for (let i = 0; i < 30; i++) { const r = await send("Runtime.evaluate", { expression: "!!document.querySelector('#splash')", returnByValue: true }); if (!r.result.result.value) break; await sleep(100); } },
       async ev(expr) {
         const r = await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true, userGesture: true });
         if (r.result.exceptionDetails) throw new Error((r.result.exceptionDetails.exception?.description || "eval failed") + "\n  in: " + expr.slice(0, 160));
