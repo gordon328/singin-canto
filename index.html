@@ -539,16 +539,38 @@ label.btn{overflow:hidden}
 .sgrp-note{padding:8px 16px 0;font-size:13px;line-height:1.6;color:var(--muted)}
 .tip-link{display:block;width:100%;min-height:44px;margin:0;border:0;background:none;font:inherit;font-size:13px;line-height:1.6;text-align:left;color:var(--accent);cursor:pointer;-webkit-tap-highlight-color:transparent}
 /* 添加到主屏幕教程（v0.38，设计规范 5.17）：底部弹窗（只有按钮，没有输入框），左右翻的步骤，每步一张截图 + 一句说明 */
-.a2-track{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+/* 添加到主屏幕教程（设计规范 5.17，v0.42 按设计画布「添加到主屏幕教程：排版」）：数值以 440×956 为准，展台高度跟屏幕高度按比例（956 高 340px，667 高 300px） */
+/* 展台高度：按屏幕高度比例（956 高 340，667 高 300），但不超过「整屏减去其余内容」（--a2-rest，实测再加余量），保证小屏不用滚动就看得到按钮 */
+.a2{display:flex;flex-direction:column;--a2-rest:470px;
+  --a2-stage:max(180px,min(clamp(260px,calc(208px + 13.84dvh),340px),calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - var(--a2-rest))))}
+/* 教程内容多：弹窗可以拉到离顶部 12px（其他弹窗还是最多 88dvh） */
+.sheet:has(.a2){max-height:calc(100dvh - env(safe-area-inset-top,0px) - 12px)}
+.sheet .a2 h3{font-size:22px;line-height:1.3;font-weight:700}
+.a2-sub{margin:6px 0 0;font-size:15px;line-height:1.5;color:var(--muted)}
+.a2-track{display:flex;gap:16px;margin-top:24px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .a2-track::-webkit-scrollbar{display:none}
-.a2-step{flex:0 0 100%;scroll-snap-align:start;display:flex;flex-direction:column;gap:12px}
-.a2-shot{position:relative;display:grid;place-items:center;height:240px;border-radius:16px;background:var(--bg);border:1px dashed var(--field-border);overflow:hidden;color:var(--muted);font-size:13px}
-.a2-shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--bg)}
-.a2-text{margin:0;font-size:15px;line-height:1.6;color:var(--ink)}
-.a2-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
-.a2-dots{display:flex;gap:8px}
+.a2-step{flex:0 0 100%;scroll-snap-align:start;display:flex;flex-direction:column}
+/* 截图展台：三步一样大，翻页版面不动。截图按原比例完整显示、居中（max-width/max-height 100%），width/height 属性让图片加载前就按比例占好位置 */
+.a2-stage{height:var(--a2-stage);padding:20px;border-radius:22px;background:var(--stage);display:flex;align-items:center;justify-content:center}
+.a2-stage img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;border-radius:14px;box-shadow:var(--shadow-1)}
+.a2-no{margin:24px 0 0;font-size:14px;line-height:1.5;font-weight:700;color:var(--accent)}
+.a2-text{margin:8px 0 0;font-size:19px;line-height:1.4;font-weight:700;color:var(--ink);text-wrap:pretty}
+.a2-store{margin:8px 0 0;font-size:14px;line-height:1.6;color:var(--muted)}
+.a2-link{display:inline;margin:0;padding:0;border:0;background:none;font:inherit;font-weight:700;color:var(--accent);cursor:pointer}
+/* 「Singin’ Canto」用西文字体：中文字体把弯撇号当全角，单词中间会空一大块 */
+.a2 .lat{font-family:-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.a2-dots{display:flex;justify-content:center;gap:8px;margin-top:24px}
 .a2-dots i{width:8px;height:8px;border-radius:4px;background:var(--rule);transition:width var(--dur) var(--ease),background-color var(--dur) var(--ease)}
 .a2-dots i.on{width:20px;background:var(--accent)}
+.a2 [data-a2="go"]{margin-top:20px}
+.a2 [data-a2="web"]{margin-top:8px}
+/* 矮屏（小 iPhone）：间距和字号按比例缩小一点 */
+@media (max-height:760px){
+  .a2{--a2-rest:400px}
+  .sheet .a2 h3{font-size:20px}.a2-sub{font-size:14px;margin-top:4px}
+  .a2-track{margin-top:16px}.a2-no{margin-top:16px;font-size:13px}.a2-text{margin-top:6px;font-size:17px}.a2-store{margin-top:6px;font-size:13px;line-height:1.5}
+  .a2-dots{margin-top:16px}.a2 [data-a2="go"]{margin-top:14px}.a2 [data-a2="web"]{margin-top:4px}
+}
 /* 兑换码弹窗（设计规范 5.15）：输入框 + 提示（固定高度，出现提示时按钮不挪动）+ 兑换按钮 */
 .rd-msg{min-height:20px;font-size:14px;line-height:20px;color:var(--danger)}
 .rd-note{margin:0;padding:0 4px}
@@ -1221,7 +1243,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.40";
+const APP_VERSION="v0.42";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 // 开发者模式（开发规格 7.10.5）：调试面板、模拟日期只在开发者模式下有效。真的记录在 meta devMode；localStorage yc-dev 是启动时就能读的副本，读完数据库后 syncDev() 以数据库为准
 let devOn=false;try{devOn=localStorage.getItem("yc-dev")==="1"}catch(e){}
@@ -2553,6 +2575,7 @@ async function checkUnlocks(){
 function showUnlocks(){
   const rec=getCheckin(),ids=(rec.unseen||[]).filter(x=>typeof x==="string");
   if(!ids.length){if(redeemReturn&&$("#sheet").hidden){redeemReturn=false;if(curView==="redeemView")goBack()}return}
+  if(!splashOver){splashGone.then(showUnlocks);return} // 开屏期间不弹（会弹在开屏下面）
   if(!$("#sheet").hidden){setTimeout(showUnlocks,400);return}
   if(curView==="studyView"&&!$("#stBody .st-done"))return;
   const id=ids[0],d=SKIN_DEFS[id];
@@ -2588,61 +2611,67 @@ $("#skinRow").addEventListener("click",()=>{if(navPending)return;openSkinsPage()
 /* ---------- 开屏：动画完整放完（1.45 秒）、数据也读完了，才淡出 0.25 秒；数据慢就停在最后的完整画面。
    减弱动态效果时没有动画，数据读完就淡出 ---------- */
 // splashGone：开屏完全消失以后（自动弹出的教程等它，免得在开屏下面弹出来）
-let splashDone;const splashGone=new Promise(r=>splashDone=r);
-function hideSplash(){
+let splashDone,splashOver=false;const splashGone=new Promise(r=>splashDone=()=>{splashOver=true;r()});
+// force：8 秒保险，不管动画放到哪都淡出（动画万一没开始，ready 不会完成）
+function hideSplash(force){
   const sp=$("#splash");if(!sp){splashDone();return}
-  if(hideSplash.done)return;
+  if(sp.classList.contains("out")||(hideSplash.done&&!force))return;
   hideSplash.done=true;
-  const fade=()=>{sp.classList.add("out");document.documentElement.classList.remove("booting");setTimeout(()=>{sp.remove();splashDone()},260)};
-  if(reduceMotion()){fade();return}
+  const fade=()=>{if(sp.classList.contains("out"))return;sp.classList.add("out");document.documentElement.classList.remove("booting");setTimeout(()=>{sp.remove();splashDone()},260)};
+  if(reduceMotion()||force){fade();return}
   // 按名字那段动画实际放到哪了算：它从开屏真正出现（第一帧画出来）开始计时，0.95 秒开始、1.25 秒放完，整个画面停到 1.45 秒。
   // 先等动画真的开始（ready），免得页面刚打开卡一下时提前淡出
   const a=sp.querySelector(".sp-name").getAnimations?.()[0];
   if(!a){setTimeout(fade,1450);return}
   a.ready.then(()=>setTimeout(fade,Math.max(0,1450-(document.timeline.currentTime-a.startTime))),fade); // 动画放完后 currentTime 停在 1.25 秒，所以用开始时间算
 }
-setTimeout(hideSplash,8000); // 保险：万一启动出错，8 秒后也不再挡着
+setTimeout(()=>hideSplash(true),8000); // 保险：万一启动出错或动画没开始，8 秒后也不再挡着
 
 /* ---------- 添加到主屏幕教程（设计规范 5.17）：只在 iPhone Safari、不是从主屏幕打开时第一次自动弹出 ---------- */
-// 截图放在 docs/design/a2hs/stepN.png（开发者提供）；还没有时显示「截图待补充」
+// 截图：开发者的原图在 docs/design/a2hs/，App 用的是压缩到 750 宽的 img/a2hs/（第 3 张只留上面 62%，下面是空的）。w、h 是副本的像素，图片加载前按比例占位
 const A2HS_STEPS=[
-  {text:"点 Safari 底部的分享按钮（方框加向上的箭头）。"},
-  {text:"往下滑，点「添加到主屏幕」。"},
-  {text:"点右上角的「添加」。主屏幕上就多了唱学粤语的图标，以后都从这个图标打开。"},
-  {text:"Safari 和主屏幕 App 的数据是分开的。如果已经在 Safari 里导入过歌，请先在这里导出备份，再到主屏幕 App 的设置里恢复（音频需要重新选择）",exportBtn:true},
+  {img:"img/a2hs/1-share.jpg",w:750,h:890,text:"点底部的「分享」按钮"},
+  {img:"img/a2hs/2-add-to-home.jpg",w:750,h:1131,text:"往下滑，选「添加到主屏幕」"},
+  {img:"img/a2hs/3-add.jpg",w:750,h:555,text:"名字保留 Singin’ Canto，点右上角「添加」",store:true},
 ];
-function isIOSSafari(){
+const A2HS_STORE='Safari 和主屏幕里的数据是分开的。在 Safari 里已经有歌的话，先<button class="a2-link" type="button" data-a2="export">导出备份</button>，再到主屏幕 App 里恢复。';function isIOSSafari(){
   const ua=navigator.userAgent||"";
   const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   return ios&&/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|DuckDuckGo/.test(ua);
 }
-function maybeA2hs(){if(isIOSSafari()&&!isStandalone()&&prefs.a2hs!==false)splashGone.then(()=>setTimeout(()=>{if(curView==="home"&&$("#sheet").hidden)openA2hs()},600))}
+// 开屏淡出 0.6 秒后弹。那时不在首页、正在切页或开着别的弹窗（比如解锁皮肤）：每 0.4 秒再看一次，等回到首页、弹窗都关了再弹（以前只看一次，错过就不弹了）
+function maybeA2hs(){
+  if(!isIOSSafari()||isStandalone()||prefs.a2hs===false)return;
+  const tryOpen=()=>{if(prefs.a2hs===false)return;if(curView==="home"&&!navPending&&$("#sheet").hidden)openA2hs();else setTimeout(tryOpen,400)};
+  splashGone.then(()=>setTimeout(tryOpen,600));
+}
 function openA2hs(){
+  const n=A2HS_STEPS.length;
   openSheet(`<div class="a2">
     <h3>添加到主屏幕</h3>
-    <p class="note" style="margin:0">从主屏幕图标打开，像 App 一样全屏使用，数据也更不容易丢失。</p>
+    <p class="a2-sub">跟着截图里的红框按，一共 ${n} 步</p>
     <div class="a2-track">${A2HS_STEPS.map((st,i)=>`<div class="a2-step">
-      <div class="a2-shot"><span>截图待补充（第 ${i+1} 步）</span><img src="docs/design/a2hs/step${i+1}.png" alt="第 ${i+1} 步截图"></div>
-      <p class="a2-text"><b class="num">${i+1}.</b> ${esc(st.text)}</p>
-      ${st.exportBtn?'<button class="btn soft block" type="button" data-a2="export">现在导出备份</button>':""}
+      <div class="a2-stage"><img src="${st.img}" width="${st.w}" height="${st.h}" alt="第 ${i+1} 步截图"></div>
+      <p class="a2-no">第 ${i+1} 步</p>
+      <p class="a2-text">${esc(st.text).replace("Singin’ Canto",'<span class="lat">Singin’ Canto</span>')}</p>
+      ${st.store?`<p class="a2-store">${A2HS_STORE}</p>`:""}
     </div>`).join("")}</div>
-    <div class="a2-nav"><span class="a2-dots">${A2HS_STEPS.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</span><button class="btn text small" type="button" data-a2="next">下一步</button></div>
-    <button class="btn primary block" type="button" data-a2="ok">我知道了</button>
+    <span class="a2-dots">${A2HS_STEPS.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</span>
+    <button class="btn primary block" type="button" data-a2="go">${n>1?"下一步":"我知道了"}</button>
     <button class="btn text block" type="button" data-a2="web">继续用网页</button>
   </div>`);
-  // 截图还没有：去掉坏图，露出「截图待补充」
-  $("#sheetBody").querySelectorAll(".a2-shot img").forEach(img=>img.addEventListener("error",()=>img.remove()));
   const tr=$("#sheetBody .a2-track");tr.addEventListener("scroll",a2Dots,{passive:true});
 }
 function a2Step(){const tr=$("#sheetBody .a2-track");return tr?Math.round(tr.scrollLeft/(tr.clientWidth+16)):0}
 function a2Dots(){
   const i=a2Step();document.querySelectorAll("#sheetBody .a2-dots i").forEach((d,k)=>d.classList.toggle("on",k===i));
-  const nx=$("#sheetBody [data-a2='next']");if(nx)nx.style.visibility=i>=A2HS_STEPS.length-1?"hidden":"";
+  // 主按钮：前几步「下一步」，最后一步「我知道了」
+  const go=$("#sheetBody [data-a2='go']");if(go)go.textContent=i>=A2HS_STEPS.length-1?"我知道了":"下一步";
 }
 $("#sheetBody").addEventListener("click",e=>{
   const b=e.target.closest("[data-a2]");if(!b)return;
   const a=b.dataset.a2;
-  if(a==="next"){const tr=$("#sheetBody .a2-track");tr.scrollTo({left:(a2Step()+1)*(tr.clientWidth+16),behavior:reduceMotion()?"auto":"smooth"});setTimeout(a2Dots,450);return}
+  if(a==="go"&&a2Step()<A2HS_STEPS.length-1){const tr=$("#sheetBody .a2-track");tr.scrollTo({left:(a2Step()+1)*(tr.clientWidth+16),behavior:reduceMotion()?"auto":"smooth"});setTimeout(a2Dots,450);return}
   if(a==="export"){exportBackup();return} // 分享面板要在点按的同一时刻调出来
   prefs.a2hs=false;savePrefs();closeSheet();if(curView==="settingsView")renderSettings(); // 我知道了 / 继续用网页：不再自动弹出
 });

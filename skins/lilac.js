@@ -14,7 +14,7 @@
       heroTile: "rgba(255,255,255,.14)", heroBtn: "#FFFFFF", heroBtnInk: "#5B4BDB",
       songTiles: [["#ECE9FD", "#5B4BDB"], ["#FDEDE3", "#C2581A"], ["#E3F4EA", "#2B8A56"], ["#E5EEFC", "#2F6BD6"]],
       tones: ["#D9443B", "#C67312", "#2B8A56", "#2F6BD6", "#8A4FD8", "#0F7F8E"],
-      shadowStrength: 1, segCurrent: "#B7AEF2",
+      shadowStrength: 1, segCurrent: "#B7AEF2", stage: "#F1EFF8",
     },
     dark: {
       bg: "#15131F", surface: "#1F1C2C", surfacePress: "#2A2640", ink: "#F1EFF8", ink2: "#CFCBE0", muted: "#9C97B3", rule: "#2E2A42",
@@ -22,7 +22,7 @@
       heroTile: "rgba(20,17,42,.12)", heroBtn: "#15131F", heroBtnInk: "#A79CFF",
       songTiles: [["#2B2550", "#A79CFF"], ["#3A2618", "#FFB27A"], ["#17311F", "#5FD38D"], ["#182640", "#6FA8FF"]],
       tones: ["#FF7A70", "#FFB547", "#5FD38D", "#6FA8FF", "#B794FF", "#4CC9DB"],
-      shadowStrength: 0, segCurrent: "#5A4FB0",
+      shadowStrength: 0, segCurrent: "#5A4FB0", stage: "#15131F",
     },
   };
   (root.SKIN_DEFS = root.SKIN_DEFS || {})[skin.id] = skin;

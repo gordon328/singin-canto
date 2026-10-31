@@ -14,7 +14,7 @@
   const rgb = hex => { const h = hex.replace("#", ""); const f = h.length === 3 ? h.replace(/./g, "$&$&") : h; return [0, 2, 4].map(i => parseInt(f.slice(i, i + 2), 16)); };
   const alpha = n => String(+n.toFixed(3)).replace(/^0\./, ".");
   const rgba = (hex, a) => `rgba(${rgb(hex).join(",")},${alpha(a)})`;
-  const SKIP = new Set(["songTiles", "tones", "shadowStrength", "segCurrent"]);
+  const SKIP = new Set(["songTiles", "tones", "shadowStrength", "segCurrent", "stage"]);
 
   // 一套颜色 → CSS 变量声明（不带花括号）
   function cssVars(c) {
@@ -25,6 +25,8 @@
     out.push(`--sq-count:${c.songTiles.length}`);
     out.push(`--field-border:var(--${FIELD_BORDER})`);
     out.push(`--seg-current:${c.segCurrent || "color-mix(in srgb, var(--accent) 45%, var(--surface))"}`);
+    // 截图展台（添加到主屏幕教程）：比卡片底色暗一点的衬底。不填时深色用 bg，浅色用 bg 混一点 rule
+    out.push(`--stage:${c.stage || (luminance(c.bg) < 0.4 ? "var(--bg)" : "color-mix(in srgb, var(--rule) 30%, var(--bg))")}`);
     // 阴影：强度 0 用明暗差代替阴影（深色）；大于 0 用 ink 色的阴影
     const s = +c.shadowStrength || 0;
     if (s > 0) {

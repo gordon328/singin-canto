@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, "../..");
 const OUT = path.join(__dirname, "out");
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".json": "application/json",
-  ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".mp3": "audio/mpeg", ".txt": "text/plain", ".md": "text/markdown; charset=utf-8" };
+  ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".mp3": "audio/mpeg", ".txt": "text/plain", ".md": "text/markdown; charset=utf-8" };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function serve() {

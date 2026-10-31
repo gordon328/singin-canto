@@ -11,11 +11,11 @@ const dbgText = `document.querySelector("#dbg").innerText`;
 module.exports = { name: "debug", async run(b) {
   await F.seed(b);
   await b.ev(F.DEV_ON); await b.nav("/"); // 调试面板只在开发者模式下有效（v0.35）
-  b.check("version-shown", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 v0.40");
+  b.check("version-shown", (await b.ev(`document.querySelector("#appVer").innerText`)) === "版本 v0.42");
   b.check("panel-off", await b.ev(`document.querySelector("#dbg").hidden`));
 
   await b.ev(tapVer); await b.sleep(100);
-  b.check("panel-on", !(await b.ev(`document.querySelector("#dbg").hidden`)) && (await b.ev(dbgText)).includes("调试 v0.40"));
+  b.check("panel-on", !(await b.ev(`document.querySelector("#dbg").hidden`)) && (await b.ev(dbgText)).includes("调试 v0.42"));
 
   const oldSettings = await b.ev(`(window.__old = document.querySelector("#btnSettings"), true)`);
   await tap(b, "#btnSettings"); await b.sleep(700);
