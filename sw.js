@@ -3,7 +3,7 @@
    - 标准发音录音（audio/）：内容不会变，先用缓存，没有再联网下载并存起来。单独一个缓存，换版本不删
    - 歌词搜索（lrclib）等其他网站的请求：不缓存，照常联网
    每次改了要缓存的文件列表，把 VERSION 加一。 */
-const VERSION = "v0.38";
+const VERSION = "v0.39";
 const CACHE = "yuechang-" + VERSION;
 const VOICE_CACHE = "voice-hiujin-1";
 // 皮肤文件：按 skins/registry.js 的列表自动加进来，加新皮肤不用改这里

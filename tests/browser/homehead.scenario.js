@@ -70,6 +70,11 @@ module.exports = { name: "homehead", async run(b) {
     const col = SKIN.colorsFor(defs[id], dark), name = `${id}-${defs[id].modes === "dark-only" || dark ? "dark" : "light"}`;
     b.check(`${name}-colors`, await b.ev(`(() => { const today = getComputedStyle(document.querySelector("#streak .wk-day.is-today")), card = getComputedStyle(document.querySelector("#streak"));
       return today.backgroundColor === ${JSON.stringify(rgb(col.accent))} && card.backgroundColor === ${JSON.stringify(rgb(col.surface))}; })()`));
+    // 以后的日子（v0.39）：和卡片同色 + 1.5px --rule 实线框；过去没打卡的灰色填充；今天的空心框比以后的日子明显
+    const fut = await b.ev(`(() => { const e = document.querySelector("#streak .wk-day.future"); if (!e) return null; const s = getComputedStyle(e); return { bg: s.backgroundColor, bw: parseFloat(s.borderTopWidth), bs: s.borderTopStyle, bc: s.borderTopColor }; })()`);
+    if (fut) b.check(`${name}-future ${JSON.stringify(fut)}`, fut.bg === rgb(col.surface) && fut.bw >= 1.3 && fut.bw <= 1.5 && fut.bs === "solid" && fut.bc === rgb(col.rule));
+    else b.skip(`${name}-future`, "今天是周日，这周没有以后的日子");
+    b.check(`${name}-past-missed-gray`, wd < 3 || await b.ev(`(() => { const s = getComputedStyle(document.querySelectorAll("#streak .wk-day")[${wd - 3}]); return s.backgroundColor === ${JSON.stringify(rgb(col.rule))} && s.borderTopStyle === "none"; })()`));
     b.check(`${name}-no-overflow`, await b.ev(`document.documentElement.scrollWidth <= innerWidth`));
     const card = await b.ev(rect("#streak")), today = await b.ev(rect("#today")), hd = await b.ev(rect(".home-head")), wrap = await b.ev(rect("#home .wrap"));
     b.check(`${name}-align ${JSON.stringify([card.left, hd.left, today.left, card.right, today.right])}`, Math.abs(card.left - today.left) < 1 && Math.abs(card.right - today.right) < 1 && today.top - card.bottom >= 12);

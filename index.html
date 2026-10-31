@@ -222,6 +222,8 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .wk-day[data-st="done"],.wk-day[data-st="more"]{background:var(--accent)}
 .wk-day.rest{background:transparent;border:1.5px dashed var(--muted)}
 .wk-day.is-today:not([data-st]){background:transparent;border:2px solid var(--accent)}
+/* 以后的日子（v0.39）：和卡片同色 + 细实线框，看起来是空着、可以填的格子（过去没打卡的才是灰色填充）；今天的 2px 主色框比它明显 */
+.wk-day.future,.cal-day.future{background:var(--surface);border:1.5px solid var(--rule)}
 .wk-stat{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:48px;padding-left:16px;border-left:1px solid var(--rule)}
 .wk-lbl{font-size:12px;line-height:16px;color:var(--muted)}
 .wk-val{font-size:13px;color:var(--ink);white-space:nowrap}
@@ -269,6 +271,8 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .cal-grid .cal-day{min-height:44px;padding:0;border:0;font:inherit;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .cal-grid .cal-day.rest{border:1.5px dashed var(--muted);font-size:12px}
 .cal-grid .cal-day:disabled{opacity:.4;cursor:default}
+.cal-grid .cal-day.future{border:1.5px solid var(--rule);color:var(--muted)}
+.cal-grid .cal-day.future:disabled{opacity:1}
 .cal-grid .cal-day.sel{box-shadow:inset 0 0 0 2px var(--ink)}
 .cal-grid .cal-day.is-pressed{opacity:.7}
 .cal-detail{min-height:24px;font-size:15px;color:var(--ink-2)}
@@ -1171,7 +1175,7 @@ function freshHome(){
 /* ---------- 调试面板：连点 3 下首页底部版本号打开，再点 3 下关掉 ---------- */
 // 查「回到首页后按钮还像按下」：记下离开首页前点的按钮，回首页后 0/100/500/1000/3000ms 各量一次它的状态；另外记最近 10 个触摸事件
 // App 版本号：每次上线 +1（v0.30、v0.31……v0.99 之后是 v0.100），开发者说「发布正式版」才改成 v1.0。首页底部、设置页、sw.js 的 VERSION、CHANGELOG.md 同步改
-const APP_VERSION="v0.38";
+const APP_VERSION="v0.39";
 const dbg={on:false,open:false,last:null,ret:null,log:[],taps:0,tapAt:0};
 // 开发者模式（开发规格 7.10.5）：调试面板、模拟日期只在开发者模式下有效。真的记录在 meta devMode；localStorage yc-dev 是启动时就能读的副本，读完数据库后 syncDev() 以数据库为准
 let devOn=false;try{devOn=localStorage.getItem("yc-dev")==="1"}catch(e){}
@@ -1446,7 +1450,7 @@ function renderCalendar(){
   const cells=CHECKIN.monthGrid(y,m).map(d=>{
     if(!d)return "<span></span>";
     const e=rec.days[d],rest=e&&e.type==="rest";
-    return `<button class="cal-day${rest?" rest":""}${d===day?" is-today":""}${d===calSel?" sel":""}" type="button" data-day="${d}" data-st="${CHECKIN.dayState(e)}"${d>day?" disabled":""} aria-label="${+d.slice(5,7)} 月 ${+d.slice(8)} 日 ${esc(CHECKIN.detail(e))}">${rest?"休":+d.slice(8)}${e&&e.more&&e.type==="done"?DAY_STAR:""}</button>`}).join("");
+    return `<button class="cal-day${rest?" rest":""}${d===day?" is-today":""}${d>day?" future":""}${d===calSel?" sel":""}" type="button" data-day="${d}" data-st="${CHECKIN.dayState(e)}"${d>day?" disabled":""} aria-label="${+d.slice(5,7)} 月 ${+d.slice(8)} 日 ${esc(CHECKIN.detail(e))}">${rest?"休":+d.slice(8)}${e&&e.more&&e.type==="done"?DAY_STAR:""}</button>`}).join("");
   const sel=calSel&&rec.days[calSel],selLabel=calSel?`${+calSel.slice(5,7)} 月 ${+calSel.slice(8)} 日 · ${CHECKIN.detail(sel)}`:"点某一天，看那天学了多少";
   // 连续断了、今天还没打卡时显示「—」（和首页「今天重新开始」一样，不显示 0）
   const n=CHECKIN.streak(rec,day),tk=rec.restTokens;
@@ -2982,7 +2986,7 @@ function renderDone(){
   const newWords=[...cards.values()].filter(c=>SRS.today(c.created)===day).length;
   const ck=checkinToday({reviewed:d.reviewed,newLines:d.newLines,newWords,more:d.extra>0}),rec=ck?ck.rec:getCheckin(),anim=!!(ck&&ck.first)&&!reduceMotion();
   const week=CHECKIN.weekOf(day).map(x=>{const e=rec.days[x],hold=anim&&x===day;
-    return `<span class="cal-day${e&&e.type==="rest"?" rest":""}${x===day?" is-today":""}" data-st="${hold?"":CHECKIN.dayState(e)}">${e&&e.type==="rest"?"休":""}${!hold&&e&&e.type==="done"&&e.more?DAY_STAR:""}</span>`}).join("");
+    return `<span class="cal-day${e&&e.type==="rest"?" rest":""}${x===day?" is-today":""}${x>day?" future":""}" data-st="${hold?"":CHECKIN.dayState(e)}">${e&&e.type==="rest"?"休":""}${!hold&&e&&e.type==="done"&&e.more?DAY_STAR:""}</span>`}).join("");
   const due2=ck?0:checkinDue(d),need=Math.max(0,d.goal-d.newLines);
   const streakLine=!ck?(rec.days[day]?.type==="done"?`连续 <b class="num">${CHECKIN.streak(rec,day)}</b> 天`:"今天还没打卡 · "+(due2?`还有 ${due2} 个词要复习`:`再学 ${need} 句就能打卡`)):anim&&ck.before!==ck.after?`连续 <b class="num flip"><span><span>${ck.before}</span><span>${ck.after}</span></span></b> 天`:`连续 <b class="num">${ck.after}</b> 天`;
   const due=STUDY.dueCount(cards.values(),SRS.dayDue(now,1),Infinity),up=STUDY.upcoming(lineTexts(s),learned,d.goal);
